@@ -15,5 +15,5 @@ done
 base_dir=$(cd "$(dirname "$loc")" && pwd)
 
 pushd "$base_dir"
-${BAZEL_EXECUTABLE:-bazel} build //src:djinni --incompatible_java_common_parameters=false
+${BAZEL_EXECUTABLE:-bazel} build //src:djinni
 popd
