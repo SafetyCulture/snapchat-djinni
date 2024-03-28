@@ -183,7 +183,7 @@ package object generatorTools {
 
     val javaDefault = JavaIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
     val cppDefault = CppIdentStyle(camelUpper, camelUpper, camelUpper, underLower, underLower, underLower, underCaps, underCaps)
-    val objcDefault = ObjcIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, camelUpper, camelUpper)
+    val objcDefault = ObjcIdentStyle(camelUpperOrID, camelUpperOrID, camelLowerOrID, camelLowerOrID, camelLowerOrID, camelUpperOrID, camelUpperOrID)
     val jsDefault = JsIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
 
     val styles = Map(
