@@ -114,6 +114,12 @@ package object generatorTools {
   }
   def q(s: String) = '"' + s + '"'
   def firstUpper(token: String) = if (token.isEmpty()) token else token.charAt(0).toUpper + token.substring(1)
+  def firstUpperOrID(token: String) = {
+    if (token == "id") "ID"
+    else if (token == "ids") "IDs"
+    else if (token.isEmpty()) token
+    else token.charAt(0).toUpper + token.substring(1)
+  }
 
   def leadingUpperStrict(token: String) = {
     if (token.isEmpty()) {
@@ -165,6 +171,11 @@ package object generatorTools {
       val parts = s.split('_')
       parts.head + parts.tail.map(firstUpper).mkString
     }
+    val camelUpperID = (s: String) => s.split("[-_]").map(firstUpperOrID).mkString
+    val camelLowerID = (s: String) => {
+      val parts = s.split('_')
+      parts.head + parts.tail.map(firstUpperOrID).mkString
+    }
     val underLower = (s: String) => s
     val underUpper = (s: String) => s.split('_').map(firstUpper).mkString("_")
     val underCaps = (s: String) => s.toUpperCase
@@ -172,7 +183,7 @@ package object generatorTools {
 
     val javaDefault = JavaIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
     val cppDefault = CppIdentStyle(camelUpper, camelUpper, camelUpper, underLower, underLower, underLower, underCaps, underCaps)
-    val objcDefault = ObjcIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, camelUpper, camelUpper)
+    val objcDefault = ObjcIdentStyle(camelUpperID, camelUpperID, camelLowerID, camelLowerID, camelLowerID, camelUpperID, camelUpperID)
     val jsDefault = JsIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
 
     val styles = Map(
@@ -185,7 +196,9 @@ package object generatorTools {
       "fooBar!" -> camelLowerStrict,
       "foo_bar!" -> underLowerStrict,
       "Foo_Bar!" -> underUpperStrict,
-      "FOO_BAR!" -> underCaps
+      "FOO_BAR!" -> underCaps,
+      "FooBarID" -> camelUpperID,
+      "fooBarID" -> camelLowerID
     )
     
     def infer(input: String): Option[IdentConverter] = {
