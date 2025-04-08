@@ -295,10 +295,7 @@ object YamlGenerator {
     try {
       nested(td, key)(subKey).toString
     } catch {
-      case e: java.util.NoSuchElementException => {
-        println(s"Warning: in ${td.origin}, missing field $key/$subKey")
-        "[unspecified]"
-      }
+      case e: java.util.NoSuchElementException => "[unspecified]"
     }
   }
 
