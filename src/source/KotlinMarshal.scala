@@ -3,7 +3,7 @@ package djinni
 import generatorTools.{ImportRef, Spec, SymbolReference}
 
 import djinni.ast.TypeRef
-import djinni.meta.{MDate, MDef, MExpr, MList, MMap, MOpaque, MPrimitive, MSet, MString, Meta}
+import djinni.meta.{MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MPrimitive, MSet, MString, Meta}
 
 class KotlinMarshal(spec: Spec) extends Marshal(spec) {
 
@@ -26,6 +26,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
         case MDate => List(ImportRef("kotlinx.datetime.LocalDate"))
         case _ => List()
       }
+    case e: MExtern => List(ImportRef(withPackage(Some(e.kotlin.pkg), e.kotlin.typename)))
     case _ => List()
   }
 
@@ -34,6 +35,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
     def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(f(_, true)).mkString("<", ", ", ">")
     def f(tm: MExpr, needRef: Boolean): String = {
       tm.base match {
+        case p: MExtern => p.kotlin.typename
         case o =>
           val base = o match {
             case p: MPrimitive => p.kName
