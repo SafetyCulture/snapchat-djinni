@@ -65,6 +65,9 @@ object Main {
     var cppExt: String = "cpp"
     var cppHeaderExt: String = "hpp"
     var javaIdentStyle = IdentStyle.javaDefault
+    var kotlinOutFolder: Option[File] = None
+    var kotlinIdentStyle = IdentStyle.kotlinDefault
+    var kotlinPackage: Option[String] = None
     var cppIdentStyle = IdentStyle.cppDefault
     var cppTypeEnumIdentStyle: IdentConverter = null
     var objcOutFolder: Option[File] = None
@@ -143,6 +146,11 @@ object Main {
         .text("Whether generated Java classes for records should be marked 'final' (default: true). ")
       opt[Boolean]("java-gen-interface").valueName("<true/false>").foreach(x => javaGenInterface = x)
         .text("Generate Java interface instead of abstract class.")
+      note("")
+      opt[File]("kotlin-out").valueName("<out-folder>").foreach(x => kotlinOutFolder = Some(x))
+        .text("The folder for the Kotlin output files (Generator disabled if unspecified).")
+      opt[String]("kotlin-package").valueName("...").foreach(x => kotlinPackage = Some(x))
+        .text("The package name to use for generated Kotlin classes.")
       note("")
       opt[File]("cpp-out").valueName("<out-folder>").foreach(x => cppOutFolder = Some(x))
         .text("The output folder for C++ files (Generator disabled if unspecified).")
@@ -377,6 +385,9 @@ object Main {
       javaImplementAndroidOsParcelable,
       javaUseFinalForRecord,
       javaGenInterface,
+      kotlinOutFolder,
+      kotlinPackage,
+      kotlinIdentStyle,
       cppOutFolder,
       cppHeaderOutFolder,
       cppIncludePrefix,
@@ -454,5 +465,7 @@ object Main {
         objcSwiftBridgingHeaderWriter.get.close()
       }
     }
+
+    System.out.println("Complete!")
   }
 }
