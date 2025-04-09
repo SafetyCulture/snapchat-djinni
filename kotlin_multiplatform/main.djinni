@@ -1,3 +1,5 @@
+@extern "user.djinni.yaml"
+
 primitives_record = record {
     aByte: i8;
     aShort: i16;
@@ -30,4 +32,5 @@ users_API = interface +c {
     static create(): users_API;
 
     get_group(load_mode: load_mode, group_id: string): group;
+    who_am_i(request: pb_accounts_User_WhoAmIRequest): pb_accounts_User_WhoAmIResponse;
 }
