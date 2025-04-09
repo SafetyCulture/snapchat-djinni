@@ -42,6 +42,9 @@ package object generatorTools {
                    javaImplementAndroidOsParcelable: Boolean,
                    javaUseFinalForRecord: Boolean,
                    javaGenInterface: Boolean,
+                   kotlinOutFolder: Option[File],
+                   kotlinPackage: Option[String],
+                   kotlinIdentStyle: KotlinIdentStyle,
                    cppOutFolder: Option[File],
                    cppHeaderOutFolder: Option[File],
                    cppIncludePrefix: String,
@@ -147,6 +150,10 @@ package object generatorTools {
                             method: IdentConverter, field: IdentConverter, local: IdentConverter,
                             enum: IdentConverter, const: IdentConverter)
 
+  case class KotlinIdentStyle(ty: IdentConverter, typeParam: IdentConverter,
+                            method: IdentConverter, field: IdentConverter, local: IdentConverter,
+                            enum: IdentConverter, const: IdentConverter)
+
   case class ObjcIdentStyle(ty: IdentConverter, typeParam: IdentConverter,
                             method: IdentConverter, field: IdentConverter, local: IdentConverter,
                             enum: IdentConverter, const: IdentConverter)
@@ -182,6 +189,7 @@ package object generatorTools {
     val prefix = (prefix: String, suffix: IdentConverter) => (s: String) => prefix + suffix(s)
 
     val javaDefault = JavaIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
+    val kotlinDefault = KotlinIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
     val cppDefault = CppIdentStyle(camelUpper, camelUpper, camelUpper, underLower, underLower, underLower, underCaps, underCaps)
     val objcDefault = ObjcIdentStyle(camelUpperID, camelUpperID, camelLowerID, camelLowerID, camelLowerID, camelUpperID, camelUpperID)
     val jsDefault = JsIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
@@ -297,6 +305,12 @@ package object generatorTools {
         SwiftBridgingHeaderGenerator.writeBridgingVars(spec.objcSwiftBridgingHeaderName.get, spec.objcSwiftBridgingHeaderWriter.get)
         new SwiftBridgingHeaderGenerator(spec).generate(idl)
       }
+      if (spec.kotlinOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Kotlin", spec.kotlinOutFolder.get)
+        }
+        new KotlinCommonGenerator(spec).generate(idl)
+      }
       if (spec.wasmOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("WASM", spec.wasmOutFolder.get)
@@ -367,6 +381,7 @@ abstract class Generator(spec: Spec)
   implicit def identToString(ident: Ident): String = ident.name
   val idCpp = spec.cppIdentStyle
   val idJava = spec.javaIdentStyle
+  val idKotlin = spec.kotlinIdentStyle
   val idObjc = spec.objcIdentStyle
   val idJs = spec.jsIdentStyle
 
