@@ -8,20 +8,19 @@ import djinni.writer.IndentWriter
 
 import java.io.File
 import scala.collection.mutable
-import scala.reflect.io.Path.jfile2path
 
-class KotlinCommonGenerator(spec: Spec) extends Generator(spec) {
+class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
 
   val marshal = new KotlinMarshal(spec)
 
   // create commonMain directory
-  val commonMainOut = new File(spec.kotlinOutFolder.get, "commonMain/kotlin")
+  private val commonMainOut = new File(spec.kotlinOutFolder.get, "commonMain/kotlin")
   if (!commonMainOut.exists()) {
     commonMainOut.mkdirs()
   }
 
-  /* helper class which assembles set of any required imports for types used within a generated files */
-  class KotlinRefs() {
+  /* helper class which assembles set of required imports for types used within a generated files */
+  private class KMPCommonRefs() {
     var kotlin: mutable.Set[String] = mutable.TreeSet[String]()
 
     def find(ty: TypeRef): Unit = {
@@ -54,7 +53,7 @@ class KotlinCommonGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateEnum(origin: String, ident: Ident, doc: Doc, e: ast.Enum): Unit = {
-    val refs = new KotlinRefs()
+    val refs = new KMPCommonRefs()
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
       w.w("enum class " + idKotlin.ty(ident.name)).braced {
@@ -66,7 +65,7 @@ class KotlinCommonGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record): Unit = {
-    val refs = new KotlinRefs()
+    val refs = new KMPCommonRefs()
     r.fields.foreach(f => refs.find(f.ty))
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
@@ -82,9 +81,9 @@ class KotlinCommonGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
-    val refs = new KotlinRefs()
+    val refs = new KMPCommonRefs()
 
-    i.methods.map(m => {
+    i.methods.filterNot(_.static).map(m => {
       m.params.map(p => refs.find(p.ty))
       m.ret.foreach(refs.find)
     })
@@ -95,7 +94,7 @@ class KotlinCommonGenerator(spec: Spec) extends Generator(spec) {
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
       w.w("interface " + idKotlin.ty(ident.name)).braced {
-        for (m <- i.methods) {
+        for (m <- i.methods if !m.static) {
           val params = m.params.map(p => s"${idKotlin.local(p.ident)}: ${marshal.paramType(p.ty)}")
           w.wl(s"fun ${idKotlin.method(m.ident)}" + params.mkString("(", ", ", ")") + ": " + marshal.returnType(m.ret) )
         }
