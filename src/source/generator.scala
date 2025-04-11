@@ -309,7 +309,8 @@ package object generatorTools {
         if (!spec.skipGeneration) {
           createFolder("Kotlin", spec.kotlinOutFolder.get)
         }
-        new KotlinCommonGenerator(spec).generate(idl)
+        new KMPCommonGenerator(spec).generate(idl)
+        new KMPAndroidGenerator(spec).generate(idl)
       }
       if (spec.wasmOutFolder.isDefined) {
         if (!spec.skipGeneration) {

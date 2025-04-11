@@ -14,7 +14,7 @@ while [ -h "$loc" ]; do
 done
 base_dir=$(cd "`dirname "$loc"`" && pwd)
 
-in="$base_dir/main.djinni"
+in="$base_dir/djinni/main.djinni"
 out="$base_dir/generated"
 
 cpp_out="$out/cpp"
