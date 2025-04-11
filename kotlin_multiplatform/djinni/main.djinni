@@ -1,0 +1,2 @@
+@import "common.djinni"
+@import "investigations.djinni"
