@@ -75,11 +75,6 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"class Android$commonInterfaceType(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType").braced {
         val skipFirst = SkipFirst()
         for (m <- i.methods if !m.static) {
-          val commonMainMethod = idKotlin.method(m.ident)
-          val commonMainParams = m.params
-            .map(p => s"${idKotlin.local(p.ident)}: ${marshal.paramType(p.ty)}")
-            .mkString("(", ", ", ")")
-          val commonMainReturn = marshal.returnType(m.ret)
 
           skipFirst { w.wl }
 
@@ -91,8 +86,20 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
            *    return mapped(ret)
            *  }
            */
-          w.w(s"override fun $commonMainMethod$commonMainParams: $commonMainReturn").braced {
+          val commonMainMethod = idKotlin.method(m.ident)
+          val commonMainReturn = marshal.returnType(m.ret)
 
+          w.wl(s"override fun $commonMainMethod(")
+          w.increase()
+          for (p <- m.params) {
+            val paramName = idKotlin.local(p.ident)
+            val paramType = marshal.paramType(p.ty)
+            w.w(s"$paramName: $paramType")
+            w.wl(if (p != m.params.last) "," else "")
+          }
+          w.decrease()
+          w.w(s"): $commonMainReturn").braced {
+            w.wl("TODO(\"Not yet implemented\")")
           }
         }
       }
