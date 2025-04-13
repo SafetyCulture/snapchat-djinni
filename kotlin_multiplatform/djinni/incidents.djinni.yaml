@@ -31,6 +31,7 @@ jni:
 kotlin:
   typename: 'ListInvestigationsRequest'
   package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationsResponse
@@ -64,6 +65,7 @@ jni:
 kotlin:
   typename: 'ListInvestigationsResponse'
   package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListBoardInvestigationsRequest

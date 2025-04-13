@@ -2,8 +2,8 @@ package djinni
 
 import generatorTools.{ImportRef, SkipFirst, Spec}
 
-import djinni.ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
-import djinni.meta.{MExpr, Meta}
+import djinni.ast.{Doc, Field, Ident, Interface, Record, TypeParam, TypeRef}
+import djinni.meta.{DEnum, DInterface, DRecord, MDef, MExpr, MExtern, MList, MOptional, MPrimitive, MString, Meta}
 import djinni.writer.IndentWriter
 
 import java.io.File
@@ -52,6 +52,61 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
+  def fieldToJava(f: Field): String = {
+    f.ty.resolved.base match {
+      case m: MDef => m.defType match {
+        case DEnum => s"${idKotlin.local(f.ident)}.toJava()"
+        case DRecord => s"${idKotlin.local(f.ident)}.toJava()"
+        case DInterface => throw new AssertionError("fieldToJava called on DInterface")
+      }
+
+      case e: MExtern if e.kotlin.isProtobufMessage =>
+        val javaType = javaMarshal.fqTypename(f.ty.resolved)
+        s"$javaType.parseFrom(${idKotlin.local(f.ident)}.encode())"
+      case e: MExtern =>
+        throw new AssertionError("fieldToJava called on extern type which isn't a protobuf message")
+      case _ => idKotlin.local(f.ident)
+    }
+  }
+
+  def mapToKotlin(valueName: String, e: MExpr): String = {
+    e.base match {
+      case _: MPrimitive => valueName
+      case d: MDef => d.defType match {
+        case DEnum => s"$valueName.toKotlin()"
+        case DRecord => s"$valueName.toKotlin()"
+        case DInterface => throw new AssertionError("fieldToKotlin called on DInterface")
+      }
+
+      case MList =>
+        s"$valueName.map { " + mapToKotlin("it", e.args.head) + " }"
+
+      case e: MExtern if e.kotlin.isProtobufMessage =>
+        val kotlinType = e.kotlin.typename
+        s"$kotlinType.ADAPTER.decode($valueName.toByteArray())"
+
+      case MOptional =>
+        val arg = e.args.head
+        arg.base match {
+          case _: MPrimitive => mapToKotlin(s"$valueName", arg)
+          case MString => mapToKotlin(s"$valueName", arg)
+          case _ => mapToKotlin(s"$valueName?", arg)
+        }
+
+      case _ => valueName
+    }
+  }
+
+  def retToKotlin(ty: TypeRef): String = {
+    ty.resolved.base match {
+      case m: MDef => m.defType match {
+        case DEnum => "ret.toKotlin()"
+        case DRecord => "ret.toKotlin()"
+        case _ => throw new AssertionError("retToKotlin called on non-enum/record type")
+      }
+    }
+  }
+
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
 
@@ -72,34 +127,59 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       val javaInterfaceType = javaMarshal.fqTypename(ident, i)
 
       // wrap the java generated interface in a class which conforms to the generated commonMain interface.
-      w.w(s"class Android$commonInterfaceType(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType").braced {
+      w.w(s"class ${commonInterfaceType}Impl(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType").braced {
         val skipFirst = SkipFirst()
         for (m <- i.methods if !m.static) {
 
           skipFirst { w.wl }
 
-          /*  override fun method( $commonMainParams ): $commonMain_return {
-           *    val ret = $javaInterfaceLocal.$javaMethod(
-           *      mapped($commonMainParam),
-           *      ...
-           *    )
-           *    return mapped(ret)
-           *  }
+          /* method implementation:
+           * override fun method( $commonMainParams ): $commonMainReturn {
+           *   val ret = $javaInterfaceLocal.$javaMethod(
+           *     fieldToJava($commonMainParam),
+           *     ...
+           *   )
+           *   return mapped(ret)
+           * }
            */
+
           val commonMainMethod = idKotlin.method(m.ident)
           val commonMainReturn = marshal.returnType(m.ret)
 
-          w.wl(s"override fun $commonMainMethod(")
-          w.increase()
-          for (p <- m.params) {
-            val paramName = idKotlin.local(p.ident)
-            val paramType = marshal.paramType(p.ty)
-            w.w(s"$paramName: $paramType")
-            w.wl(if (p != m.params.last) "," else "")
+          w.w(s"override fun $commonMainMethod(")
+
+          /* method parameters if any */
+          if (m.params.nonEmpty) {
+            w.wl.increase()
+            for (p <- m.params) {
+              val paramName = idKotlin.local(p.ident)
+              val paramType = marshal.paramType(p.ty)
+              w.w(s"$paramName: $paramType")
+              w.wl(if (p != m.params.last) "," else "")
+            }
+            w.decrease()
           }
-          w.decrease()
+
           w.w(s"): $commonMainReturn").braced {
-            w.wl("TODO(\"Not yet implemented\")")
+            /* store return value if any */
+            if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+            w.w(s"$javaInterfaceLocal.$commonMainMethod(")
+            /* method parameters if any */
+            if (m.params.nonEmpty) {
+              w.wl.increase()
+              for (p <- m.params) {
+                w.w(s"${fieldToJava(p)}")
+                w.wl(if (p != m.params.last) "," else "")
+              }
+              w.decrease()
+            }
+            w.wl(s")")
+
+            // if m.ret isn't empty then write output of retToKotlin
+            m.ret.map { ty =>
+              w.wl.wl(s"return ${retToKotlin(ty)}")
+            }
           }
         }
       }
@@ -140,6 +220,35 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record): Unit = {
-    /* noop */
+    val refs = new KMPAndroidRefs()
+
+    r.fields.foreach(f => {
+      refs.find(f.ty)
+    })
+
+    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
+      val kotlinRecord = idKotlin.ty(ident.name)
+      val javaRecord = javaMarshal.fqTypename(ident.name, r)
+
+      /* generate the toJava() method */
+//      w.w(s"fun $kotlinRecord.toJava(): $javaRecord").braced {
+//
+//      }
+//
+//      w.wl
+
+      /* generate the toKotlin() method */
+      w.w(s"fun $javaRecord.toKotlin(): $kotlinRecord").braced {
+        w.wl(s"return $kotlinRecord(")
+        w.increase()
+        for (f <- r.fields) {
+          val fieldName = idKotlin.local(f.ident)
+          w.w(s"$fieldName = this.${mapToKotlin(fieldName, f.ty.resolved)}")
+          w.wl(if (f != r.fields.last) "," else "")
+        }
+        w.decrease()
+        w.wl(s")")
+      }
+    })
   }
 }
