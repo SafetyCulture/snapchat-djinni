@@ -75,7 +75,8 @@ object MExtern {
   )
   case class Kotlin(
     typename: String,
-    pkg: String
+    pkg: String,
+    isProtobufMessage: Boolean
   )
   case class Wasm(
     typename: String, // The Emscripten type to use (e.g. em::val, int32_t)

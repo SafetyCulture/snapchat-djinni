@@ -273,7 +273,8 @@ object YamlGenerator {
       nested(td, "jni")("typeSignature").toString),
     MExtern.Kotlin(
       getOptionalField(td, "kotlin", "typename"),
-      getOptionalField(td, "kotlin", "package")
+      getOptionalField(td, "kotlin", "package"),
+      getOptionalField(td, "kotlin", "isProtobufType", true)
     ),
     MExtern.Wasm(
       getOptionalField(td, "wasm", "typename"),
