@@ -1,0 +1,39 @@
+@extern "featureflag.djinni.yaml"
+
+# Feature Flags Domain API
+featureflags_API = interface +c {
+  # Create an instance of Feature Flags API
+  static create(): featureflags_API;
+
+  # Evaluate a list of known flags
+  eval_known_flags(keys: flag_keys, config: featureflags_eval_config, region: optional<string>): flags_response;
+}
+
+flag_keys = record {
+  bool_keys: list<string>;
+  string_keys: list<string>;
+  int_keys: list<string>;
+  float_keys: list<string>;
+}
+
+flags = record {
+  bool_flags: map<string, bool>;
+  string_flags: map<string, string>;
+  int_flags: map<string, i32>;
+  float_flags: map<string, f32>;
+}
+
+flags_response = record {
+  response: flags;
+  error: optional<GRPC_status_code>;
+}
+
+featureflags_eval_config = record {
+  anonymous: bool;
+  device_id: string;
+  platform: platform_type;
+  build: i32;
+  api: i32;
+  language: string;
+  other: map<string, pb_featureflags_Featureflag_UserProperty>;
+}

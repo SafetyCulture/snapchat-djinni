@@ -66,11 +66,15 @@ Constants are not currently supported.
 | Parameters |     ✅      |    ✅     |  ✅   |  ✅   |  ✅  |  ✅  |  ✅   |   ✅    |    ✅     |
 
 ### Mapping
-| Feature   | Primitives | Optional | Date | List | Set | Map | Enum | Record | External* |
-|-----------|:----------:|:--------:|:----:|:----:|:---:|:---:|:----:|:------:|:---------:|
-| To Java   |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |  ❌  |  ✅   |   ❌    |    ⚠️     |
-| From Java |     ✅      |    ✅     |  ⚠️  |  ✅   | ⚠️  | ⚠️  |  ✅   |   ⚠️   |    ⚠️     |
-| To ObjC   |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |  ❌  |  ❌   |   ❌    |     ❌     |
-| From ObjC |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |  ❌  |  ❌   |   ❌    |     ❌     |
+| Feature   | Primitives | Optional | Date | List | Set | Map<sup>1</sup> | Enum | Record<sup>2</sup> | External<sup>3</sup> |
+|-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------:|:----------:|
+| To Java   |     ✅      |    ✅     |  ❌   |  ✅   |  ❌  |       ⚠️        |  ✅   |   ⚠️    |     ⚠️     |
+| From Java |     ✅      |    ✅     |  ❌   |  ✅   | ❌️  |       ⚠️        |  ✅   |   ⚠️   |     ⚠️     |
+| To ObjC   |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |   ❌    |     ❌      |
+| From ObjC |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |   ❌    |     ❌      |
 
-*External types support is limited to wire generated protobuf messages
+<sup>1</sup>Support is limited to conversion of maps with primitive/string keys
+
+<sup>2</sup>Records are supported so long as their field types are also supported
+
+<sup>3</sup>External types support is limited to wire generated protobuf messages
