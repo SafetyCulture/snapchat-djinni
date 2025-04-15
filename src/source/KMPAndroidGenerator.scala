@@ -3,7 +3,7 @@ package djinni
 import generatorTools.{ImportRef, SkipFirst, Spec}
 
 import djinni.ast.{Doc, Field, Ident, Interface, Record, TypeParam, TypeRef}
-import djinni.meta.{DEnum, DInterface, DRecord, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MString, Meta}
+import djinni.meta.{DEnum, DInterface, DRecord, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MString, Meta}
 import djinni.writer.IndentWriter
 
 import java.io.File
@@ -62,6 +62,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   def mapToJava(valueName: String, tm: MExpr): String = {
     tm.base match {
       case _: MPrimitive => valueName
+      case MDate => s"Date($valueName.toEpochMilliseconds())"
+
       case MMap =>
         val key = tm.args.head.base
         val value = tm.args.last.base
@@ -79,7 +81,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
 
       case m: MDef => m.defType match {
         case DEnum | DRecord => s"$valueName.toJava()"
-        case DInterface => throw new AssertionError("mapToJava called on DInterface")
+        case DInterface => valueName
       }
 
       case MList =>
@@ -95,6 +97,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
         val arg = tm.args.head
         arg.base match {
           case _: MPrimitive | MString => mapToJava(s"$valueName", arg)
+          case MDate => s"$valueName?.let { ${mapToJava("it", arg)} }"
           case _ => mapToJava(s"$valueName?", arg)
         }
 
@@ -105,6 +108,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   def mapToKotlin(valueName: String, tm: MExpr): String = {
     tm.base match {
       case _: MPrimitive => valueName
+      case MDate => s"Instant.fromEpochMilliseconds($valueName.time)"
       case MMap =>
         val key = tm.args.head.base
         val value = tm.args.last.base
@@ -136,6 +140,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
         val arg = tm.args.head
         arg.base match {
           case _: MPrimitive | MString => mapToKotlin(s"$valueName", arg)
+          case MDate => s"$valueName?.let { ${mapToKotlin("it", arg)} }"
           case _ => mapToKotlin(s"$valueName?", arg)
         }
 
@@ -157,7 +162,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       refs.find(c.ty)
     })
 
-    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
+    writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.java, w => {
       val commonInterfaceType = idKotlin.ty(ident.name)
       val javaInterfaceLocal = idKotlin.local(ident.name)
       val javaInterfaceType = javaMarshal.fqTypename(ident, i)
