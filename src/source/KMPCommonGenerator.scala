@@ -58,7 +58,9 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
       w.w("enum class " + idKotlin.ty(ident.name)).braced {
         for (o <- e.options) {
-          w.wl(idKotlin.enum(o.ident) + ",")
+          val optionName = idKotlin.enum(o.ident)
+          w.w(optionName)
+          if (o != e.options.last) w.wl(",") else w.wl
         }
       }
     })
@@ -69,14 +71,13 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
     r.fields.foreach(f => refs.find(f.ty))
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
-      w.wl("data class " + idKotlin.ty(ident.name) + "(")
-      w.increase()
-      // Field definitions.
-      for (f <- r.fields) {
-        w.wl(s"val ${idKotlin.field(f.ident)}: ${marshal.fieldType(f.ty)},")
+      val recordName = idKotlin.ty(ident.name)
+      w.w(s"data class $recordName").parens(r.fields) { f =>
+        // field definitions
+        val fieldName = idKotlin.field(f.ident)
+        val fieldType = marshal.fieldType(f.ty)
+        w.w(s"val $fieldName: $fieldType")
       }
-      w.decrease()
-      w.wl(")")
     })
   }
 
@@ -93,10 +94,18 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
     })
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
-      w.w("interface " + idKotlin.ty(ident.name)).braced {
+      val interfaceName = idKotlin.ty(ident.name)
+      w.w(s"interface $interfaceName").braced {
         for (m <- i.methods if !m.static) {
-          val params = m.params.map(p => s"${idKotlin.local(p.ident)}: ${marshal.paramType(p.ty)}")
-          w.wl(s"fun ${idKotlin.method(m.ident)}" + params.mkString("(", ", ", ")") + ": " + marshal.returnType(m.ret) )
+          // method definitions
+          val methodName = idKotlin.method(m.ident)
+          w.w(s"fun $methodName").parens(m.params) { p =>
+            val paramName = idKotlin.local(p.ident)
+            val paramType = marshal.paramType(p.ty)
+            w.w(s"$paramName: $paramType")
+          }
+          // return type
+          w.wl(s": ${marshal.returnType(m.ret)}")
         }
       }
     })
