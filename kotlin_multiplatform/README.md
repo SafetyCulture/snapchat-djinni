@@ -66,12 +66,12 @@ Constants are not currently supported.
 | Parameters |     ✅      |    ✅     |  ✅   |  ✅   |  ✅  |  ✅  |  ✅   |   ✅    |    ✅     |
 
 ### Mapping
-| Feature   | Primitives | Optional | Date | List | Set | Map<sup>1</sup> | Enum | Record<sup>2</sup> | External<sup>3</sup> |
-|-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------:|:----------:|
-| To Java   |     ✅      |    ✅     |  ❌   |  ✅   |  ❌  |       ⚠️        |  ✅   |   ⚠️    |     ⚠️     |
-| From Java |     ✅      |    ✅     |  ❌   |  ✅   | ❌️  |       ⚠️        |  ✅   |   ⚠️   |     ⚠️     |
-| To ObjC   |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |   ❌    |     ❌      |
-| From ObjC |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |   ❌    |     ❌      |
+| Feature   | Primitives | Optional | Date | List | Set | Map<sup>1</sup> | Enum | Record<sup>2</sup> | Interfaces | External<sup>3</sup> |
+|-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
+| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |  ❌  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
+| From Java |     ✅      |    ✅     |  ✅   |  ✅   | ❌️  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
+| To ObjC   |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |         ❌          |     ❌      |          ❌           |
+| From ObjC |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |         ❌          |     ❌      |          ❌           |
 
 <sup>1</sup>Support is limited to conversion of maps with primitive/string keys
 

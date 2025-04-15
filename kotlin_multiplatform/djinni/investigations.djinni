@@ -1,5 +1,5 @@
-@extern "incidents.djinni.yaml"
-@extern "investigation.djinni.yaml"
+@extern "extern/incidents.djinni.yaml"
+@extern "extern/investigation.djinni.yaml"
 
 # Investigations API
 investigations_API = interface +c {
