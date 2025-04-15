@@ -84,6 +84,32 @@ class IndentWriter(out: Writer, indent: String = "    ", startIndent: String = "
   def braced = bracedEnd("")(_)
 
   def bracedSemi = bracedEnd(";")(_)
+
+
+  def parens[T](list: Seq[T], separator: String = ",", multiLineThreshold: Int = 1)(fn: T => Unit): Unit = {
+    w("(")
+    if (list.length > multiLineThreshold) {
+      wl
+      nested {
+        list.foreach { item =>
+          fn(item)
+          if (item != list.last) {
+            wl(separator)
+          } else {
+            wl
+          }
+        }
+      }
+    } else {
+      list.foreach { item =>
+        fn(item)
+        if (item != list.last) {
+          w(separator + " ")
+        }
+      }
+    }
+    w(")")
+  }
 }
 
 }
