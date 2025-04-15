@@ -23,7 +23,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
   def references(m: Meta): Seq[SymbolReference] = m match {
     case o: MOpaque =>
       o match {
-        case MDate => List(ImportRef("kotlinx.datetime.LocalDate"))
+        case MDate => List(ImportRef("kotlinx.datetime.Instant"))
         case _ => List()
       }
     case e: MExtern => List(ImportRef(withPackage(Some(e.kotlin.pkg), e.kotlin.typename)))
@@ -46,7 +46,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
           val base = o match {
             case p: MPrimitive => p.kName
             case MString => "String"
-            case MDate => "LocalDate"
+            case MDate => "Instant"
             case MList => "List"
             case MSet => "Set"
             case MMap => "Map"
