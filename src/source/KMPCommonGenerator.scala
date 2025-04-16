@@ -60,8 +60,9 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
         for (o <- e.options) {
           val optionName = idKotlin.enum(o.ident)
           w.w(optionName)
-          if (o != e.options.last) w.wl(",") else w.wl
+          if (o != e.options.last) w.wl(",") else w.wl(";")
         }
+        w.wl("companion object {}")
       }
     })
   }

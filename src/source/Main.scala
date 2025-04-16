@@ -68,6 +68,7 @@ object Main {
     var kotlinOutFolder: Option[File] = None
     var kotlinIdentStyle = IdentStyle.kotlinDefault
     var kotlinPackage: Option[String] = None
+    var kotlinCInteropPackage: Option[String] = None
     var cppIdentStyle = IdentStyle.cppDefault
     var cppTypeEnumIdentStyle: IdentConverter = null
     var objcOutFolder: Option[File] = None
@@ -151,6 +152,8 @@ object Main {
         .text("The folder for the Kotlin output files (Generator disabled if unspecified).")
       opt[String]("kotlin-package").valueName("...").foreach(x => kotlinPackage = Some(x))
         .text("The package name to use for generated Kotlin classes.")
+      opt[String]("kotlin-cinterop-package").valueName("...").foreach(x => kotlinCInteropPackage = Some(x))
+        .text("The package name of generated cinterop bindings for Kotlin native targets.")
       note("")
       opt[File]("cpp-out").valueName("<out-folder>").foreach(x => cppOutFolder = Some(x))
         .text("The output folder for C++ files (Generator disabled if unspecified).")
@@ -387,6 +390,7 @@ object Main {
       javaGenInterface,
       kotlinOutFolder,
       kotlinPackage,
+      kotlinCInteropPackage,
       kotlinIdentStyle,
       cppOutFolder,
       cppHeaderOutFolder,
