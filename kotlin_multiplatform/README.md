@@ -70,8 +70,8 @@ Constants are not currently supported.
 |-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
 | To Java   |     ✅      |    ✅     |  ✅   |  ✅   |  ❌  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
 | From Java |     ✅      |    ✅     |  ✅   |  ✅   | ❌️  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
-| To ObjC   |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |         ❌          |     ❌      |          ❌           |
-| From ObjC |     ❌      |    ❌     |  ❌   |  ❌   |  ❌  |        ❌        |  ❌   |         ❌          |     ❌      |          ❌           |
+| To ObjC   |     ❌      |    ⚠️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
+| From ObjC |     ❌      |    ⚠️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
 
 <sup>1</sup>Support is limited to conversion of maps with primitive/string keys
 

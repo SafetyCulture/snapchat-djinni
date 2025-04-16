@@ -44,6 +44,7 @@ package object generatorTools {
                    javaGenInterface: Boolean,
                    kotlinOutFolder: Option[File],
                    kotlinPackage: Option[String],
+                   kotlinCInteropPackage: Option[String],
                    kotlinIdentStyle: KotlinIdentStyle,
                    cppOutFolder: Option[File],
                    cppHeaderOutFolder: Option[File],
@@ -311,6 +312,7 @@ package object generatorTools {
         }
         new KMPCommonGenerator(spec).generate(idl)
         new KMPAndroidGenerator(spec).generate(idl)
+        new KMPIOSGenerator(spec).generate(idl)
       }
       if (spec.wasmOutFolder.isDefined) {
         if (!spec.skipGeneration) {

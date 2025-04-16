@@ -1,4 +1,4 @@
-@extern "featureflag.djinni.yaml"
+@extern "extern/featureflag.djinni.yaml"
 
 # Feature Flags Domain API
 featureflags_API = interface +c {
