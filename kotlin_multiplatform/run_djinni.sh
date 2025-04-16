@@ -39,6 +39,7 @@ kotlin_package="com.safetyculture.krux.poc"
     \
     --kotlin-out "$kotlin_out" \
     --kotlin-package "$kotlin_package" \
+    --kotlin-cinterop-package Crux \
     \
     --cpp-out "$cpp_out" \
     --cpp-namespace crux::generated \

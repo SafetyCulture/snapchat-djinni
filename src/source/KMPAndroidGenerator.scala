@@ -81,7 +81,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
 
       case m: MDef => m.defType match {
         case DEnum | DRecord => s"$valueName.toJava()"
-        case DInterface => valueName
+        case DInterface => "TODO()"
       }
 
       case MList =>
