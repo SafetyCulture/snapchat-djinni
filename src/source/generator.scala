@@ -44,6 +44,7 @@ package object generatorTools {
                    javaGenInterface: Boolean,
                    kotlinOutFolder: Option[File],
                    kotlinPackage: Option[String],
+                   kotlinSupportPackage: Option[String],
                    kotlinCInteropPackage: Option[String],
                    kotlinIdentStyle: KotlinIdentStyle,
                    cppOutFolder: Option[File],
@@ -117,14 +118,14 @@ package object generatorTools {
     if (s.isEmpty) s else ", " + s
   }
   def q(s: String) = '"' + s + '"'
-  def firstUpper(token: String) = if (token.isEmpty()) token else token.charAt(0).toUpper + token.substring(1)
-  def firstUpperOrID(token: String) = {
-    if (token == "id") "ID"
-    else if (token == "ids") "IDs"
-    else if (token.isEmpty()) token
-    else token.charAt(0).toUpper + token.substring(1)
-  }
+  def firstUpper(token: String) = if (token.isEmpty) token else token.charAt(0).toUpper + token.substring(1)
 
+  def firstUpperOrID(token: String) = token match {
+    case "id" => "ID"
+    case "ids" => "IDs"
+    case _ => firstUpper(token)
+  }
+  
   def leadingUpperStrict(token: String) = {
     if (token.isEmpty()) {
       token

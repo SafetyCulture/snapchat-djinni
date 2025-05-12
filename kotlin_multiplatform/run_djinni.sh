@@ -25,6 +25,8 @@ kotlin_out="$out/kotlin"
 
 java_package="com.safetyculture.krux.poc"
 kotlin_package="com.safetyculture.krux.poc"
+kotlin_support_package="com.safetyculture.djinnisupport"
+kotlin_cinterop_package="Crux"
 
 # Build djinni
 "$base_dir/../src/build.sh"
@@ -39,7 +41,8 @@ kotlin_package="com.safetyculture.krux.poc"
     \
     --kotlin-out "$kotlin_out" \
     --kotlin-package "$kotlin_package" \
-    --kotlin-cinterop-package Crux \
+    --kotlin-support-package "$kotlin_support_package" \
+    --kotlin-cinterop-package "$kotlin_cinterop_package" \
     \
     --cpp-out "$cpp_out" \
     --cpp-namespace crux::generated \
