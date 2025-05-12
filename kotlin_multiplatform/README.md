@@ -1,4 +1,4 @@
-# Kotlin Multiplatform Bindings for Djinni Interfaces - Experimental Effort
+# Kotlin Multiplatform Bindings for Djinni Interfaces 
 
 ## Overview
 
@@ -6,7 +6,7 @@ This repository is an **ongoing experimental effort** to generate Kotlin Multipl
 interfaces on iOS and Android.
 
 Our goal is to extend Djinni's functionality to seamlessly integrate with Kotlin Multiplatform, enabling developers to
-access existing shared business logic written in c++ within a Kotlin Multiplatform library targetting Android and iOS 
+access existing shared business logic written in c++ within a Kotlin Multiplatform library targeting Android and iOS 
 with minimal platform-specific implementation.
 
 ## Project Objectives
@@ -70,8 +70,8 @@ Constants are not currently supported.
 |-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
 | To Java   |     ✅      |    ✅     |  ✅   |  ✅   |  ❌  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
 | From Java |     ✅      |    ✅     |  ✅   |  ✅   | ❌️  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
-| To ObjC   |     ❌      |    ⚠️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
-| From ObjC |     ❌      |    ⚠️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
+| To ObjC   |     ⚠️     |    ✅️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
+| From ObjC |     ⚠️     |    ✅️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
 
 <sup>1</sup>Support is limited to conversion of maps with primitive/string keys
 
