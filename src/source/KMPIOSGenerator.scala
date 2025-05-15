@@ -9,8 +9,11 @@ import java.io.File
 import scala.collection.mutable
 
 class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
-  val marshal = new KotlinMarshal(spec)
-  val objcMarshal = new ObjcMarshal(spec)
+  private val kotlinMarshal = new KotlinMarshal(spec)
+  private val objcMarshal = new ObjcMarshal(spec)
+
+  private val objcMapper = new KMPIOSObjcMapper()
+  private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal)
 
   // create iosMain directory
   val iosMainOut = new File(spec.kotlinOutFolder.get, "iosMain/kotlin")
@@ -21,7 +24,6 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   /* helper class which assembles set of required imports for types used within a generated files */
   private class KMPIOSRefs() {
     var kotlin: mutable.Set[String] = mutable.TreeSet[String]()
-    var objc: mutable.Set[String] = mutable.TreeSet[String]()
 
     def find(ty: TypeRef): Unit = {
       find(ty.resolved)
@@ -33,7 +35,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     }
 
     def find(m: Meta): Unit = {
-      for (r <- marshal.references(m)) r match {
+      for (r <- kotlinMarshal.references(m)) r match {
         case ImportRef(arg) => kotlin.add(arg)
         case _ =>
       }
@@ -46,17 +48,12 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
     def findCInterop(m: Meta): Unit = {
       for (r <- cinteropReferences(m)) r match {
-        case ImportRef(arg) => objc.add(arg)
+        case ImportRef(arg) => kotlin.add(arg)
         case _ =>
       }
     }
 
     def cinteropReferences(m: Meta): Seq[SymbolReference] = m match {
-      case o: MOpaque =>
-        o match {
-          case MDate => List(ImportRef("NSDate"))
-          case _ => List()
-        }
       case e: MExtern =>
         List(ImportRef(withCInteropPackage(e.objc.typename)))
 
@@ -82,151 +79,57 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-  def mapToObjc(valueName: String, tm: MExpr, optional: Boolean = false): String = {
-    tm.base match {
-      case _: MPrimitive | MString => valueName
-      case MDate => s"$valueName.toNSDate()"
-
-      case MList => s"ArrayList($valueName.map { " + mapToObjc("it", tm.args.head) + " })"
-
-//      case MMap =>
-//        val key = tm.args.head.base
-//        val value = tm.args.last.base
-//        (key, value) match {
-//          case (_: MPrimitive, _: MPrimitive) |
-//               (MString, _: MPrimitive) |
-//               (_: MPrimitive, MString) |
-//               (MString, MString) => s"$valueName.toMap(HashMap())"
-//
-//          case (_: MPrimitive, _) |
-//               (MString, _) => s"$valueName.mapValues { ${mapToObjc("it.value", tm.args.last)} }.toMap(HashMap())"
-//
-//          case _ => s"$valueName.map { (k, v) -> ${mapToObjc("k", tm.args.head)} to ${mapToObjc("v", tm.args.last)}) }.toMap(HashMap())"
-//        }
-
-      case d: MDef => d.defType match {
-        case DEnum => s"$valueName.toObjc()"
-        case DRecord => s"$valueName.toObjc()"
-        case DInterface => generateTodo(d)
-      }
-
-//      case e: MExtern if e.kotlin.isProtobufMessage =>
-//        val objcType = objcMarshal.typename(tm)
-//        s"$objcType.parseFromData($valueName.encode().toData(), null)"
-//      case e: MExtern =>
-//        throw new AssertionError("mapToObjc called on extern type which isn't a protobuf message")
-
-      case MOptional =>
-        val arg = tm.args.head
-        arg.base match {
-          case _: MPrimitive | MString => mapToObjc(s"$valueName", arg)
-          case d: MDef if d.defType == DEnum => s"$valueName?.toNSNumber()"
-          case _ => mapToObjc(s"$valueName?", arg)
-        }
-
-      case _ => generateTodo(tm.base)
-    }
-  }
-
-  def mapToKotlin(valueName: String, tm: MExpr): String = {
-    tm.base match {
-      case _: MPrimitive | MString => valueName
-      case MDate => s"$valueName.toKotlinInstant()"
-      case MList =>
-        val listType = tm.args.head
-        val castType = listType.base match {
-          case MDate => "NSDate"
-          case d: MDef =>
-            d.defType match {
-              case DEnum => "Long"
-              case _ => generateTodo(d)
-            }
-          case _ => marshal.typename(listType)
-        }
-        val listValueName = listType.base match {
-          case MDate => s"(it as ${castType})"
-          case _ => s"it as ${castType}"
-        }
-        s"$valueName.map { " + mapToKotlin(s"${listValueName}", listType) + " }"
-
-//      case MMap =>
-//        val key = tm.args.head.base
-//        val value = tm.args.last.base
-//        (key, value) match {
-//        case (_: MPrimitive, _: MPrimitive) |
-//             (MString, _: MPrimitive) |
-//             (_: MPrimitive, MString) |
-//             (MString, MString) => s"$valueName.toMap()"
-//
-//        case (_: MPrimitive, _) |
-//             (MString, _) => s"$valueName.mapValues { ${mapToKotlin("it.value", tm.args.last)} }"
-//
-//        case _ => s"$valueName.map { (k, v) -> ${mapToKotlin("k", tm.args.head)} to ${mapToKotlin("v", tm.args.last)}) }.toMap()"
-//      }
-
-      case d: MDef => d.defType match {
-        case DEnum => s"${marshal.typename(tm)}.fromObjc($valueName)"
-        case DRecord => s"$valueName.toKotlin()"
-        case DInterface => generateTodo(d)
-      }
-
-      case MList =>
-        s"$valueName.map { " + mapToKotlin("it", tm.args.head) + " }"
-
-//      case e: MExtern if e.kotlin.isProtobufMessage =>
-//        val kotlinType = e.kotlin.typename
-//        s"$valueName.data()?.let { $kotlinType.ADAPTER.decode(it.toByteArray()) }"
-
-      case MOptional =>
-        val arg = tm.args.head
-        arg.base match {
-          case _: MPrimitive | MString => mapToKotlin(s"$valueName", arg)
-          case d: MDef if d.defType == DEnum => s"$valueName?.let { ${marshal.typename(arg)}.fromNSNumber(it) }"
-          case _ => mapToKotlin(s"$valueName?", arg)
-        }
-
-      case _ => generateTodo(tm.base)
-    }
-  }
-
-  def generateTodo(m: Meta): String = {
-    s"TODO(${'"'}${m.getClass.getSimpleName.replace("$", "")}${'"'})"
-  }
-
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val commonInterfaceType = idKotlin.ty(ident.name)
     val objcInterfaceLocal = idKotlin.local(ident.name)
     val objcInterfaceType = objcMarshal.typename(ident, i)
 
+
     val refs = new KMPIOSRefs()
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
+
+    // import the objc type from the cinterop package
     refs.kotlin.add(withCInteropPackage(objcInterfaceType))
 
     // find any required imports for all method parameters / return types
     i.methods.filterNot(_.static).foreach(m => {
+      // for each parameter
       m.params.foreach { p =>
+        // gather any imports required to map this parameter
+        refs.kotlin ++= kotlinMapper.typeRefs(p.ty.resolved)
+        refs.kotlin ++= objcMapper.typeRefs(p.ty.resolved)
+
+        // find imports associated with the parameter type
+        refs.find(p.ty)
+
+        // special case for any external types
         p.ty.resolved.base match {
-          // add imports for any external types
+          // include cinterop import for this external type
           case e: MExtern => refs.findCInterop(e)
           case _ =>
         }
-
-        refs.find(p.ty)
       }
 
-      m.ret.foreach(refs.find)
+      // check for required imports for the return type
+      m.ret.foreach(r => {
+        // gather any imports required to map the return type
+        refs.kotlin ++= kotlinMapper.typeRefs(r.resolved)
+        refs.kotlin ++= objcMapper.typeRefs(r.resolved)
+
+        // find imports associated with the return type
+        refs.find(r)
+      })
     })
 
-    // find any required imports for constant types
+    // search for imports associated with constants
     i.consts.foreach(c => {
       refs.find(c.ty)
     })
 
-    writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.objc, w => {
-
-      w.wl("@OptIn(ExperimentalForeignApi::class)")
+    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
 
       // wrap the objc generated interface in a class which conforms to the generated commonMain interface.
+      w.wl("@OptIn(ExperimentalForeignApi::class)")
       w.w(s"class ${commonInterfaceType}Impl(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType").braced {
         val skipFirst = SkipFirst()
         for (m <- i.methods if !m.static) {
@@ -236,19 +139,19 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           /* method implementation:
            * override fun method( $commonMainParams ): $commonMainReturn {
            *   val ret = $objcInterfaceLocal.$objcMethod(
-           *     mapToObjc($commonMainParam),
+           *     objcMapper.map($commonMainParam),
            *     ...
            *   )
-           *   return mapToKotlin(ret)
+           *   return kotlinMapper.map(ret)
            * }
            */
 
           val commonMainMethod = idKotlin.method(m.ident)
-          val commonMainReturn = marshal.returnType(m.ret)
+          val commonMainReturn = kotlinMarshal.returnType(m.ret)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
                 val paramName = idKotlin.local(p.ident)
-                val paramType = marshal.paramType(p.ty)
+                val paramType = kotlinMarshal.paramType(p.ty)
                 w.w(s"$paramName: $paramType")
           }
 
@@ -258,12 +161,12 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
             w.w(s"$objcInterfaceLocal.$commonMainMethod").parens(m.params) { p =>
               val paramName = idKotlin.local(p.ident)
-              w.w(s"${mapToObjc(paramName, p.ty.resolved)}")
+              w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
             }
 
-            // if m.ret isn't empty then write output of retToKotlin
+            // return stored value if any
             m.ret.map { ty =>
-              w.wl.wl(s"return ${mapToKotlin("ret", ty.resolved)}")
+              w.wl.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
             }
           }
         }
@@ -276,7 +179,11 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
     val refs = new KMPIOSRefs()
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
+
+    // import the enum type from the cinterop package
     refs.kotlin.add(withCInteropPackage(objcEnumType))
+
+    // import NSNumber for a helper function
     refs.kotlin.add("platform.Foundation.NSNumber")
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
@@ -320,7 +227,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
       w.wl
 
-      /* helper to handle enum as an NSNumber */
+      /* helper to derive this enum from an NSNumber */
       w.wl("@OptIn(ExperimentalForeignApi::class)")
       w.w(s"fun $kotlinEnum.Companion.fromNSNumber(e: NSNumber): $kotlinEnum").braced {
         w.wl("return fromObjc(e.integerValue)")
@@ -336,39 +243,20 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
     refs.kotlin.add(withCInteropPackage(objcRecord))
 
-    def typeRefs(m: MExpr): Unit = {
-      m.base match {
-        case MOptional => typeRefs(m.args.head)
-
-        case MDate =>
-          refs.kotlin.add("kotlinx.datetime.toKotlinInstant")
-          refs.kotlin.add("kotlinx.datetime.toNSDate")
-
-        case MList =>
-          m.args.head.base match {
-            case MDate =>
-              // will need to cast the list type to NSDate
-              refs.kotlin.add("platform.Foundation.NSDate")
-              typeRefs(m.args.head)
-            case _ => typeRefs(m.args.head)
-          }
-
-        case _ => refs.find(m)
-      }
-    }
-
     r.fields.foreach(f => {
-      typeRefs(f.ty.resolved)
+      // search for imports required when mapping this field
+      refs.kotlin ++= kotlinMapper.typeRefs(f.ty.resolved)
+      refs.kotlin ++=  objcMapper.typeRefs(f.ty.resolved)
     })
 
-    writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.objc, w => {
+    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
 
       /* generate the toObjc() method */
       w.wl("@OptIn(ExperimentalForeignApi::class)")
       w.w(s"fun $kotlinRecord.toObjc(): $objcRecord").braced {
         w.w(s"return $objcRecord").parens(r.fields) { f =>
           val kotlinFieldName = idKotlin.local(f.ident)
-          w.w(s"${mapToObjc(s"this.$kotlinFieldName", f.ty.resolved)}")
+          w.w(s"${objcMapper.map(s"this.$kotlinFieldName", f.ty.resolved)}")
         }
         w.wl
       }
@@ -381,7 +269,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"return $kotlinRecord").parens(r.fields) { f =>
             val kotlinFieldName = idKotlin.local(f.ident)
             val objcFieldName = idObjc.local(f.ident)
-            w.w(s"$kotlinFieldName = ${mapToKotlin(s"this.$objcFieldName", f.ty.resolved)}")
+            w.w(s"$kotlinFieldName = ${kotlinMapper.map(s"this.$objcFieldName", f.ty.resolved)}")
         }
         w.wl
       }
