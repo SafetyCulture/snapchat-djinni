@@ -30,6 +30,11 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
       case MDate =>
         refs.add("kotlinx.datetime.toKotlinInstant")
 
+      case e: MExtern if e.kotlin.isProtobufMessage =>
+        refs.add(withSupportPackage("toByteArray"))
+        refs.add(withPackage(Some(e.kotlin.pkg), marshal.typename(m)))
+        refs.add(withCInteropPackage(objcMarshal.typename(m)))
+
       case d: MDef =>
         d.defType match {
           case DInterface =>
@@ -57,10 +62,12 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
               case DEnum => "Long"
               case _ => objcMarshal.typename(listType)
             }
+          case _: MExtern => objcMarshal.typename(listType)
           case _ => marshal.typename(listType)
         }
         val listValueName = listType.base match {
-          case MDate | _: MDef => s"(it as ${castType})"
+          case MDate | _: MDef | _: MExtern =>
+            s"(it as ${castType})"
           case _ => s"it as ${castType}"
         }
         s"$valueName.map { " + map(s"${listValueName}", listType) + " }"
@@ -86,12 +93,12 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
         case DInterface => generateTodo(d)
       }
 
-      case MList =>
-        s"$valueName.map { " + map("it", tm.args.head) + " }"
+      case e: MExtern if e.kotlin.isProtobufMessage =>
+        val kotlinName = e.kotlin.typename
+        s"$kotlinName.ADAPTER.decode($valueName.data()?.toByteArray() ?: ByteArray(0))"
 
-      //      case e: MExtern if e.kotlin.isProtobufMessage =>
-      //        val kotlinType = e.kotlin.typename
-      //        s"$valueName.data()?.let { $kotlinType.ADAPTER.decode(it.toByteArray()) }"
+      case e: MExtern =>
+        generateTodo(s"Map external type: ${e.kotlin.typename}")
 
       case MOptional =>
         val arg = tm.args.head
@@ -105,11 +112,21 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
     }
   }
 
+ def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
+
   def withCInteropPackage(typeName: String): String = {
     spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
   }
 
+  def withSupportPackage(typeName: String): String = {
+    spec.kotlinSupportPackage.fold(typeName)(_ + "." + typeName)
+  }
+
   def generateTodo(m: Meta): String = {
-    s"TODO(${'"'}Map ${m.getClass.getSimpleName.replace("$", "")} to Kotlin${'"'})"
+    generateTodo(m.getClass.getSimpleName.replace("$", ""))
+  }
+
+  def generateTodo(s: String): String = {
+    s"TODO(${'"'}$s${'"'})"
   }
 }
