@@ -112,7 +112,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
         val arg = tm.args.head
         arg.base match {
           case _: MPrimitive | MString => mapToJava(s"$valueName", arg)
-          case MDate => s"$valueName?.let { ${mapToJava("it", arg)} }"
+          case MDate | _: MExtern  => s"$valueName?.let { ${mapToJava("it", arg)} }"
+          case MList => s"$valueName?.let { list -> ${mapToJava("list", arg)} }"
           case _ => mapToJava(s"$valueName?", arg)
         }
 
@@ -155,7 +156,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
         val arg = tm.args.head
         arg.base match {
           case _: MPrimitive | MString => mapToKotlin(s"$valueName", arg)
-          case MDate => s"$valueName?.let { ${mapToKotlin("it", arg)} }"
+          case MDate | _: MExtern => s"$valueName?.let { ${mapToKotlin("it", arg)} }"
           case _ => mapToKotlin(s"$valueName?", arg)
         }
 

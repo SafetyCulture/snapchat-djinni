@@ -12,7 +12,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   private val kotlinMarshal = new KotlinMarshal(spec)
   private val objcMarshal = new ObjcMarshal(spec)
 
-  private val objcMapper = new KMPIOSObjcMapper()
+  private val objcMapper = new KMPIOSObjcMapper(objcMarshal, spec)
   private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal, objcMarshal, spec)
 
   // create iosMain directory
