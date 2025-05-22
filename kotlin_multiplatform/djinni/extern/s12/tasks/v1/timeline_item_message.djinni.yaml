@@ -28,6 +28,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem;'
+kotlin:
+  typename: 'TimelineItem'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_ActivityCreator
@@ -58,6 +62,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$ActivityCreator;'
+kotlin:
+  typename: 'ActivityCreator'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskCreatedMessageData
@@ -88,6 +96,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskCreatedMessageData;'
+kotlin:
+  typename: 'TaskCreatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_IncidentCreatedMessageData
@@ -118,6 +130,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$IncidentCreatedMessageData;'
+kotlin:
+  typename: 'IncidentCreatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskAssigneeAddedMessageData
@@ -148,6 +164,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskAssigneeAddedMessageData;'
+kotlin:
+  typename: 'TaskAssigneeAddedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskAssigneeUpdatedMessageData
@@ -178,6 +198,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskAssigneeUpdatedMessageData;'
+kotlin:
+  typename: 'TaskAssigneeUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskDueAtUpdatedMessageData
@@ -208,6 +232,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskDueAtUpdatedMessageData;'
+kotlin:
+  typename: 'TaskDueAtUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskStatusUpdatedMessageData
@@ -238,6 +266,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskStatusUpdatedMessageData;'
+kotlin:
+  typename: 'TaskStatusUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskPriorityUpdatedMessageData
@@ -268,6 +300,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskPriorityUpdatedMessageData;'
+kotlin:
+  typename: 'TaskPriorityUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskCategoryUpdatedMessageData
@@ -298,6 +334,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskCategoryUpdatedMessageData;'
+kotlin:
+  typename: 'TaskCategoryUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskCommentAddedMessageData
@@ -328,6 +368,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskCommentAddedMessageData;'
+kotlin:
+  typename: 'TaskCommentAddedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskImageUploadedMessageData
@@ -358,6 +402,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskImageUploadedMessageData;'
+kotlin:
+  typename: 'TaskImageUploadedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskMediaUploadedMessageData
@@ -388,6 +436,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskMediaUploadedMessageData;'
+kotlin:
+  typename: 'TaskMediaUploadedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskSiteUpdatedMessageData
@@ -418,6 +470,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskSiteUpdatedMessageData;'
+kotlin:
+  typename: 'TaskSiteUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskAssetUpdatedMessageData
@@ -448,6 +504,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskAssetUpdatedMessageData;'
+kotlin:
+  typename: 'TaskAssetUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskNotificationSentMessageData
@@ -478,6 +538,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskNotificationSentMessageData;'
+kotlin:
+  typename: 'TaskNotificationSentMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskLocationAddedMessageData
@@ -508,6 +572,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskLocationAddedMessageData;'
+kotlin:
+  typename: 'TaskLocationAddedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskInspectionAddedMessageData
@@ -538,6 +606,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskInspectionAddedMessageData;'
+kotlin:
+  typename: 'TaskInspectionAddedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskInspectionCompletedMessageData
@@ -568,6 +640,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskInspectionCompletedMessageData;'
+kotlin:
+  typename: 'TaskInspectionCompletedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskInspectionDeletedMessageData
@@ -598,6 +674,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskInspectionDeletedMessageData;'
+kotlin:
+  typename: 'TaskInspectionDeletedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskAnswerAddedMessageData
@@ -628,6 +708,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskAnswerAddedMessageData;'
+kotlin:
+  typename: 'TaskAnswerAddedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskLabelsUpdatedMessageData
@@ -658,6 +742,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskLabelsUpdatedMessageData;'
+kotlin:
+  typename: 'TaskLabelsUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskScheduleUpdatedMessageData
@@ -688,6 +776,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskScheduleUpdatedMessageData;'
+kotlin:
+  typename: 'TaskScheduleUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskCustomFieldUpdatedMessageData
@@ -718,6 +810,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskCustomFieldUpdatedMessageData;'
+kotlin:
+  typename: 'TaskCustomFieldUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskOccurredAtUpdatedMessageData
@@ -748,6 +844,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskOccurredAtUpdatedMessageData;'
+kotlin:
+  typename: 'TaskOccurredAtUpdatedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskTemplateUnlinkedMessageData
@@ -778,6 +878,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskTemplateUnlinkedMessageData;'
+kotlin:
+  typename: 'TaskTemplateUnlinkedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskInspection
@@ -808,6 +912,10 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskInspection;'
+kotlin:
+  typename: 'TaskInspection'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_TimelineItemMessage_TimelineItem_TaskInspectionUnlinkedMessageData
@@ -838,4 +946,8 @@ jni:
   header: '"s12/tasks/v1/timeline_item_message.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TimelineItem$TaskInspectionUnlinkedMessageData;'
+kotlin:
+  typename: 'TaskInspectionUnlinkedMessageData'
+  package: 'com.safetyculture.krux.s12.tasks.v1.TimelineItem'
+  isProtobufMessage: true
 

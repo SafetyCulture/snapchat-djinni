@@ -28,7 +28,10 @@ jni:
   header: '"s12/tasks/v1/action.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Action;'
-
+kotlin:
+  typename: 'Action'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 ---
 name: pb_tasks_Action_ActionSharedLink
 typedef: 'record deriving(eq, ord, parcelable)'
@@ -58,4 +61,8 @@ jni:
   header: '"s12/tasks/v1/action.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionSharedLink;'
+kotlin:
+  typename: 'ActionSharedLink'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 

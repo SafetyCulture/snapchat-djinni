@@ -28,6 +28,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationsRequest;'
+kotlin:
+  typename: 'ListInvestigationsRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationsResponse
@@ -58,6 +62,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationsResponse;'
+kotlin:
+  typename: 'ListInvestigationsResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListBoardInvestigationsRequest
@@ -88,6 +96,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListBoardInvestigationsRequest;'
+kotlin:
+  typename: 'ListBoardInvestigationsRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListBoardInvestigationsResponse
@@ -118,6 +130,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListBoardInvestigationsResponse;'
+kotlin:
+  typename: 'ListBoardInvestigationsResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationsCountRequest
@@ -148,6 +164,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationsCountRequest;'
+kotlin:
+  typename: 'GetInvestigationsCountRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationsCountResponse
@@ -178,6 +198,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationsCountResponse;'
+kotlin:
+  typename: 'GetInvestigationsCountResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetBoardInvestigationsCountRequest
@@ -208,6 +232,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetBoardInvestigationsCountRequest;'
+kotlin:
+  typename: 'GetBoardInvestigationsCountRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetBoardInvestigationsCountResponse
@@ -238,6 +266,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetBoardInvestigationsCountResponse;'
+kotlin:
+  typename: 'GetBoardInvestigationsCountResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationRequest
@@ -268,6 +300,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationRequest;'
+kotlin:
+  typename: 'GetInvestigationRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationResponse
@@ -298,6 +334,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationResponse;'
+kotlin:
+  typename: 'GetInvestigationResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationActionsRequest
@@ -328,6 +368,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationActionsRequest;'
+kotlin:
+  typename: 'ListInvestigationActionsRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationActionsResponse
@@ -358,6 +402,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationActionsResponse;'
+kotlin:
+  typename: 'ListInvestigationActionsResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationIssuesRequest
@@ -388,6 +436,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationIssuesRequest;'
+kotlin:
+  typename: 'ListInvestigationIssuesRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationIssuesResponse
@@ -418,6 +470,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationIssuesResponse;'
+kotlin:
+  typename: 'ListInvestigationIssuesResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationInspectionsRequest
@@ -448,6 +504,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationInspectionsRequest;'
+kotlin:
+  typename: 'ListInvestigationInspectionsRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationInspectionsResponse
@@ -478,6 +538,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationInspectionsResponse;'
+kotlin:
+  typename: 'ListInvestigationInspectionsResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationMediaRequest
@@ -508,6 +572,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationMediaRequest;'
+kotlin:
+  typename: 'ListInvestigationMediaRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListInvestigationMediaResponse
@@ -538,6 +606,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListInvestigationMediaResponse;'
+kotlin:
+  typename: 'ListInvestigationMediaResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationMediaCountRequest
@@ -568,6 +640,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationMediaCountRequest;'
+kotlin:
+  typename: 'GetInvestigationMediaCountRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationMediaCountResponse
@@ -598,6 +674,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationMediaCountResponse;'
+kotlin:
+  typename: 'GetInvestigationMediaCountResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationActionCountRequest
@@ -628,6 +708,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationActionCountRequest;'
+kotlin:
+  typename: 'GetInvestigationActionCountRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationActionCountResponse
@@ -658,6 +742,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationActionCountResponse;'
+kotlin:
+  typename: 'GetInvestigationActionCountResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationIssueCountRequest
@@ -688,6 +776,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationIssueCountRequest;'
+kotlin:
+  typename: 'GetInvestigationIssueCountRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationIssueCountResponse
@@ -718,6 +810,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationIssueCountResponse;'
+kotlin:
+  typename: 'GetInvestigationIssueCountResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationInspectionCountRequest
@@ -748,6 +844,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationInspectionCountRequest;'
+kotlin:
+  typename: 'GetInvestigationInspectionCountRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationInspectionCountResponse
@@ -778,6 +878,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationInspectionCountResponse;'
+kotlin:
+  typename: 'GetInvestigationInspectionCountResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationAccessRequest
@@ -808,6 +912,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationAccessRequest;'
+kotlin:
+  typename: 'GetInvestigationAccessRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationAccessResponse
@@ -838,6 +946,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationAccessResponse;'
+kotlin:
+  typename: 'GetInvestigationAccessResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationPDFReportRequest
@@ -868,6 +980,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationPDFReportRequest;'
+kotlin:
+  typename: 'GetInvestigationPDFReportRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationPDFReportResponse
@@ -898,6 +1014,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationPDFReportResponse;'
+kotlin:
+  typename: 'GetInvestigationPDFReportResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_CreateInvestigationRequest
@@ -928,6 +1048,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/CreateInvestigationRequest;'
+kotlin:
+  typename: 'CreateInvestigationRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_CreateInvestigationResponse
@@ -958,6 +1082,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/CreateInvestigationResponse;'
+kotlin:
+  typename: 'CreateInvestigationResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_DeleteInvestigationRequest
@@ -988,6 +1116,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/DeleteInvestigationRequest;'
+kotlin:
+  typename: 'DeleteInvestigationRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_DeleteInvestigationResponse
@@ -1018,6 +1150,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/DeleteInvestigationResponse;'
+kotlin:
+  typename: 'DeleteInvestigationResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationsRequest
@@ -1048,6 +1184,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationsRequest;'
+kotlin:
+  typename: 'UpdateInvestigationsRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationsResponse
@@ -1078,6 +1218,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationsResponse;'
+kotlin:
+  typename: 'UpdateInvestigationsResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationRequest
@@ -1108,6 +1252,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationRequest;'
+kotlin:
+  typename: 'UpdateInvestigationRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationResponse
@@ -1138,6 +1286,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationResponse;'
+kotlin:
+  typename: 'UpdateInvestigationResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationAccessRequest
@@ -1168,6 +1320,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationAccessRequest;'
+kotlin:
+  typename: 'UpdateInvestigationAccessRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationAccessResponse
@@ -1198,6 +1354,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationAccessResponse;'
+kotlin:
+  typename: 'UpdateInvestigationAccessResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationBoardPositionRequest
@@ -1228,6 +1388,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationBoardPositionRequest;'
+kotlin:
+  typename: 'UpdateInvestigationBoardPositionRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateInvestigationBoardPositionResponse
@@ -1258,6 +1422,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateInvestigationBoardPositionResponse;'
+kotlin:
+  typename: 'UpdateInvestigationBoardPositionResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListStatusesRequest
@@ -1288,6 +1456,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListStatusesRequest;'
+kotlin:
+  typename: 'ListStatusesRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_ListStatusesResponse
@@ -1318,6 +1490,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/ListStatusesResponse;'
+kotlin:
+  typename: 'ListStatusesResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateStatusesRequest
@@ -1348,6 +1524,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateStatusesRequest;'
+kotlin:
+  typename: 'UpdateStatusesRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_UpdateStatusesResponse
@@ -1378,6 +1558,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdateStatusesResponse;'
+kotlin:
+  typename: 'UpdateStatusesResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_SyncInvestigationsDiscoveryRequest
@@ -1408,6 +1592,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/SyncInvestigationsDiscoveryRequest;'
+kotlin:
+  typename: 'SyncInvestigationsDiscoveryRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GenerateInvestigationSummaryRequest
@@ -1438,6 +1626,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GenerateInvestigationSummaryRequest;'
+kotlin:
+  typename: 'GenerateInvestigationSummaryRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GenerateInvestigationSummaryResponse
@@ -1468,6 +1660,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GenerateInvestigationSummaryResponse;'
+kotlin:
+  typename: 'GenerateInvestigationSummaryResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_DismissInvestigationSummaryRequest
@@ -1498,6 +1694,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/DismissInvestigationSummaryRequest;'
+kotlin:
+  typename: 'DismissInvestigationSummaryRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_DismissInvestigationSummaryResponse
@@ -1528,6 +1728,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/DismissInvestigationSummaryResponse;'
+kotlin:
+  typename: 'DismissInvestigationSummaryResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationSummaryRequest
@@ -1558,6 +1762,10 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationSummaryRequest;'
+kotlin:
+  typename: 'GetInvestigationSummaryRequest'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Incidents_GetInvestigationSummaryResponse
@@ -1588,4 +1796,8 @@ jni:
   header: '"s12/incidents/v1/incidents.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/GetInvestigationSummaryResponse;'
+kotlin:
+  typename: 'GetInvestigationSummaryResponse'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 

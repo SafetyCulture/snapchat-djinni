@@ -28,6 +28,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoriesRequest;'
+kotlin:
+  typename: 'GetCategoriesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoriesAsAdminRequest
@@ -58,6 +62,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoriesAsAdminRequest;'
+kotlin:
+  typename: 'GetCategoriesAsAdminRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoriesResponse
@@ -88,6 +96,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoriesResponse;'
+kotlin:
+  typename: 'GetCategoriesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpsertCategoryRequest
@@ -118,6 +130,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpsertCategoryRequest;'
+kotlin:
+  typename: 'UpsertCategoryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpsertCategoryResponse
@@ -148,6 +164,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpsertCategoryResponse;'
+kotlin:
+  typename: 'UpsertCategoryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryVisibilityRequest
@@ -178,6 +198,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryVisibilityRequest;'
+kotlin:
+  typename: 'UpdateCategoryVisibilityRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryVisibilityResponse
@@ -208,6 +232,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryVisibilityResponse;'
+kotlin:
+  typename: 'UpdateCategoryVisibilityResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNameRequest
@@ -238,6 +266,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNameRequest;'
+kotlin:
+  typename: 'UpdateCategoryNameRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNameResponse
@@ -268,6 +300,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNameResponse;'
+kotlin:
+  typename: 'UpdateCategoryNameResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryTemplateRequest
@@ -298,6 +334,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryTemplateRequest;'
+kotlin:
+  typename: 'UpdateCategoryTemplateRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryTemplateResponse
@@ -328,6 +368,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryTemplateResponse;'
+kotlin:
+  typename: 'UpdateCategoryTemplateResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNotificationDetailRequest
@@ -358,6 +402,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNotificationDetailRequest;'
+kotlin:
+  typename: 'UpdateCategoryNotificationDetailRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNotificationDetailResponse
@@ -388,6 +436,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNotificationDetailResponse;'
+kotlin:
+  typename: 'UpdateCategoryNotificationDetailResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryLinkedTemplatesRequest
@@ -418,6 +470,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryLinkedTemplatesRequest;'
+kotlin:
+  typename: 'UpdateCategoryLinkedTemplatesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryLinkedTemplatesResponse
@@ -448,6 +504,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryLinkedTemplatesResponse;'
+kotlin:
+  typename: 'UpdateCategoryLinkedTemplatesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CategoryAccessRule
@@ -478,6 +538,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CategoryAccessRule;'
+kotlin:
+  typename: 'CategoryAccessRule'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryAccessRulesRequest
@@ -508,6 +572,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryAccessRulesRequest;'
+kotlin:
+  typename: 'GetCategoryAccessRulesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryAccessRulesResponse
@@ -538,6 +606,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryAccessRulesResponse;'
+kotlin:
+  typename: 'GetCategoryAccessRulesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryAccessRulesRequest
@@ -568,6 +640,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryAccessRulesRequest;'
+kotlin:
+  typename: 'UpdateCategoryAccessRulesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryAccessRulesResponse
@@ -598,6 +674,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryAccessRulesResponse;'
+kotlin:
+  typename: 'UpdateCategoryAccessRulesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetQuestionsRequest
@@ -628,6 +708,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetQuestionsRequest;'
+kotlin:
+  typename: 'GetQuestionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetQuestionsResponse
@@ -658,6 +742,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetQuestionsResponse;'
+kotlin:
+  typename: 'GetQuestionsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetQuestionsByCategoryRequest
@@ -688,6 +776,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetQuestionsByCategoryRequest;'
+kotlin:
+  typename: 'GetQuestionsByCategoryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetQuestionsByCategoryResponse
@@ -718,6 +810,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetQuestionsByCategoryResponse;'
+kotlin:
+  typename: 'GetQuestionsByCategoryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateQuestionsByCategoryRequest
@@ -748,6 +844,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateQuestionsByCategoryRequest;'
+kotlin:
+  typename: 'UpdateQuestionsByCategoryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateQuestionsByCategoryResponse
@@ -778,6 +878,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateQuestionsByCategoryResponse;'
+kotlin:
+  typename: 'UpdateQuestionsByCategoryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoriesAndQuestionsRequest
@@ -808,6 +912,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoriesAndQuestionsRequest;'
+kotlin:
+  typename: 'GetCategoriesAndQuestionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionStatusConfigurationByTokenRequest
@@ -838,6 +946,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionStatusConfigurationByTokenRequest;'
+kotlin:
+  typename: 'GetActionStatusConfigurationByTokenRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoriesAndQuestionsResponse
@@ -868,6 +980,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoriesAndQuestionsResponse;'
+kotlin:
+  typename: 'GetCategoriesAndQuestionsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionStatusConfigurationByTokenResponse
@@ -898,6 +1014,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionStatusConfigurationByTokenResponse;'
+kotlin:
+  typename: 'GetActionStatusConfigurationByTokenResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RaiseIncidentConfig
@@ -928,6 +1048,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RaiseIncidentConfig;'
+kotlin:
+  typename: 'RaiseIncidentConfig'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentConfigsRequest
@@ -958,6 +1082,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentConfigsRequest;'
+kotlin:
+  typename: 'GetRaiseIncidentConfigsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentConfigsRequest_Filter
@@ -988,6 +1116,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentConfigsRequest$Filter;'
+kotlin:
+  typename: 'Filter'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetRaiseIncidentConfigsRequest'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentConfigsResponse
@@ -1018,6 +1150,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentConfigsResponse;'
+kotlin:
+  typename: 'GetRaiseIncidentConfigsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CreateRaiseIncidentConfigRequest
@@ -1048,6 +1184,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateRaiseIncidentConfigRequest;'
+kotlin:
+  typename: 'CreateRaiseIncidentConfigRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CreateRaiseIncidentConfigResponse
@@ -1078,6 +1218,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateRaiseIncidentConfigResponse;'
+kotlin:
+  typename: 'CreateRaiseIncidentConfigResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RevokeRaiseIncidentURLRequest
@@ -1108,6 +1252,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RevokeRaiseIncidentURLRequest;'
+kotlin:
+  typename: 'RevokeRaiseIncidentURLRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RevokeRaiseIncidentURLResponse
@@ -1138,6 +1286,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RevokeRaiseIncidentURLResponse;'
+kotlin:
+  typename: 'RevokeRaiseIncidentURLResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateRaiseIncidentURLRequest
@@ -1168,6 +1320,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateRaiseIncidentURLRequest;'
+kotlin:
+  typename: 'UpdateRaiseIncidentURLRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateRaiseIncidentURLResponse
@@ -1198,6 +1354,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateRaiseIncidentURLResponse;'
+kotlin:
+  typename: 'UpdateRaiseIncidentURLResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentURLConfigRequest
@@ -1228,6 +1388,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentURLConfigRequest;'
+kotlin:
+  typename: 'GetRaiseIncidentURLConfigRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentURLConfigByTokenRequest
@@ -1258,6 +1422,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentURLConfigByTokenRequest;'
+kotlin:
+  typename: 'GetRaiseIncidentURLConfigByTokenRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentURLConfigByTokenResponse
@@ -1288,6 +1456,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentURLConfigByTokenResponse;'
+kotlin:
+  typename: 'GetRaiseIncidentURLConfigByTokenResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetRaiseIncidentURLConfigResponse
@@ -1318,6 +1490,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetRaiseIncidentURLConfigResponse;'
+kotlin:
+  typename: 'GetRaiseIncidentURLConfigResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_Priority
@@ -1348,6 +1524,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Priority;'
+kotlin:
+  typename: 'Priority'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UserNotification
@@ -1378,6 +1558,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UserNotification;'
+kotlin:
+  typename: 'UserNotification'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CategoryNotificationConfig
@@ -1408,6 +1592,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CategoryNotificationConfig;'
+kotlin:
+  typename: 'CategoryNotificationConfig'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CategoryAccessConfig
@@ -1438,6 +1626,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CategoryAccessConfig;'
+kotlin:
+  typename: 'CategoryAccessConfig'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNotificationRequest
@@ -1468,6 +1660,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNotificationRequest;'
+kotlin:
+  typename: 'UpdateCategoryNotificationRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNotificationRequest_UserNotificationSetting
@@ -1498,6 +1694,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNotificationRequest$UserNotificationSetting;'
+kotlin:
+  typename: 'UserNotificationSetting'
+  package: 'com.safetyculture.krux.s12.tasks.v1.UpdateCategoryNotificationRequest'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryNotificationResponse
@@ -1528,6 +1728,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryNotificationResponse;'
+kotlin:
+  typename: 'UpdateCategoryNotificationResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryNotificationRequest
@@ -1558,6 +1762,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryNotificationRequest;'
+kotlin:
+  typename: 'GetCategoryNotificationRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryNotificationResponse
@@ -1588,6 +1796,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryNotificationResponse;'
+kotlin:
+  typename: 'GetCategoryNotificationResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryAccessRequest
@@ -1618,6 +1830,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryAccessRequest;'
+kotlin:
+  typename: 'UpdateCategoryAccessRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryAccessResponse
@@ -1648,6 +1864,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryAccessResponse;'
+kotlin:
+  typename: 'UpdateCategoryAccessResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryAccessRequest
@@ -1678,6 +1898,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryAccessRequest;'
+kotlin:
+  typename: 'GetCategoryAccessRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryAccessResponse
@@ -1708,6 +1932,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryAccessResponse;'
+kotlin:
+  typename: 'GetCategoryAccessResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryNotificationAdminRequest
@@ -1738,6 +1966,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryNotificationAdminRequest;'
+kotlin:
+  typename: 'GetCategoryNotificationAdminRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetCategoryNotificationAdminResponse
@@ -1768,6 +2000,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetCategoryNotificationAdminResponse;'
+kotlin:
+  typename: 'GetCategoryNotificationAdminResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryStateRequest
@@ -1798,6 +2034,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryStateRequest;'
+kotlin:
+  typename: 'UpdateCategoryStateRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateCategoryStateResponse
@@ -1828,6 +2068,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateCategoryStateResponse;'
+kotlin:
+  typename: 'UpdateCategoryStateResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetStatusAccessRulesRequest
@@ -1858,6 +2102,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetStatusAccessRulesRequest;'
+kotlin:
+  typename: 'GetStatusAccessRulesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetStatusAccessRulesResponse
@@ -1888,6 +2136,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetStatusAccessRulesResponse;'
+kotlin:
+  typename: 'GetStatusAccessRulesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionStatusConfigurationRequest
@@ -1918,6 +2170,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionStatusConfigurationRequest;'
+kotlin:
+  typename: 'GetActionStatusConfigurationRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionStatusConfigurationResponse
@@ -1948,6 +2204,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionStatusConfigurationResponse;'
+kotlin:
+  typename: 'GetActionStatusConfigurationResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateStatusAccessRuleRequest
@@ -1978,6 +2238,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateStatusAccessRuleRequest;'
+kotlin:
+  typename: 'UpdateStatusAccessRuleRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateActionStatusLabelRequest
@@ -2008,6 +2272,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionStatusLabelRequest;'
+kotlin:
+  typename: 'UpdateActionStatusLabelRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateActionStatusLabelResponse
@@ -2038,6 +2306,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionStatusLabelResponse;'
+kotlin:
+  typename: 'UpdateActionStatusLabelResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateStatusAccessRuleResponse
@@ -2068,6 +2340,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateStatusAccessRuleResponse;'
+kotlin:
+  typename: 'UpdateStatusAccessRuleResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_ResetDefaultActionStatusLabelRequest
@@ -2098,6 +2374,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ResetDefaultActionStatusLabelRequest;'
+kotlin:
+  typename: 'ResetDefaultActionStatusLabelRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_ResetDefaultActionStatusLabelResponse
@@ -2128,6 +2408,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ResetDefaultActionStatusLabelResponse;'
+kotlin:
+  typename: 'ResetDefaultActionStatusLabelResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateActionEditFieldsConfigurationRequest
@@ -2158,6 +2442,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionEditFieldsConfigurationRequest;'
+kotlin:
+  typename: 'UpdateActionEditFieldsConfigurationRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateActionEditFieldsConfigurationResponse
@@ -2188,6 +2476,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionEditFieldsConfigurationResponse;'
+kotlin:
+  typename: 'UpdateActionEditFieldsConfigurationResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionEditFieldsConfigurationRequest
@@ -2218,6 +2510,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionEditFieldsConfigurationRequest;'
+kotlin:
+  typename: 'GetActionEditFieldsConfigurationRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionEditFieldsConfigurationResponse
@@ -2248,6 +2544,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionEditFieldsConfigurationResponse;'
+kotlin:
+  typename: 'GetActionEditFieldsConfigurationResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateActionStatusRequiredEvidenceRequest
@@ -2278,6 +2578,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionStatusRequiredEvidenceRequest;'
+kotlin:
+  typename: 'UpdateActionStatusRequiredEvidenceRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateActionStatusRequiredEvidenceResponse
@@ -2308,6 +2612,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionStatusRequiredEvidenceResponse;'
+kotlin:
+  typename: 'UpdateActionStatusRequiredEvidenceResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpsertActionLabelRequest
@@ -2338,6 +2646,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpsertActionLabelRequest;'
+kotlin:
+  typename: 'UpsertActionLabelRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpsertActionLabelResponse
@@ -2368,6 +2680,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpsertActionLabelResponse;'
+kotlin:
+  typename: 'UpsertActionLabelResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_DeleteActionLabelsRequest
@@ -2398,6 +2714,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteActionLabelsRequest;'
+kotlin:
+  typename: 'DeleteActionLabelsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_DeleteActionLabelsResponse
@@ -2428,6 +2748,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteActionLabelsResponse;'
+kotlin:
+  typename: 'DeleteActionLabelsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionLabelsRequest
@@ -2458,6 +2782,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionLabelsRequest;'
+kotlin:
+  typename: 'GetActionLabelsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetActionLabelsResponse
@@ -2488,6 +2816,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionLabelsResponse;'
+kotlin:
+  typename: 'GetActionLabelsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateOrgStandaloneActionAccessRequest
@@ -2518,6 +2850,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateOrgStandaloneActionAccessRequest;'
+kotlin:
+  typename: 'UpdateOrgStandaloneActionAccessRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdateOrgStandaloneActionAccessResponse
@@ -2548,6 +2884,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateOrgStandaloneActionAccessResponse;'
+kotlin:
+  typename: 'UpdateOrgStandaloneActionAccessResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetOrgStandaloneActionAccessRequest
@@ -2578,6 +2918,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetOrgStandaloneActionAccessRequest;'
+kotlin:
+  typename: 'GetOrgStandaloneActionAccessRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetOrgStandaloneActionAccessResponse
@@ -2608,6 +2952,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetOrgStandaloneActionAccessResponse;'
+kotlin:
+  typename: 'GetOrgStandaloneActionAccessResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_PrioritySettings
@@ -2638,6 +2986,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/PrioritySettings;'
+kotlin:
+  typename: 'PrioritySettings'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdatePrioritySettingsRequest
@@ -2668,6 +3020,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdatePrioritySettingsRequest;'
+kotlin:
+  typename: 'UpdatePrioritySettingsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UpdatePrioritySettingsResponse
@@ -2698,6 +3054,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdatePrioritySettingsResponse;'
+kotlin:
+  typename: 'UpdatePrioritySettingsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPrioritiesRequest
@@ -2728,6 +3088,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPrioritiesRequest;'
+kotlin:
+  typename: 'GetPrioritiesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPrioritiesResponse
@@ -2758,6 +3122,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPrioritiesResponse;'
+kotlin:
+  typename: 'GetPrioritiesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CreateCustomFieldRequest
@@ -2788,6 +3156,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateCustomFieldRequest;'
+kotlin:
+  typename: 'CreateCustomFieldRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CreateCustomFieldResponse
@@ -2818,6 +3190,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateCustomFieldResponse;'
+kotlin:
+  typename: 'CreateCustomFieldResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_DeleteCustomFieldRequest
@@ -2848,6 +3224,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteCustomFieldRequest;'
+kotlin:
+  typename: 'DeleteCustomFieldRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_DeleteCustomFieldResponse
@@ -2878,6 +3258,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteCustomFieldResponse;'
+kotlin:
+  typename: 'DeleteCustomFieldResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RenameCustomFieldRequest
@@ -2908,6 +3292,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RenameCustomFieldRequest;'
+kotlin:
+  typename: 'RenameCustomFieldRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RenameCustomFieldResponse
@@ -2938,6 +3326,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RenameCustomFieldResponse;'
+kotlin:
+  typename: 'RenameCustomFieldResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypeCustomFieldsRequest
@@ -2968,6 +3360,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypeCustomFieldsRequest;'
+kotlin:
+  typename: 'GetTaskTypeCustomFieldsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypeCustomFieldsResponse
@@ -2998,6 +3394,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypeCustomFieldsResponse;'
+kotlin:
+  typename: 'GetTaskTypeCustomFieldsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypeSystemFieldsRequest
@@ -3028,6 +3428,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypeSystemFieldsRequest;'
+kotlin:
+  typename: 'GetTaskTypeSystemFieldsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypeSystemFieldsResponse
@@ -3058,6 +3462,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypeSystemFieldsResponse;'
+kotlin:
+  typename: 'GetTaskTypeSystemFieldsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_MapFieldToTaskTypeRequest
@@ -3088,6 +3496,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/MapFieldToTaskTypeRequest;'
+kotlin:
+  typename: 'MapFieldToTaskTypeRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_MapFieldToTaskTypeResponse
@@ -3118,6 +3530,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/MapFieldToTaskTypeResponse;'
+kotlin:
+  typename: 'MapFieldToTaskTypeResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UnmapFieldFromTaskTypeRequest
@@ -3148,6 +3564,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UnmapFieldFromTaskTypeRequest;'
+kotlin:
+  typename: 'UnmapFieldFromTaskTypeRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_UnmapFieldFromTaskTypeResponse
@@ -3178,6 +3598,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UnmapFieldFromTaskTypeResponse;'
+kotlin:
+  typename: 'UnmapFieldFromTaskTypeResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetOrgTaskTypeUnmappedFieldsRequest
@@ -3208,6 +3632,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetOrgTaskTypeUnmappedFieldsRequest;'
+kotlin:
+  typename: 'GetOrgTaskTypeUnmappedFieldsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetOrgTaskTypeUnmappedFieldsResponse
@@ -3238,6 +3666,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetOrgTaskTypeUnmappedFieldsResponse;'
+kotlin:
+  typename: 'GetOrgTaskTypeUnmappedFieldsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CreateTaskTypeRequest
@@ -3268,6 +3700,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateTaskTypeRequest;'
+kotlin:
+  typename: 'CreateTaskTypeRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_CreateTaskTypeResponse
@@ -3298,6 +3734,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateTaskTypeResponse;'
+kotlin:
+  typename: 'CreateTaskTypeResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_DeleteTaskTypeRequest
@@ -3328,6 +3768,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteTaskTypeRequest;'
+kotlin:
+  typename: 'DeleteTaskTypeRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_DeleteTaskTypeResponse
@@ -3358,6 +3802,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteTaskTypeResponse;'
+kotlin:
+  typename: 'DeleteTaskTypeResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RenameTaskTypeRequest
@@ -3388,6 +3836,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RenameTaskTypeRequest;'
+kotlin:
+  typename: 'RenameTaskTypeRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_RenameTaskTypeResponse
@@ -3418,6 +3870,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RenameTaskTypeResponse;'
+kotlin:
+  typename: 'RenameTaskTypeResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypeRequest
@@ -3448,6 +3904,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypeRequest;'
+kotlin:
+  typename: 'GetTaskTypeRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypeResponse
@@ -3478,6 +3938,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypeResponse;'
+kotlin:
+  typename: 'GetTaskTypeResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypesRequest
@@ -3508,6 +3972,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypesRequest;'
+kotlin:
+  typename: 'GetTaskTypesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_TaskCustomType
@@ -3538,6 +4006,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/TaskCustomType;'
+kotlin:
+  typename: 'TaskCustomType'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetTaskTypesResponse
@@ -3568,6 +4040,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTaskTypesResponse;'
+kotlin:
+  typename: 'GetTaskTypesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicSitesRequest
@@ -3598,6 +4074,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicSitesRequest;'
+kotlin:
+  typename: 'GetPublicSitesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicSitesResponse
@@ -3628,6 +4108,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicSitesResponse;'
+kotlin:
+  typename: 'GetPublicSitesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicCategoriesRequest
@@ -3658,6 +4142,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicCategoriesRequest;'
+kotlin:
+  typename: 'GetPublicCategoriesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicCategoriesResponse
@@ -3688,6 +4176,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicCategoriesResponse;'
+kotlin:
+  typename: 'GetPublicCategoriesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicCategoryQuestionsRequest
@@ -3718,6 +4210,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicCategoryQuestionsRequest;'
+kotlin:
+  typename: 'GetPublicCategoryQuestionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicCategoryQuestionsResponse
@@ -3748,6 +4244,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicCategoryQuestionsResponse;'
+kotlin:
+  typename: 'GetPublicCategoryQuestionsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicConfigByTokenRequest
@@ -3778,6 +4278,10 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicConfigByTokenRequest;'
+kotlin:
+  typename: 'GetPublicConfigByTokenRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_CustomerConfiguration_GetPublicConfigByTokenResponse
@@ -3808,4 +4312,8 @@ jni:
   header: '"s12/tasks/v1/customer_configuration.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetPublicConfigByTokenResponse;'
+kotlin:
+  typename: 'GetPublicConfigByTokenResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 

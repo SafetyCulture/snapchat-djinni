@@ -28,6 +28,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionsAdminServiceGetActionsRequest;'
+kotlin:
+  typename: 'ActionsAdminServiceGetActionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest
@@ -58,6 +62,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest;'
+kotlin:
+  typename: 'GetActionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter
@@ -88,6 +96,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter;'
+kotlin:
+  typename: 'Filter'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_StatusID
@@ -118,6 +130,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$StatusID;'
+kotlin:
+  typename: 'StatusID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_PriorityID
@@ -148,6 +164,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$PriorityID;'
+kotlin:
+  typename: 'PriorityID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_SiteID
@@ -178,6 +198,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$SiteID;'
+kotlin:
+  typename: 'SiteID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_AssetID
@@ -208,6 +232,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$AssetID;'
+kotlin:
+  typename: 'AssetID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_LabelID
@@ -238,6 +266,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$LabelID;'
+kotlin:
+  typename: 'LabelID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_AssigneeID
@@ -268,6 +300,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$AssigneeID;'
+kotlin:
+  typename: 'AssigneeID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_Collaborator
@@ -298,6 +334,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$Collaborator;'
+kotlin:
+  typename: 'Collaborator'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_TemplateID
@@ -328,6 +368,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$TemplateID;'
+kotlin:
+  typename: 'TemplateID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_InspectionItemID
@@ -358,6 +402,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$InspectionItemID;'
+kotlin:
+  typename: 'InspectionItemID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_InspectionID
@@ -388,6 +436,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$InspectionID;'
+kotlin:
+  typename: 'InspectionID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_TaskID
@@ -418,6 +470,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$TaskID;'
+kotlin:
+  typename: 'TaskID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_CreatorID
@@ -448,6 +504,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$CreatorID;'
+kotlin:
+  typename: 'CreatorID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_Search
@@ -478,6 +538,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$Search;'
+kotlin:
+  typename: 'Search'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_Duration
@@ -508,6 +572,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$Duration;'
+kotlin:
+  typename: 'Duration'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_TimeFrom
@@ -538,6 +606,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$TimeFrom;'
+kotlin:
+  typename: 'TimeFrom'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_TimeTo
@@ -568,6 +640,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$TimeTo;'
+kotlin:
+  typename: 'TimeTo'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionsRequest_Filter_TypeID
@@ -598,6 +674,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionsRequest$Filter$TypeID;'
+kotlin:
+  typename: 'TypeID'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionsRequest.Filter'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_CreateActionRequest
@@ -628,6 +708,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateActionRequest;'
+kotlin:
+  typename: 'CreateActionRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateTitleRequest
@@ -658,6 +742,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateTitleRequest;'
+kotlin:
+  typename: 'UpdateTitleRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateDescriptionRequest
@@ -688,6 +776,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateDescriptionRequest;'
+kotlin:
+  typename: 'UpdateDescriptionRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdatePriorityRequest
@@ -718,6 +810,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdatePriorityRequest;'
+kotlin:
+  typename: 'UpdatePriorityRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_AddCollaboratorsRequest
@@ -748,6 +844,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/AddCollaboratorsRequest;'
+kotlin:
+  typename: 'AddCollaboratorsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_RemoveCollaboratorsRequest
@@ -778,6 +878,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RemoveCollaboratorsRequest;'
+kotlin:
+  typename: 'RemoveCollaboratorsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateDueAtRequest
@@ -808,6 +912,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateDueAtRequest;'
+kotlin:
+  typename: 'UpdateDueAtRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_DeleteActionsRequest
@@ -838,6 +946,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteActionsRequest;'
+kotlin:
+  typename: 'DeleteActionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceGetUserInfoRequest
@@ -868,6 +980,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceGetUserInfoRequest;'
+kotlin:
+  typename: 'ExternalUserServiceGetUserInfoRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionForExternalUserRequest
@@ -898,6 +1014,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionForExternalUserRequest;'
+kotlin:
+  typename: 'GetActionForExternalUserRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateStatusForExternalUserRequest
@@ -928,6 +1048,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateStatusForExternalUserRequest;'
+kotlin:
+  typename: 'UpdateStatusForExternalUserRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetTimelineForExternalUserRequest
@@ -958,6 +1082,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetTimelineForExternalUserRequest;'
+kotlin:
+  typename: 'GetTimelineForExternalUserRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceAddCommentRequest
@@ -988,6 +1116,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceAddCommentRequest;'
+kotlin:
+  typename: 'ExternalUserServiceAddCommentRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceGetMediaUploadURLRequest
@@ -1018,6 +1150,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceGetMediaUploadURLRequest;'
+kotlin:
+  typename: 'ExternalUserServiceGetMediaUploadURLRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceAddMediaRequest
@@ -1048,6 +1184,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceAddMediaRequest;'
+kotlin:
+  typename: 'ExternalUserServiceAddMediaRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetInspectionActionSummaryRequest
@@ -1078,6 +1218,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetInspectionActionSummaryRequest;'
+kotlin:
+  typename: 'GetInspectionActionSummaryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetAssetActionSummaryRequest
@@ -1108,6 +1252,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetAssetActionSummaryRequest;'
+kotlin:
+  typename: 'GetAssetActionSummaryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetInspectionActionHistoryRequest
@@ -1138,6 +1286,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetInspectionActionHistoryRequest;'
+kotlin:
+  typename: 'GetInspectionActionHistoryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionSharedLinkRequest
@@ -1168,6 +1320,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionSharedLinkRequest;'
+kotlin:
+  typename: 'GetActionSharedLinkRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_CreateActionSharedLinkRequest
@@ -1198,6 +1354,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateActionSharedLinkRequest;'
+kotlin:
+  typename: 'CreateActionSharedLinkRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_RevokeActionSharedLinkRequest
@@ -1228,6 +1388,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RevokeActionSharedLinkRequest;'
+kotlin:
+  typename: 'RevokeActionSharedLinkRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_LinkActionInspectionRequest
@@ -1258,6 +1422,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/LinkActionInspectionRequest;'
+kotlin:
+  typename: 'LinkActionInspectionRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UnlinkActionInspectionRequest
@@ -1288,6 +1456,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UnlinkActionInspectionRequest;'
+kotlin:
+  typename: 'UnlinkActionInspectionRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateActionLabelsRequest
@@ -1318,6 +1490,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionLabelsRequest;'
+kotlin:
+  typename: 'UpdateActionLabelsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_BulkUpdateActionLabelsRequest
@@ -1348,6 +1524,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/BulkUpdateActionLabelsRequest;'
+kotlin:
+  typename: 'BulkUpdateActionLabelsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetOrgActionCountRequest
@@ -1378,6 +1558,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetOrgActionCountRequest;'
+kotlin:
+  typename: 'GetOrgActionCountRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_CreateActionScheduleRequest
@@ -1408,6 +1592,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateActionScheduleRequest;'
+kotlin:
+  typename: 'CreateActionScheduleRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateActionScheduleRequest
@@ -1438,6 +1626,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionScheduleRequest;'
+kotlin:
+  typename: 'UpdateActionScheduleRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_DeleteActionScheduleRequest
@@ -1468,6 +1660,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteActionScheduleRequest;'
+kotlin:
+  typename: 'DeleteActionScheduleRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionSummariesRequest
@@ -1498,6 +1694,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionSummariesRequest;'
+kotlin:
+  typename: 'GetActionSummariesRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetScheduledActionsRequest
@@ -1528,6 +1728,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetScheduledActionsRequest;'
+kotlin:
+  typename: 'GetScheduledActionsRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_SyncActionsDiscoveryRequest
@@ -1558,6 +1762,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/SyncActionsDiscoveryRequest;'
+kotlin:
+  typename: 'SyncActionsDiscoveryRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ActionResponse
@@ -1588,6 +1796,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionResponse;'
+kotlin:
+  typename: 'ActionResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ActionsResponse
@@ -1618,6 +1830,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionsResponse;'
+kotlin:
+  typename: 'ActionsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateSiteResponse
@@ -1648,6 +1864,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateSiteResponse;'
+kotlin:
+  typename: 'UpdateSiteResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateSiteRequest
@@ -1678,6 +1898,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateSiteRequest;'
+kotlin:
+  typename: 'UpdateSiteRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateAssetRequest
@@ -1708,6 +1932,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateAssetRequest;'
+kotlin:
+  typename: 'UpdateAssetRequest'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateAssetResponse
@@ -1738,6 +1966,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateAssetResponse;'
+kotlin:
+  typename: 'UpdateAssetResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceGetUserInfoResponse
@@ -1768,6 +2000,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceGetUserInfoResponse;'
+kotlin:
+  typename: 'ExternalUserServiceGetUserInfoResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceAddCommentResponse
@@ -1798,6 +2034,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceAddCommentResponse;'
+kotlin:
+  typename: 'ExternalUserServiceAddCommentResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceGetMediaUploadURLResponse
@@ -1828,6 +2068,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceGetMediaUploadURLResponse;'
+kotlin:
+  typename: 'ExternalUserServiceGetMediaUploadURLResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ExternalUserServiceAddMediaResponse
@@ -1858,6 +2102,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ExternalUserServiceAddMediaResponse;'
+kotlin:
+  typename: 'ExternalUserServiceAddMediaResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ActionsSummary
@@ -1888,6 +2136,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionsSummary;'
+kotlin:
+  typename: 'ActionsSummary'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetInspectionActionSummaryResponse
@@ -1918,6 +2170,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetInspectionActionSummaryResponse;'
+kotlin:
+  typename: 'GetInspectionActionSummaryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ActionsAssetSummary
@@ -1948,6 +2204,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionsAssetSummary;'
+kotlin:
+  typename: 'ActionsAssetSummary'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetAssetActionSummaryResponse
@@ -1978,6 +2238,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetAssetActionSummaryResponse;'
+kotlin:
+  typename: 'GetAssetActionSummaryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_ActionsHistory
@@ -2008,6 +2272,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/ActionsHistory;'
+kotlin:
+  typename: 'ActionsHistory'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetInspectionActionHistoryResponse
@@ -2038,6 +2306,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetInspectionActionHistoryResponse;'
+kotlin:
+  typename: 'GetInspectionActionHistoryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionSharedLinkResponse
@@ -2068,6 +2340,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionSharedLinkResponse;'
+kotlin:
+  typename: 'GetActionSharedLinkResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_CreateActionSharedLinkResponse
@@ -2098,6 +2374,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateActionSharedLinkResponse;'
+kotlin:
+  typename: 'CreateActionSharedLinkResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_RevokeActionSharedLinkResponse
@@ -2128,6 +2408,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/RevokeActionSharedLinkResponse;'
+kotlin:
+  typename: 'RevokeActionSharedLinkResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_LinkActionInspectionResponse
@@ -2158,6 +2442,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/LinkActionInspectionResponse;'
+kotlin:
+  typename: 'LinkActionInspectionResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UnlinkActionInspectionResponse
@@ -2188,6 +2476,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UnlinkActionInspectionResponse;'
+kotlin:
+  typename: 'UnlinkActionInspectionResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateActionLabelsResponse
@@ -2218,6 +2510,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionLabelsResponse;'
+kotlin:
+  typename: 'UpdateActionLabelsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_BulkUpdateActionLabelsResponse
@@ -2248,6 +2544,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/BulkUpdateActionLabelsResponse;'
+kotlin:
+  typename: 'BulkUpdateActionLabelsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetOrgActionCountResponse
@@ -2278,6 +2578,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetOrgActionCountResponse;'
+kotlin:
+  typename: 'GetOrgActionCountResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_CreateActionResponse
@@ -2308,6 +2612,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateActionResponse;'
+kotlin:
+  typename: 'CreateActionResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_CreateActionScheduleResponse
@@ -2338,6 +2646,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CreateActionScheduleResponse;'
+kotlin:
+  typename: 'CreateActionScheduleResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_UpdateActionScheduleResponse
@@ -2368,6 +2680,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/UpdateActionScheduleResponse;'
+kotlin:
+  typename: 'UpdateActionScheduleResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_DeleteActionScheduleResponse
@@ -2398,6 +2714,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeleteActionScheduleResponse;'
+kotlin:
+  typename: 'DeleteActionScheduleResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionSummariesResponse
@@ -2428,6 +2748,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionSummariesResponse;'
+kotlin:
+  typename: 'GetActionSummariesResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetActionSummariesResponse_ActionSummary
@@ -2458,6 +2782,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetActionSummariesResponse$ActionSummary;'
+kotlin:
+  typename: 'ActionSummary'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetActionSummariesResponse'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetScheduledActionsResponse
@@ -2488,6 +2816,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetScheduledActionsResponse;'
+kotlin:
+  typename: 'GetScheduledActionsResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_GetScheduledActionsResponse_ScheduledAction
@@ -2518,6 +2850,10 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/GetScheduledActionsResponse$ScheduledAction;'
+kotlin:
+  typename: 'ScheduledAction'
+  package: 'com.safetyculture.krux.s12.tasks.v1.GetScheduledActionsResponse'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Actions_SyncActionsDiscoveryResponse
@@ -2548,4 +2884,8 @@ jni:
   header: '"s12/tasks/v1/actions.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/SyncActionsDiscoveryResponse;'
+kotlin:
+  typename: 'SyncActionsDiscoveryResponse'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 

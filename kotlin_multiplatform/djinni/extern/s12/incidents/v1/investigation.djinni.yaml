@@ -32,7 +32,6 @@ kotlin:
   typename: 'InvestigationListItem'
   package: 'com.safetyculture.krux.s12.incidents.v1'
   isProtobufMessage: true
-
 ---
 name: pb_incidents_Investigation_InvestigationBoardColumn
 typedef: 'record deriving(eq, ord, parcelable)'
@@ -62,6 +61,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/InvestigationBoardColumn;'
+kotlin:
+  typename: 'InvestigationBoardColumn'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_InvestigationBoardColumnCount
@@ -92,6 +95,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/InvestigationBoardColumnCount;'
+kotlin:
+  typename: 'InvestigationBoardColumnCount'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_InvestigationBoardItem
@@ -122,6 +129,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/InvestigationBoardItem;'
+kotlin:
+  typename: 'InvestigationBoardItem'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_Investigation
@@ -152,6 +163,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/Investigation;'
+kotlin:
+  typename: 'Investigation'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_StatusMeta
@@ -182,6 +197,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/StatusMeta;'
+kotlin:
+  typename: 'StatusMeta'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_Identifier
@@ -212,6 +231,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/Identifier;'
+kotlin:
+  typename: 'Identifier'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_SiteMeta
@@ -242,6 +265,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/SiteMeta;'
+kotlin:
+  typename: 'SiteMeta'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_StatusListItem
@@ -272,6 +299,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/StatusListItem;'
+kotlin:
+  typename: 'StatusListItem'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_UpdatableStatus
@@ -302,6 +333,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UpdatableStatus;'
+kotlin:
+  typename: 'UpdatableStatus'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_UserMeta
@@ -332,6 +367,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/UserMeta;'
+kotlin:
+  typename: 'UserMeta'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_InvestigationSummary
@@ -362,6 +401,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/InvestigationSummary;'
+kotlin:
+  typename: 'InvestigationSummary'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_InvestigationSummarySection
@@ -392,6 +435,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/InvestigationSummarySection;'
+kotlin:
+  typename: 'InvestigationSummarySection'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_Findings
@@ -422,6 +469,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/Findings;'
+kotlin:
+  typename: 'Findings'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_RootCause
@@ -452,6 +503,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/RootCause;'
+kotlin:
+  typename: 'RootCause'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_NextSteps
@@ -482,6 +537,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/NextSteps;'
+kotlin:
+  typename: 'NextSteps'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_LinkCounts
@@ -512,6 +571,10 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/LinkCounts;'
+kotlin:
+  typename: 'LinkCounts'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_incidents_Investigation_OriginatingResource
@@ -542,4 +605,8 @@ jni:
   header: '"s12/incidents/v1/investigation.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/incidents/v1/OriginatingResource;'
+kotlin:
+  typename: 'OriginatingResource'
+  package: 'com.safetyculture.krux.s12.incidents.v1'
+  isProtobufMessage: true
 
