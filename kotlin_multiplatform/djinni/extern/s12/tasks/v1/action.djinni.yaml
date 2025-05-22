@@ -32,6 +32,7 @@ kotlin:
   typename: 'Action'
   package: 'com.safetyculture.krux.s12.tasks.v1'
   isProtobufMessage: true
+
 ---
 name: pb_tasks_Action_ActionSharedLink
 typedef: 'record deriving(eq, ord, parcelable)'

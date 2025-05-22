@@ -13,7 +13,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   private val objcMarshal = new ObjcMarshal(spec)
 
   private val objcMapper = new KMPIOSObjcMapper()
-  private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal)
+  private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal, objcMarshal, spec)
 
   // create iosMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
@@ -95,6 +95,12 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
+
+    // only cpp interfaces are supported for now
+    if(!i.ext.cpp) {
+      return
+    }
+
     val commonInterfaceType = idKotlin.ty(ident.name)
     val objcInterfaceLocal = idKotlin.local(ident.name)
     val objcInterfaceType = objcMarshal.typename(ident, i)
