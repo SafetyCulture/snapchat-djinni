@@ -1,4 +1,4 @@
 @import "common.djinni"
-@import "crux.djinni"
-@import "investigations.djinni"
-@import "featureflags.djinni"
+@import "media.djinni"
+@import "actions.djinni"
+@import "incidents.djinni"

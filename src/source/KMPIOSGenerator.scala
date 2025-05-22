@@ -16,9 +16,24 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal)
 
   // create iosMain directory
-  val iosMainOut = new File(spec.kotlinOutFolder.get, "iosMain/kotlin")
-  if (!iosMainOut.exists()) {
-    iosMainOut.mkdirs()
+  // we want to put it in the class path folder based on the contents of spec.kotlinPackage
+  // e.g. 'com.safetyculture.krux.domain' -> /com/safetyculture.krux.domain
+  private val iosMainOut = {
+    val baseDir = new File(spec.kotlinOutFolder.get, "iosMain/kotlin")
+    spec.kotlinPackage match {
+      case Some(pkg) =>
+        val packagePath = pkg.replace('.', File.separatorChar)
+        val targetDir = new File(baseDir, packagePath)
+        if (!targetDir.exists()) {
+          targetDir.mkdirs()
+        }
+        targetDir
+      case None =>
+        if (!baseDir.exists()) {
+          baseDir.mkdirs()
+        }
+        baseDir
+    }
   }
 
   /* helper class which assembles set of required imports for types used within a generated files */

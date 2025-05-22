@@ -1,0 +1,23 @@
+@extern "../extern/s12/incidents/v1/investigation.djinni.yaml"
+@extern "../extern/s12/incidents/v1/incidents.djinni.yaml"
+
+# A Djinni wrapper for InvestigationsService gRPC service
+# https://github.com/SafetyCulture/APISchema/blob/master/protos/s12/incidents/v1/docs.md#investigationsservice
+investigations_service = interface +c {
+  list_statuses(request: pb_incidents_Incidents_ListStatusesRequest, load_mode: load_mode): investigations_list_statuses_result;
+  create_investigation(request: pb_incidents_Incidents_CreateInvestigationRequest);
+  get_investigation(request: pb_incidents_Incidents_GetInvestigationRequest, load_mode: load_mode, cache_key: string): investigations_get_investigation_result;
+  update_investigation(request: pb_incidents_Incidents_UpdateInvestigationRequest);
+}
+
+investigations_list_statuses_result = record {
+  statuses: list<pb_incidents_Investigation_StatusListItem>;
+  next_page_token: optional<string>;
+  status_code: GRPC_status_code;
+}
+
+investigations_get_investigation_result = record {
+  response: optional<pb_incidents_Incidents_GetInvestigationResponse>;
+  status_code: GRPC_status_code;
+}
+

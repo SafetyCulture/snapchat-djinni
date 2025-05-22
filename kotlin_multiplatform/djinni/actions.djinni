@@ -1,0 +1,195 @@
+@extern "extern/s12/tasks/v1/action.djinni.yaml"
+@extern "extern/s12/tasks/v1/actions.djinni.yaml"
+@extern "extern/s12/tasks/v1/task.djinni.yaml"
+@extern "extern/s12/tasks/v1/customer_configuration.djinni.yaml"
+@extern "extern/s12/tasks/v1/timeline_item_message.djinni.yaml"
+
+# Actions API
+actions_API = interface +c {
+  # Create API
+  static create(): actions_API;
+
+  # Retrieve the list of actions with the given modifiers.
+  get_actions(load_mode: load_mode, request: pb_tasks_Actions_GetActionsRequest, cache_key: string): actions_response;
+
+  # Retrieve details of an action
+  get_action(load_mode: load_mode, action_id: string): action_response;
+
+  # Fetch all items for an action
+  get_timeline(load_mode: load_mode, action_id: string): action_timeline_response;
+
+  # Add comment to timeline
+  add_comment(action_id: string, comment: string);
+
+  # Add media to timeline
+  add_media(action_id: string, media_items: list<media_item>);
+
+  # Set site to an action
+  set_site(action_id: string, site_id: string, site_name: string);
+
+  # Clear site of an action
+  clear_site(action_id: string);
+
+  # Update status of an action
+  update_status(action_id: string, status_id: string, status_name: string);
+
+  # Set assignee to an action, if there is previous assignee, please use replace_assignee()
+  set_assignee(action_id: string, assignee: pb_tasks_Task_Task_Collaborator);
+
+  # Clear assignee to an action
+  clear_assignee(action_id: string, assignee: pb_tasks_Task_Task_Collaborator);
+
+  # Replace old assignee with new one
+  replace_assignee(action_id: string, old_assignee: pb_tasks_Task_Task_Collaborator, new_assignee: pb_tasks_Task_Task_Collaborator);
+
+  # Update the priority of an action
+  update_priority(action_id: string, priority_id: string);
+
+  # Update the title of an action
+  update_title(action_id: string, title: string);
+
+  # Update the description of an action
+  update_description(action_id: string, description: string);
+
+  # Update the assignees
+  update_assignees(action_id: string, assignees: list<pb_tasks_Task_Task_Collaborator>);
+
+  # Update the due date
+  update_due_date(action_id: string, due_date: date);
+
+  # Clear due date
+  clear_due_date(action_id: string);
+
+  # Delete an action
+  delete_action(action_id: string);
+
+  # Link an action to an inspection
+  link_action(action_id: string, inspection_id: string, inspection_item_id: string);
+
+  # Unlink an action to an inspection
+  unlink_action(action_id: string, inspection_id: string, inspection_item_id: string);
+
+  # Update assignees of multiple actions
+  bulk_update_assignees(action_ids: list<string>, assignees: list<pb_tasks_Task_Task_Collaborator>);
+
+  # Retrieve the current user access rules on tasks
+  get_action_status_configuration(load_mode: load_mode): action_status_configuration_response;
+
+  # Retrieve the current user edit fields access rules on tasks
+  get_action_edit_fields_configuration(load_mode: load_mode): action_edit_fields_configuration_response;
+
+  # Get action shared link.
+  get_action_shared_link(action_id: string): action_shared_link_response;
+
+  # Create action shared link.
+  create_action_shared_link(action_id: string): action_shared_link_response;
+
+  # Revoke action shared link
+  revoke_action_shared_link(action_id: string): GRPC_status_code;
+
+  # Get actions history for inspection 
+  get_inspection_action_history(load_mode: load_mode, template_id: string, site_id: optional<string>, excluded_inspection_id: string, asset_id: optional<string>): action_history_response;
+
+  # Update asset of an action
+  update_asset(action_id: string, asset_id: optional<string>, asset_code: optional<string>);
+
+  # Get count of actions for given inspections
+  get_inspection_action_summary(load_mode: load_mode, inspection_ids: list<string>): action_inspection_summary_response;
+
+  # Get action labels for org
+  get_action_labels(load_mode: load_mode): action_labels_response;
+
+  # Update labels of an action
+  update_labels(action_id: string, labels: list<pb_tasks_Task_ActionLabel>);
+
+  # Get action standalone org access
+  get_standalone_action_organisation_access(load_mode: load_mode): standalone_action_organisation_access_response;
+
+  # Get action priority list
+  get_action_priorities(load_mode: load_mode): action_priorities_response;
+
+  # Get action summary list
+  get_action_summaries(load_mode: load_mode, request: pb_tasks_Actions_GetActionSummariesRequest): action_summaries_response;
+
+  # Get scheduled actions 
+  get_scheduled_actions(load_mode: load_mode, request: pb_tasks_Actions_GetScheduledActionsRequest): scheduled_actions_response;
+}
+
+tasks_API_error = enum {
+  # 404 error
+  not_found;
+  # Permission Denied
+  permission_denied;
+  # Connection cancelled by remote
+  connection_cancelled;
+  # Generic error
+  unknown;
+}
+
+actions_response = record {
+  actions: list<pb_tasks_Action_Action>;
+  next_page_token: optional<string>;
+  error: optional<tasks_API_error>;
+}
+
+action_response = record {
+  action: optional<pb_tasks_Action_Action>;
+  status_code: GRPC_status_code;
+  read_only: bool;
+}
+
+action_timeline_response = record {
+   items: list<pb_tasks_TimelineItemMessage_TimelineItem>;
+   error: optional<tasks_API_error>;
+ }
+
+action_status_configuration_response = record {
+  configuration: list<pb_tasks_Task_StatusConfiguration>;
+  status_code: GRPC_status_code;
+}
+
+action_shared_link_response = record {
+  link: optional<pb_tasks_Action_ActionSharedLink>;
+  status_code: GRPC_status_code;
+}
+
+action_edit_fields_configuration_response = record {
+  configuration: pb_tasks_CustomerConfiguration_GetActionEditFieldsConfigurationResponse;
+  status_code: GRPC_status_code;
+}
+
+ action_history_response = record {
+  history: list<pb_tasks_Actions_ActionsHistory>;
+  status_code: GRPC_status_code;
+}
+
+action_inspection_summary_response = record {
+  summaries: list<pb_tasks_Actions_ActionsSummary>;
+  status_code: GRPC_status_code;
+}
+
+action_labels_response = record {
+  labels: list<pb_tasks_Task_ActionLabel>;
+  status_code: GRPC_status_code;
+}
+
+standalone_action_organisation_access_response = record {
+  response: pb_tasks_CustomerConfiguration_GetOrgStandaloneActionAccessResponse;
+  status_code: GRPC_status_code;
+}
+
+action_priorities_response = record {
+  priorities: list<pb_tasks_CustomerConfiguration_Priority>;
+  status_code: GRPC_status_code;
+}
+
+action_summaries_response = record {
+  summaries: list<pb_tasks_Actions_GetActionSummariesResponse_ActionSummary>;
+  next_page_token: optional<string>;
+  status_code: GRPC_status_code;
+}
+
+scheduled_actions_response = record {
+  scheduled_actions: list<pb_tasks_Actions_GetScheduledActionsResponse_ScheduledAction>;
+  status_code: GRPC_status_code;
+}
