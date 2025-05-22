@@ -1,0 +1,193 @@
+@extern "extern/s12/media/v1/media.djinni.yaml"
+@import "crux_generated/file_type.djinni"
+
+# Image Size
+media_size = enum {
+  small;
+  original;
+  preview;
+}
+
+media_type = enum {
+  image;
+  pdf;
+  video;
+}
+
+media_downloader_configuration = record {
+  timeout: i64;
+  file_name: optional<string>;
+}
+
+# Media download API
+media_downloader = interface +c {
+  # Create downloader for images
+  static image_downloader(media_id: string, token: string, size: media_size, file_type: optional<file_type>): media_downloader;
+  static image_downloader_with_configuration(media_id: string, token: string, size: media_size, file_type: optional<file_type>, configuration: media_downloader_configuration): media_downloader;
+
+  # Create downloader for document
+  static document_downloader(media_id: string, token: string, size: media_size): media_downloader;
+  static document_downloader_with_configuration(media_id: string, token: string, size: media_size, configuration: media_downloader_configuration): media_downloader;
+
+  # Download the media
+  download(cache_only: bool): media_download_result;
+
+  # Cancel media download attempt
+  cancel();
+}
+
+media_upload_request = record {
+  # id of the media
+  media_id: string;
+  # type of the media
+  type: file_type;
+  # path of the media file stored locally
+  path: string;
+  # document type
+  document_type: string;
+  # document id
+  document_id: string;
+  # is using multipart upload
+  is_multipart: bool;
+  # how many times this request was attempted
+  attempts: i64;
+  # status code of last attempt
+  status_code: i64;
+}
+
+media_observer = interface +o +j {
+  # TODO remove these 3 APIs if not necessary
+  media_did_start_uploading(media_id: string);
+  media_did_upload(media_id: string);
+  media_did_fail_to_upload(media_id: string);
+  # called when new media upload requests are enqueued.
+  # The callback will contain all upload requests which are currently persisted,
+  # it's caller's responsibility to filter out requests which are already being processed.
+  media_upload_did_enqueued(requests: list<media_upload_request>);
+}
+
+# Media API
+media_API = interface +c {
+  # Create API
+  static create(): media_API;
+
+  # Fetch a signed URL and attached information to stream a video
+  get_video_playlist(media_id: string, token: string): video_playlist_result;
+
+  # Get a signed URL for upload media
+  get_upload_signed_URL(request: pb_media_Media_UploadSignedURLRequest): media_URL_result;
+
+  # Complete multipart upload
+  complete_multipart_upload(request: pb_media_Media_CompleteMultipartUploadRequest): complete_multipart_upload_result;
+
+  # Save upload requests
+  # return the success/failure results for each media id
+  save_upload_requests(requests: list<media_upload_request>): map<string, bool>;
+
+  # Get all pending upload requests
+  all_upload_requests(): list<media_upload_request>;
+
+  # Delete an upload request
+  delete_upload_request(media_id: string);
+
+  # Mark an upload request as failed
+  mark_upload_request_as_failed(media_id: string, status_code: i64);
+
+  # Add observer to observe media upload progress
+  # returns the id of observer which can be used to remove the observer
+  add_media_observer(observer: media_observer): string;
+
+  # Remove media observer using the id
+  remove_media_observer(observer_id: string);
+
+  # Get media storage path
+  get_storage_path(media_id: string, type: file_type): string;
+
+  # Get root media storage path
+  get_root_storage_path(): string;
+}
+
+# Result of media download
+media_download_result = record {
+  # Id of the media
+  media_id: string;
+
+  # Succeeded?
+  succeeded: bool;
+
+  # Path of the file, nil if not succeeded
+  path: optional<string>;
+
+  # Reason for failure; none if the download was a success
+  reason: media_failure_reason;
+
+  # Indicates if the file is from cache
+  # e.g. already downloaded before
+  is_from_cache: bool;
+}
+
+# Result object for signed URL
+media_URL_result = record {
+  # Signed URL response, nil if failed
+  response: optional<pb_media_Media_SignedURLResponse>;
+  # Status code, gRPC status code for the result
+  status_code: GRPC_status_code;
+}
+
+# Result object for complete multipart upload
+complete_multipart_upload_result = record {
+  # Response, nil if failed
+  response: optional<pb_media_Media_CompleteMultipartUploadResponse>;
+  # Status code, gRPC status code for the result
+  status_code: GRPC_status_code;
+}
+
+# Reason
+media_failure_reason = enum {
+  # unknown error
+  unknown;
+  # no error
+  none;
+  # unsafe file
+  unsafe_file;
+  # scan is yet to be complete
+  scan_incomplete;
+  # not found
+  file_not_found;
+  # downloading is cancelled
+  cancelled;
+  # transcode failed
+  video_transcode_failed;
+  # transcode incomplete
+  video_transcode_incomplete;
+}
+
+# Media item
+media_item = record {
+  # Media Id
+  media_id: string;
+
+  # Media filename
+  filename: string;
+
+  # Media type
+  media_type: file_type;
+
+  # Token, used to download the media
+  token: optional<string>;
+}
+
+# Signed video info
+video_playlist_result = record {
+  # Success field
+  succeeded: bool;
+
+  # URL to the HLS manifest file, null if request didn't succeed
+  stream_url: optional<string>;
+
+  # List of cookies to be used when requesting resources, null if request didn't succeed
+  cookies: optional<list<string>>;
+
+  # Reason for failure; none if the request was a success
+  reason: media_failure_reason;
+}
