@@ -28,6 +28,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/UploadSignedURLRequest;'
+kotlin:
+  typename: 'UploadSignedURLRequest'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_SignedURLResponse
@@ -58,6 +62,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/SignedURLResponse;'
+kotlin:
+  typename: 'SignedURLResponse'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_Upload
@@ -88,6 +96,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/Upload;'
+kotlin:
+  typename: 'Upload'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_Upload_MultipartUpload
@@ -118,6 +130,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/Upload$MultipartUpload;'
+kotlin:
+  typename: 'MultipartUpload'
+  package: 'com.safetyculture.krux.s12.media.v1.Upload'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_Upload_MultipartUpload_UploadPartBody
@@ -148,6 +164,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/Upload$MultipartUpload$UploadPartBody;'
+kotlin:
+  typename: 'UploadPartBody'
+  package: 'com.safetyculture.krux.s12.media.v1.Upload.MultipartUpload'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_Download
@@ -178,6 +198,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/Download;'
+kotlin:
+  typename: 'Download'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_Download_Stream
@@ -208,6 +232,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/Download$Stream;'
+kotlin:
+  typename: 'Stream'
+  package: 'com.safetyculture.krux.s12.media.v1.Download'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_Download_MP4
@@ -238,6 +266,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/Download$MP4;'
+kotlin:
+  typename: 'MP4'
+  package: 'com.safetyculture.krux.s12.media.v1.Download'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_CompleteMultipartUploadRequest
@@ -268,6 +300,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/CompleteMultipartUploadRequest;'
+kotlin:
+  typename: 'CompleteMultipartUploadRequest'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_CompleteMultipartUploadRequest_UploadPart
@@ -298,6 +334,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/CompleteMultipartUploadRequest$UploadPart;'
+kotlin:
+  typename: 'UploadPart'
+  package: 'com.safetyculture.krux.s12.media.v1.CompleteMultipartUploadRequest'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_CompleteMultipartUploadResponse
@@ -328,6 +368,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/CompleteMultipartUploadResponse;'
+kotlin:
+  typename: 'CompleteMultipartUploadResponse'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_DownloadSignedURLRequest
@@ -358,6 +402,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/DownloadSignedURLRequest;'
+kotlin:
+  typename: 'DownloadSignedURLRequest'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_ValidateMediaSafeRequest
@@ -388,6 +436,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/ValidateMediaSafeRequest;'
+kotlin:
+  typename: 'ValidateMediaSafeRequest'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_ValidateMediaSafeResponse
@@ -418,6 +470,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/ValidateMediaSafeResponse;'
+kotlin:
+  typename: 'ValidateMediaSafeResponse'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_GetGlobalDownloadSignedURLRequest
@@ -448,6 +504,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/GetGlobalDownloadSignedURLRequest;'
+kotlin:
+  typename: 'GetGlobalDownloadSignedURLRequest'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_GetGlobalDownloadSignedURLResponse
@@ -478,6 +538,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/GetGlobalDownloadSignedURLResponse;'
+kotlin:
+  typename: 'GetGlobalDownloadSignedURLResponse'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_GetMediaLibraryItemsRequest
@@ -508,6 +572,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/GetMediaLibraryItemsRequest;'
+kotlin:
+  typename: 'GetMediaLibraryItemsRequest'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_GetMediaLibraryItemsRequest_Filters
@@ -538,6 +606,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/GetMediaLibraryItemsRequest$Filters;'
+kotlin:
+  typename: 'Filters'
+  package: 'com.safetyculture.krux.s12.media.v1.GetMediaLibraryItemsRequest'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_MediaLibraryItem
@@ -568,6 +640,10 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/MediaLibraryItem;'
+kotlin:
+  typename: 'MediaLibraryItem'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_media_Media_GetMediaLibraryItemsResponse
@@ -598,4 +674,8 @@ jni:
   header: '"s12/media/v1/media.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/media/v1/GetMediaLibraryItemsResponse;'
+kotlin:
+  typename: 'GetMediaLibraryItemsResponse'
+  package: 'com.safetyculture.krux.s12.media.v1'
+  isProtobufMessage: true
 

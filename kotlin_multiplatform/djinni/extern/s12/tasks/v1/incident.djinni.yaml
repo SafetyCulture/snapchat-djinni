@@ -28,6 +28,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Incident;'
+kotlin:
+  typename: 'Incident'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_Category
@@ -58,6 +62,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Category;'
+kotlin:
+  typename: 'Category'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_CategoryVisibilitySummary
@@ -88,6 +96,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/CategoryVisibilitySummary;'
+kotlin:
+  typename: 'CategoryVisibilitySummary'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_MultipleChoiceOption
@@ -118,6 +130,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/MultipleChoiceOption;'
+kotlin:
+  typename: 'MultipleChoiceOption'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_MultipleChoiceOptions
@@ -148,6 +164,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/MultipleChoiceOptions;'
+kotlin:
+  typename: 'MultipleChoiceOptions'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_Question
@@ -178,6 +198,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Question;'
+kotlin:
+  typename: 'Question'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_QuestionSet
@@ -208,6 +232,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/QuestionSet;'
+kotlin:
+  typename: 'QuestionSet'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_Item
@@ -238,6 +266,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Item;'
+kotlin:
+  typename: 'Item'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_DeviceReading
@@ -268,6 +300,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/DeviceReading;'
+kotlin:
+  typename: 'DeviceReading'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_Inspection
@@ -298,6 +334,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Inspection;'
+kotlin:
+  typename: 'Inspection'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_IssueExternalConfig
@@ -328,6 +368,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/IssueExternalConfig;'
+kotlin:
+  typename: 'IssueExternalConfig'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_QuestionAnswers
@@ -358,6 +402,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/QuestionAnswers;'
+kotlin:
+  typename: 'QuestionAnswers'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_QuestionAndAnswers
@@ -388,6 +436,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/QuestionAndAnswers;'
+kotlin:
+  typename: 'QuestionAndAnswers'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_Answer
@@ -418,6 +470,10 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/Answer;'
+kotlin:
+  typename: 'Answer'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
 ---
 name: pb_tasks_Incident_AnswerText
@@ -448,4 +504,8 @@ jni:
   header: '"s12/tasks/v1/incident.djinni.jni.h"'
   typename: jobject
   typeSignature: 'Lcom/safetyculture/s12/tasks/v1/AnswerText;'
+kotlin:
+  typename: 'AnswerText'
+  package: 'com.safetyculture.krux.s12.tasks.v1'
+  isProtobufMessage: true
 
