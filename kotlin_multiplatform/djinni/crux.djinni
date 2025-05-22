@@ -1,5 +1,0 @@
-# Platform type
-platform_type = enum {
-  android_platform;
-  ios_platform;
-}
