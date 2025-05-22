@@ -58,6 +58,7 @@ class KMPIOSObjcMapper() {
         arg.base match {
           case _: MPrimitive | MString => map(s"$valueName", arg)
           case d: MDef if d.defType == DEnum => s"$valueName?.toNSNumber()"
+          case MList => s"$valueName?.let { list -> " + map("list", tm.args.head) + " }"
           case _ => map(s"$valueName?", arg)
         }
 

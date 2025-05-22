@@ -2,9 +2,11 @@ package djinni
 
 import meta._
 
+import djinni.generatorTools.Spec
+
 import scala.collection.mutable
 
-class KMPIOSKotlinMapper(marshal: KotlinMarshal) {
+class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
 
   def typeRefs(m: MExpr): Set[String] = {
     val refs = mutable.Set[String]()
@@ -28,6 +30,14 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal) {
       case MDate =>
         refs.add("kotlinx.datetime.toKotlinInstant")
 
+      case d: MDef =>
+        d.defType match {
+          case DInterface =>
+            // we don't support mapping of interfaces yet
+          case _ =>
+            refs.add(withCInteropPackage(objcMarshal.typename(m)))
+        }
+
       case _ =>
     }
 
@@ -45,12 +55,12 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal) {
           case d: MDef =>
             d.defType match {
               case DEnum => "Long"
-              case _ => generateTodo(d)
+              case _ => objcMarshal.typename(listType)
             }
           case _ => marshal.typename(listType)
         }
         val listValueName = listType.base match {
-          case MDate => s"(it as ${castType})"
+          case MDate | _: MDef => s"(it as ${castType})"
           case _ => s"it as ${castType}"
         }
         s"$valueName.map { " + map(s"${listValueName}", listType) + " }"
@@ -93,6 +103,10 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal) {
 
       case _ => generateTodo(tm.base)
     }
+  }
+
+  def withCInteropPackage(typeName: String): String = {
+    spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
   }
 
   def generateTodo(m: Meta): String = {
