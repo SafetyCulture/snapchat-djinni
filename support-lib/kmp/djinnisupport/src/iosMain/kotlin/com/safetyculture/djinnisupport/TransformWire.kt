@@ -15,21 +15,24 @@ import kotlinx.cinterop.value
 import platform.Foundation.dataWithBytesNoCopy
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-inline fun <ObjcProtoType> parseFromByteArray(
+fun <ObjcProtoType> parseFromByteArray(
     bytes: ByteArray,
     parse: (NSData, CPointer<ObjCObjectVar<NSError?>>?) -> ObjcProtoType?
 ): ObjcProtoType = memScoped {
     bytes.usePinned { pinned ->
-        val error = alloc<ObjCObjectVar<NSError?>>()
+        val error: ObjCObjectVar<NSError?> = alloc<ObjCObjectVar<NSError?>>()
         val nsData = NSData.dataWithBytesNoCopy(
             bytes = pinned.addressOf(0),
-            length = bytes.size.toULong()
+            length = bytes.size.toULong(),
+            freeWhenDone = false
         )
+
         val result = parse(nsData, error.ptr)
         if (result == null) {
             val errorMessage = error.value?.localizedDescription ?: "Unknown error"
             throw IllegalArgumentException("Failed to parse wire object: $errorMessage")
         }
+
         result
     }
 }
