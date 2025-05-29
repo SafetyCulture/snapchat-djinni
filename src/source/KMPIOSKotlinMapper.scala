@@ -12,20 +12,41 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
     val refs = mutable.Set[String]()
     m.base match {
       case MOptional =>
-        // unwrap optional type
+        // evaluate optional type
         refs ++= typeRefs(m.args.head)
 
-      case MList =>
-        // special cases for list types
+      case MList | MSet =>
+        // special cases for list / set types
         m.args.head.base match {
           case MDate =>
-            // will need to cast the list type to NSDate
+            // will need to cast the list / set type to NSDate
             refs.add("platform.Foundation.NSDate")
           case _ =>
         }
 
-        // unwrap list item type
+        // evaluate list / set type
         refs ++= typeRefs(m.args.head)
+
+      case MMap =>
+        val key = m.args.head
+        val value = m.args.last
+
+        // special cases for key type
+        key.base match {
+          case MDate =>
+            refs.add("platform.Foundation.NSDate")
+          case _ =>
+        }
+
+        // special cases for value type
+        value.base match {
+          case MDate =>
+            refs.add("platform.Foundation.NSDate")
+          case _ =>
+        }
+
+        // evaluate key and value types
+        refs ++= typeRefs(key) ++ typeRefs(value)
 
       case MDate =>
         refs.add("kotlinx.datetime.toKotlinInstant")
@@ -38,9 +59,11 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
       case d: MDef =>
         d.defType match {
           case DInterface =>
-            // we don't support mapping of interfaces yet
-          case _ =>
+          // we don't support mapping of interfaces yet
+          case DRecord =>
+            // we need this when unboxing map values / optionals
             refs.add(withCInteropPackage(objcMarshal.typename(m)))
+          case _ =>
         }
 
       case _ =>
@@ -55,37 +78,16 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
       case MDate => s"$valueName.toKotlinInstant()"
       case MList =>
         val listType = tm.args.head
-        val castType = listType.base match {
-          case MDate => "NSDate"
-          case d: MDef =>
-            d.defType match {
-              case DEnum => "Long"
-              case _ => objcMarshal.typename(listType)
-            }
-          case _: MExtern => objcMarshal.typename(listType)
-          case _ => marshal.typename(listType)
-        }
-        val listValueName = listType.base match {
-          case MDate | _: MDef | _: MExtern =>
-            s"(it as ${castType})"
-          case _ => s"it as ${castType}"
-        }
-        s"$valueName.map { " + map(s"${listValueName}", listType) + " }"
+        s"$valueName.map { " + map(s"${cast("it", listType)}", listType) + " }"
+      case MSet =>
+        s"$valueName.map { ${map(cast("it", tm.args.head), tm.args.head)} }.toSet()"
 
-      //      case MMap =>
-      //        val key = tm.args.head.base
-      //        val value = tm.args.last.base
-      //        (key, value) match {
-      //        case (_: MPrimitive, _: MPrimitive) |
-      //             (MString, _: MPrimitive) |
-      //             (_: MPrimitive, MString) |
-      //             (MString, MString) => s"$valueName.toMap()"
-      //
-      //        case (_: MPrimitive, _) |
-      //             (MString, _) => s"$valueName.mapValues { ${map("it.value", tm.args.last)} }"
-      //
-      //        case _ => s"$valueName.map { (k, v) -> ${map("k", tm.args.head)} to ${map("v", tm.args.last)}) }.toMap()"
-      //      }
+      case MMap =>
+        val key = tm.args.head
+        val value = tm.args.last
+
+        // primitive key / value case
+        s"$valueName.map { ${map(cast("it.key", key), key)} to ${map(cast("it.value", value), value)} }.toMap()"
 
       case d: MDef => d.defType match {
         case DEnum => s"${marshal.typename(tm)}.fromObjc($valueName)"
@@ -103,8 +105,30 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
       case MOptional =>
         val arg = tm.args.head
         arg.base match {
-          case _: MPrimitive | MString => map(s"$valueName", arg)
+          case p: MPrimitive =>
+            p._idlName match {
+              case "bool" => s"$valueName?.boolValue()"
+              case "i8" => s"$valueName?.charValue()"
+              case "i16" => s"$valueName?.shortValue()"
+              case "i32" => s"$valueName?.intValue()"
+              case "i64" => s"$valueName?.longValue()"
+              case "f32" => s"$valueName?.floatValue()"
+              case "f64" => s"$valueName?.doubleValue()"
+              case _ => generateTodo("Map boxed primitive type: " + p._idlName)
+            }
+          case MString => map(s"$valueName", arg)
           case d: MDef if d.defType == DEnum => s"$valueName?.let { ${marshal.typename(arg)}.fromNSNumber(it) }"
+
+          case MSet =>
+            val item = arg.args.head
+            s"$valueName?.map { ${map(cast("it", item), item)} }?.toSet()"
+
+          case MMap =>
+            val key = arg.args.head
+            val value = arg.args.last
+            // primitive key / value case
+            s"$valueName?.map { ${map(cast("it.key", key), key)} to ${map(cast("it.value", value), value)} }?.toMap()"
+
           case _ => map(s"$valueName?", arg)
         }
 
@@ -112,7 +136,26 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
     }
   }
 
- def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
+  def cast(valueName: String, tm: MExpr): String = {
+    val castType = tm.base match {
+      case MDate => "NSDate"
+      case d: MDef =>
+        d.defType match {
+          case DEnum => "Long"
+          case _ => objcMarshal.typename(tm)
+        }
+      case _: MExtern => objcMarshal.typename(tm)
+      case _ => marshal.typename(tm)
+    }
+
+    tm.base match {
+      case MDate | _: MDef | _: MExtern =>
+        s"($valueName as $castType)"
+      case _ => s"$valueName as $castType"
+    }
+  }
+
+  def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
 
   def withCInteropPackage(typeName: String): String = {
     spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
