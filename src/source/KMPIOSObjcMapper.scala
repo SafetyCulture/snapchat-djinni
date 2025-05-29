@@ -12,8 +12,19 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
     val refs = mutable.Set[String]()
 
     m.base match {
-      case MOptional => refs ++= typeRefs(m.args.head)
-      case MList => refs ++= typeRefs(m.args.head)
+      case MOptional =>
+        // special cases
+        m.args.head.base match {
+          case _: MPrimitive =>
+            refs.add("platform.Foundation.NSNumber")
+          case _ =>
+        }
+
+        // evaluate optional type
+        refs ++= typeRefs(m.args.head)
+
+      case MList | MSet => refs ++= typeRefs(m.args.head)
+      case MMap => refs ++= typeRefs(m.args.head) ++ typeRefs(m.args.last)
       case MDate => refs.add("kotlinx.datetime.toNSDate")
       case e: MExtern if e.kotlin.isProtobufMessage =>
         refs.add(withSupportPackage("parseFromByteArray"))
@@ -32,20 +43,16 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
 
       case MList => s"ArrayList($valueName.map { " + map("it", tm.args.head) + " })"
 
-      //      case MMap =>
-      //        val key = tm.args.head.base
-      //        val value = tm.args.last.base
-      //        (key, value) match {
-      //          case (_: MPrimitive, _: MPrimitive) |
-      //               (MString, _: MPrimitive) |
-      //               (_: MPrimitive, MString) |
-      //               (MString, MString) => s"$valueName.toMap(HashMap())"
-      //
-      //          case (_: MPrimitive, _) |
-      //               (MString, _) => s"$valueName.mapValues { ${map("it.value", tm.args.last)} }.toMap(HashMap())"
-      //
-      //          case _ => s"$valueName.map { (k, v) -> ${map("k", tm.args.head)} to ${map("v", tm.args.last)}) }.toMap(HashMap())"
-      //        }
+      case MSet =>
+        s"$valueName.map { ${map("it", tm.args.head)} }.toSet()"
+
+      case MMap =>
+        val key = tm.args.head
+        val value = tm.args.last
+
+        // primitive key / value case
+        s"$valueName.map { ${map("it.key", key)} to ${map("it.value", value)} }.toMap()"
+
 
       case d: MDef => d.defType match {
         case DEnum => s"$valueName.toObjc()"
@@ -63,10 +70,28 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
       case MOptional =>
         val arg = tm.args.head
         arg.base match {
-          case _: MPrimitive | MString => map(s"$valueName", arg)
+          case MString => map(s"$valueName", arg)
+          case p: MPrimitive =>
+            p._idlName match {
+              case "bool" => s"$valueName?.let { NSNumber(bool = it) }"
+              case "i8" => s"$valueName?.let { NSNumber(char = it) }"
+              case "i16" => s"$valueName?.let { NSNumber(short = it) }"
+              case "i32" => s"$valueName?.let { NSNumber(int = it) }"
+              case "i64" => s"$valueName?.let { NSNumber(long = it) }"
+              case "f32" => s"$valueName?.let { NSNumber(float = it) }"
+              case "f64" => s"$valueName?.let { NSNumber(double = it) }"
+              case _ => generateTodo("Map boxed primitive type: " + p._idlName)
+            }
+
           case d: MDef if d.defType == DEnum => s"$valueName?.toNSNumber()"
           case _: MExtern => s"$valueName?.let { ${map("it", arg)} }"
           case MList => s"$valueName?.let { list -> " + map("list", tm.args.head) + " }"
+          case MSet => s"$valueName?.map { " + map("it", arg.args.head) + " }?.toSet()"
+          case MMap =>
+            val key = arg.args.head
+            val value = arg.args.last
+            // primitive key / value case
+            s"$valueName?.map { ${map("it.key", key)} to ${map("it.value", value)} }?.toMap()"
           case _ => map(s"$valueName?", arg)
         }
 
