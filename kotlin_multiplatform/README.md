@@ -66,15 +66,15 @@ Constants are not currently supported.
 | Parameters |     ✅      |    ✅     |  ✅   |  ✅   |  ✅  |  ✅  |  ✅   |   ✅    |    ✅     |
 
 ### Mapping
-| Feature   | Primitives | Optional | Date | List | Set | Map<sup>1</sup> | Enum | Record<sup>2</sup> | Interfaces | External<sup>3</sup> |
+| Feature   | Primitives | Optional | Date | List | Set<sup>1</sup> | Map<sup>1</sup> | Enum | Record<sup>2</sup> | Interfaces | External<sup>3</sup> |
 |-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
-| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |  ❌  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
-| From Java |     ✅      |    ✅     |  ✅   |  ✅   | ❌️  |       ⚠️        |  ✅   |         ⚠️         |     ❌      |          ⚠️          |
-| To ObjC   |     ⚠️     |    ✅️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
-| From ObjC |     ⚠️     |    ✅️    |  ✅   |  ❌   |  ❌  |        ❌        |  ✅   |         ⚠️         |     ❌      |          ❌           |
+| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |  ❌  |      ⚠️       |  ✅   |         ✅         |     ❌      |          ⚠️          |
+| From Java |     ✅      |    ✅     |  ✅   |  ✅   | ❌️  |       ⚠️      |  ✅   |         ✅         |     ❌      |          ⚠️          |
+| To ObjC   |     ✅️     |    ✅️    |  ✅   |  ✅   |   ✅  |       ✅        |  ✅   |         ✅         |     ❌      |          ⚠️          |
+| From ObjC |     ✅️     |    ✅️    |  ✅   |  ✅   |   ✅  |       ✅        |  ✅   |         ✅         |     ❌      |         ⚠️          |
 
-<sup>1</sup>Support is limited to conversion of maps with primitive/string keys
+<sup>1</sup>Map keys and set item types are restricted to primitives, strings, dates and enums.
 
-<sup>2</sup>Records are supported so long as their field types are also supported
+<sup>2</sup>Records are supported so long as their field types are also supported.
 
-<sup>3</sup>External types support is limited to wire generated protobuf messages
+<sup>3</sup>External types support is limited to wire generated protobuf messages.
