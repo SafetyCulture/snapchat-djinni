@@ -7,14 +7,14 @@
 @interface DBClientReturnedRecord : NSObject
 - (nonnull instancetype)init NS_UNAVAILABLE;
 + (nonnull instancetype)new NS_UNAVAILABLE;
-- (nonnull instancetype)initWithRecordId:(int64_t)recordId
+- (nonnull instancetype)initWithRecordId:(int64_t)recordID
                                  content:(nonnull NSString *)content
                                     misc:(nullable NSString *)misc NS_DESIGNATED_INITIALIZER;
-+ (nonnull instancetype)clientReturnedRecordWithRecordId:(int64_t)recordId
++ (nonnull instancetype)clientReturnedRecordWithRecordId:(int64_t)recordID
                                                  content:(nonnull NSString *)content
                                                     misc:(nullable NSString *)misc;
 
-@property (nonatomic, readonly) int64_t recordId;
+@property (nonatomic, readonly) int64_t recordID;
 
 @property (nonatomic, readonly, nonnull) NSString * content;
 

@@ -154,7 +154,7 @@ static_assert(__has_feature(objc_arc), "Djinni requires ARC to be enabled for th
     } DJINNI_TRANSLATE_EXCEPTIONS()
 }
 
-+ (nullable id<DBUserToken>)tokenId:(nullable id<DBUserToken>)t {
++ (nullable id<DBUserToken>)tokenID:(nullable id<DBUserToken>)t {
     try {
         auto objcpp_result_ = ::testsuite::TestHelpers::token_id(::djinni::Optional<std::experimental::optional, ::djinni_generated::UserToken>::toCpp(t));
         return ::djinni::Optional<std::experimental::optional, ::djinni_generated::UserToken>::fromCpp(objcpp_result_);
@@ -174,7 +174,7 @@ static_assert(__has_feature(objc_arc), "Djinni requires ARC to be enabled for th
     } DJINNI_TRANSLATE_EXCEPTIONS()
 }
 
-+ (int64_t)cppTokenId:(nullable id<DBUserToken>)t {
++ (int64_t)cppTokenID:(nullable id<DBUserToken>)t {
     try {
         auto objcpp_result_ = ::testsuite::TestHelpers::cpp_token_id(::djinni_generated::UserToken::toCpp(t));
         return ::djinni::I64::fromCpp(objcpp_result_);
@@ -196,7 +196,7 @@ static_assert(__has_feature(objc_arc), "Djinni requires ARC to be enabled for th
     } DJINNI_TRANSLATE_EXCEPTIONS()
 }
 
-+ (nonnull DBAssortedPrimitives *)assortedPrimitivesId:(nonnull DBAssortedPrimitives *)i {
++ (nonnull DBAssortedPrimitives *)assortedPrimitivesID:(nonnull DBAssortedPrimitives *)i {
     try {
         auto objcpp_result_ = ::testsuite::TestHelpers::assorted_primitives_id(::djinni_generated::AssortedPrimitives::toCpp(i));
         return ::djinni_generated::AssortedPrimitives::fromCpp(objcpp_result_);

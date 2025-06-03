@@ -1,0 +1,38 @@
+version: 2.1
+
+jobs:
+  generate:
+    docker:
+      - image: cimg/openjdk:11.0
+    steps:
+      - checkout
+      - run:
+          name: Install system dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y rsync
+      - run:
+          name: Install Bazelisk
+          command: |
+            # Detect architecture and download appropriate binary
+            ARCH=$(uname -m)
+            if [ "$ARCH" = "aarch64" ]; then
+              BAZEL_ARCH="linux-arm64"
+            else
+              BAZEL_ARCH="linux-amd64"
+            fi
+            curl -Lo bazelisk https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-${BAZEL_ARCH}
+            chmod +x bazelisk
+            sudo mv bazelisk /usr/local/bin/bazel
+      - run:
+          name: Make script executable
+          command: chmod +x ./ci/generate.sh
+      - run:
+          name: Run generate script
+          command: ./ci/generate.sh
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - generate
