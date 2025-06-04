@@ -67,11 +67,11 @@ Constants are not currently supported.
 
 ### Mapping
 | Feature   | Primitives | Optional | Date | List | Set<sup>1</sup> | Map<sup>1</sup> | Enum | Record<sup>2</sup> | Interfaces | External<sup>3</sup> |
-|-----------|:----------:|:--------:|:----:|:----:|:---:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
-| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |  ❌  |      ⚠️       |  ✅   |         ✅         |     ❌      |          ⚠️          |
-| From Java |     ✅      |    ✅     |  ✅   |  ✅   | ❌️  |       ⚠️      |  ✅   |         ✅         |     ❌      |          ⚠️          |
-| To ObjC   |     ✅️     |    ✅️    |  ✅   |  ✅   |   ✅  |       ✅        |  ✅   |         ✅         |     ❌      |          ⚠️          |
-| From ObjC |     ✅️     |    ✅️    |  ✅   |  ✅   |   ✅  |       ✅        |  ✅   |         ✅         |     ❌      |         ⚠️          |
+|-----------|:----------:|:--------:|:----:|:----:|:---------------:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
+| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
+| From Java |     ✅      |    ✅     |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
+| To ObjC   |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
+| From ObjC |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
 
 <sup>1</sup>Map keys and set item types are restricted to primitives, strings, dates and enums.
 

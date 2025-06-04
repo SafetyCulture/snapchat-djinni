@@ -36,7 +36,7 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
     return refs.toSet
   }
 
-  def map(valueName: String, tm: MExpr, optional: Boolean = false): String = {
+  def map(valueName: String, tm: MExpr): String = {
     tm.base match {
       case _: MPrimitive | MString => valueName
       case MDate => s"$valueName.toNSDate()"
