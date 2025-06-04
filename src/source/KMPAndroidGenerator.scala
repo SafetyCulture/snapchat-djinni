@@ -10,12 +10,15 @@ import java.io.File
 import scala.collection.mutable
 
 class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
-  val marshal = new KotlinMarshal(spec)
+  val kotlinMarshal = new KotlinMarshal(spec)
   val javaMarshal = new JavaMarshal(spec)
 
+  private val javaMapper = new KMPAndroidJavaMapper(javaMarshal, spec)
+  private val kotlinMapper = new KMPAndroidKotlinMapper(spec)
+
   // create androidMain directory
-  // we want to put it in the class path folder based on the contents of spec.kotlinPackage
-  // e.g. 'com.safetyculture.krux.domain' -> /com/safetyculture.krux.domain
+  // create class path folder based on the contents of spec.kotlinPackage
+  // e.g. 'com.safetyculture.djinni.test.bridge' -> /com/safetyculture/djinni/test/bridge
   private val androidMainOut = {
     val baseDir = new File(spec.kotlinOutFolder.get, "androidMain/kotlin")
     spec.kotlinPackage match {
@@ -49,7 +52,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     }
 
     def find(m: Meta): Unit = {
-      for (r <- marshal.references(m)) r match {
+      for (r <- kotlinMarshal.references(m)) r match {
         case ImportRef(arg) => kotlin.add(arg)
         case _ =>
       }
@@ -74,95 +77,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-  def mapToJava(valueName: String, tm: MExpr): String = {
-    tm.base match {
-      case _: MPrimitive => valueName
-      case MDate => s"Date($valueName.toEpochMilliseconds())"
 
-      case MMap =>
-        val key = tm.args.head.base
-        val value = tm.args.last.base
-        (key, value) match {
-          case (_: MPrimitive, _: MPrimitive) |
-               (MString, _: MPrimitive) |
-               (_: MPrimitive, MString) |
-               (MString, MString) => s"$valueName.toMap(HashMap())"
 
-          case (_: MPrimitive, _) |
-               (MString, _) => s"$valueName.mapValues { ${mapToJava("it.value", tm.args.last)} }.toMap(HashMap())"
-
-          case _ => s"$valueName.map { (k, v) -> ${mapToJava("k", tm.args.head)} to ${mapToJava("v", tm.args.last)}) }.toMap(HashMap())"
-        }
-
-      case m: MDef => m.defType match {
-        case DEnum | DRecord => s"$valueName.toJava()"
-        case DInterface => "TODO()"
-      }
-
-      case MList =>
-        s"ArrayList($valueName.map { " + mapToJava("it", tm.args.head) + " })"
-
-      case e: MExtern if e.kotlin.isProtobufMessage =>
-        val javaType = javaMarshal.fqTypename(tm)
-        s"$javaType.parseFrom($valueName.encode())"
-      case e: MExtern =>
-        throw new AssertionError("mapToJava called on extern type which isn't a protobuf message")
-
-      case MOptional =>
-        val arg = tm.args.head
-        arg.base match {
-          case _: MPrimitive | MString => mapToJava(s"$valueName", arg)
-          case MDate | _: MExtern  => s"$valueName?.let { ${mapToJava("it", arg)} }"
-          case MList => s"$valueName?.let { list -> ${mapToJava("list", arg)} }"
-          case _ => mapToJava(s"$valueName?", arg)
-        }
-
-      case _ => valueName
-    }
-  }
-
-  def mapToKotlin(valueName: String, tm: MExpr): String = {
-    tm.base match {
-      case _: MPrimitive => valueName
-      case MDate => s"Instant.fromEpochMilliseconds($valueName.time)"
-      case MMap =>
-        val key = tm.args.head.base
-        val value = tm.args.last.base
-        (key, value) match {
-        case (_: MPrimitive, _: MPrimitive) |
-             (MString, _: MPrimitive) |
-             (_: MPrimitive, MString) |
-             (MString, MString) => s"$valueName.toMap()"
-
-        case (_: MPrimitive, _) |
-             (MString, _) => s"$valueName.mapValues { ${mapToKotlin("it.value", tm.args.last)} }"
-
-        case _ => s"$valueName.map { (k, v) -> ${mapToKotlin("k", tm.args.head)} to ${mapToKotlin("v", tm.args.last)}) }.toMap()"
-      }
-
-      case d: MDef => d.defType match {
-        case DEnum | DRecord => s"$valueName.toKotlin()"
-        case DInterface => throw new AssertionError("fieldToKotlin called on DInterface")
-      }
-
-      case MList =>
-        s"$valueName.map { " + mapToKotlin("it", tm.args.head) + " }"
-
-      case e: MExtern if e.kotlin.isProtobufMessage =>
-        val kotlinType = e.kotlin.typename
-        s"$kotlinType.ADAPTER.decode($valueName.toByteArray())"
-
-      case MOptional =>
-        val arg = tm.args.head
-        arg.base match {
-          case _: MPrimitive | MString => mapToKotlin(s"$valueName", arg)
-          case MDate | _: MExtern => s"$valueName?.let { ${mapToKotlin("it", arg)} }"
-          case _ => mapToKotlin(s"$valueName?", arg)
-        }
-
-      case _ => valueName
-    }
-  }
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
@@ -193,19 +109,19 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
           /* method implementation:
            * override fun method( $commonMainParams ): $commonMainReturn {
            *   val ret = $javaInterfaceLocal.$javaMethod(
-           *     mapToJava($commonMainParam),
+           *     javaMapper.map($commonMainParam),
            *     ...
            *   )
-           *   return mapToKotlin(ret)
+           *   return kotlinMapper.map(ret)
            * }
            */
 
           val commonMainMethod = idKotlin.method(m.ident)
-          val commonMainReturn = marshal.returnType(m.ret)
+          val commonMainReturn = kotlinMarshal.returnType(m.ret)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
                 val paramName = idKotlin.local(p.ident)
-                val paramType = marshal.paramType(p.ty)
+                val paramType = kotlinMarshal.paramType(p.ty)
                 w.w(s"$paramName: $paramType")
           }
 
@@ -215,12 +131,12 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
 
             w.w(s"$javaInterfaceLocal.$commonMainMethod").parens(m.params) { p =>
               val paramName = idKotlin.local(p.ident)
-              w.w(s"${mapToJava(paramName, p.ty.resolved)}")
+              w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
             }
 
             // if m.ret isn't empty then write output of retToKotlin
             m.ret.map { ty =>
-              w.wl.wl(s"return ${mapToKotlin("ret", ty.resolved)}")
+              w.wl.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
             }
           }
         }
@@ -276,7 +192,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"fun $kotlinRecord.toJava(): $javaRecord").braced {
         w.w(s"return $javaRecord").parens(r.fields) { f =>
           val fieldName = idJava.local(f.ident)
-          w.w(s"${mapToJava(s"this.$fieldName", f.ty.resolved)}")
+          w.w(s"${javaMapper.map(s"this.$fieldName", f.ty.resolved)}")
         }
       }
 
@@ -284,7 +200,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"fun $javaRecord.toKotlin(): $kotlinRecord").braced {
         w.w(s"return $kotlinRecord").parens(r.fields) { f =>
             val fieldName = idKotlin.local(f.ident)
-            w.w(s"$fieldName = ${mapToKotlin(s"this.$fieldName", f.ty.resolved)}")
+            w.w(s"$fieldName = ${kotlinMapper.map(s"this.$fieldName", f.ty.resolved)}")
         }
       }
     })
