@@ -5,7 +5,7 @@ import meta._
 
 import scala.collection.mutable
 
-class KMPAndroidKotlinMapper(spec: Spec) {
+class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal) {
   def map(valueName: String, tm: MExpr, optional: Boolean = false): String = {
     val unwrap = if (optional) "?" else ""
     tm.base match {
@@ -43,7 +43,7 @@ class KMPAndroidKotlinMapper(spec: Spec) {
         s"$valueName.map { " + map("it", tm.args.head) + " }"
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
-        val kotlinType = e.kotlin.typename
+        val kotlinType = kotlinMarshal.fqTypename(tm)
         s"$kotlinType.ADAPTER.decode($valueName.toByteArray())"
 
       case MOptional =>
