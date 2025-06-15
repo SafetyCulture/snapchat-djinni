@@ -73,7 +73,7 @@ Constants are not currently supported.
 | To ObjC   |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
 | From ObjC |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
 
-<sup>1</sup>Map keys and set item types are restricted to primitives, strings, dates and enums.
+<sup>1</sup>Map keys and set item types are restricted to primitives, strings and enums.
 
 <sup>2</sup>Records are supported so long as their field types are also supported.
 
