@@ -2,22 +2,22 @@ package djinni
 
 import generatorTools.{ImportRef, Spec, SymbolReference}
 
-import djinni.ast.TypeRef
-import djinni.meta.{MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
+import ast.TypeRef
+import meta.{MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
 
 class KotlinMarshal(spec: Spec) extends Marshal(spec) {
 
-  override def typename(tm: meta.MExpr): String = toKotlinType(tm, None)
-  override def fqTypename(tm: meta.MExpr): String = toKotlinType(tm, spec.kotlinPackage)
+  override def typename(tm: meta.MExpr): String = toKotlinType(tm)
+  override def fqTypename(tm: meta.MExpr): String = toKotlinType(tm, fullyQualified = true)
 
-  override def paramType(tm: meta.MExpr): String = toKotlinType(tm, None)
-  override def fqParamType(tm: meta.MExpr): String = toKotlinType(tm, spec.kotlinPackage)
+  override def paramType(tm: meta.MExpr): String = toKotlinType(tm)
+  override def fqParamType(tm: meta.MExpr): String = toKotlinType(tm, fullyQualified = true)
 
-  override def returnType(ret: Option[TypeRef]): String = ret.fold("Unit")(ty => toKotlinType(ty.resolved, None))
-  override def fqReturnType(ret: Option[TypeRef]): String = ret.fold("Unit")(ty => toKotlinType(ty.resolved, spec.kotlinPackage))
+  override def returnType(ret: Option[TypeRef]): String = ret.fold("Unit")(ty => toKotlinType(ty.resolved))
+  override def fqReturnType(ret: Option[TypeRef]): String = ret.fold("Unit")(ty => toKotlinType(ty.resolved, fullyQualified = true))
 
-  override def fieldType(tm: meta.MExpr): String = toKotlinType(tm, None)
-  override def fqFieldType(tm: meta.MExpr): String = toKotlinType(tm, spec.kotlinPackage)
+  override def fieldType(tm: meta.MExpr): String = toKotlinType(tm)
+  override def fqFieldType(tm: meta.MExpr): String = toKotlinType(tm, fullyQualified = true)
 
   /* here we can define any imports required for specific Meta */
   def references(m: Meta): Seq[SymbolReference] = m match {
@@ -26,12 +26,11 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
         case MDate => List(ImportRef("kotlinx.datetime.Instant"))
         case _ => List()
       }
-    case e: MExtern => List(ImportRef(withPackage(Some(e.kotlin.pkg), e.kotlin.typename)))
     case _ => List()
   }
 
   /* generate a kotlin type for the given MExpr */
-  def toKotlinType(tm: meta.MExpr, packageName: Option[String]): String = {
+  def toKotlinType(tm: meta.MExpr, fullyQualified: Boolean = false): String = {
     def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(f).mkString("<", ", ", ">")
     def f(tm: MExpr): String = {
       tm.base match {
@@ -41,7 +40,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
           arg.base match {
             case m => f(arg) + "?"
           }
-        case p: MExtern => p.kotlin.typename
+        case e: MExtern => withPackage(Option(e.kotlin.pkg), e.kotlin.typename)
         case o =>
           val base = o match {
             case p: MPrimitive => p.kName
@@ -50,7 +49,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
             case MList => "List"
             case MSet => "Set"
             case MMap => "Map"
-            case d: MDef => withPackage(packageName, idKotlin.ty(d.name))
+            case d: MDef => if (fullyQualified) withPackage(spec.kotlinPackage, idKotlin.ty(d.name)) else idKotlin.ty(d.name)
             case _ => ""
           }
           base + args(tm)

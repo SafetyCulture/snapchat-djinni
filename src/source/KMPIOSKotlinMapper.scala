@@ -6,7 +6,7 @@ import djinni.generatorTools.Spec
 
 import scala.collection.mutable
 
-class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
+class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
 
   def typeRefs(m: MExpr): Set[String] = {
     val refs = mutable.Set[String]()
@@ -53,7 +53,6 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
         refs.add(withSupportPackage("toByteArray"))
-        refs.add(withPackage(Some(e.kotlin.pkg), marshal.typename(m)))
         refs.add(withCInteropPackage(objcMarshal.typename(m)))
 
       case d: MDef =>
@@ -90,17 +89,14 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
         s"$valueName.map { ${map(cast("it.key", key), key)} to ${map(cast("it.value", value), value)} }.toMap()"
 
       case d: MDef => d.defType match {
-        case DEnum => s"${marshal.typename(tm)}.fromObjc($valueName)"
+        case DEnum => s"${kotlinMarshal.typename(tm)}.fromObjc($valueName)"
         case DRecord => s"$valueName.toKotlin()"
         case DInterface => generateTodo(d)
       }
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
-        val kotlinName = e.kotlin.typename
+        val kotlinName = kotlinMarshal.fqTypename(tm)
         s"$kotlinName.ADAPTER.decode($valueName.data()?.toByteArray() ?: ByteArray(0))"
-
-      case e: MExtern =>
-        generateTodo(s"Map external type: ${e.kotlin.typename}")
 
       case MOptional =>
         val arg = tm.args.head
@@ -117,7 +113,7 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
               case _ => generateTodo("Map boxed primitive type: " + p._idlName)
             }
           case MString => map(s"$valueName", arg)
-          case d: MDef if d.defType == DEnum => s"$valueName?.let { ${marshal.typename(arg)}.fromNSNumber(it) }"
+          case d: MDef if d.defType == DEnum => s"$valueName?.let { ${kotlinMarshal.typename(arg)}.fromNSNumber(it) }"
 
           case MSet =>
             val item = arg.args.head
@@ -145,7 +141,7 @@ class KMPIOSKotlinMapper(marshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec:
           case _ => objcMarshal.typename(tm)
         }
       case _: MExtern => objcMarshal.typename(tm)
-      case _ => marshal.typename(tm)
+      case _ => kotlinMarshal.typename(tm)
     }
 
     tm.base match {

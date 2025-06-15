@@ -14,7 +14,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   val javaMarshal = new JavaMarshal(spec)
 
   private val javaMapper = new KMPAndroidJavaMapper(javaMarshal, spec)
-  private val kotlinMapper = new KMPAndroidKotlinMapper(spec)
+  private val kotlinMapper = new KMPAndroidKotlinMapper(kotlinMarshal)
 
   // create androidMain directory
   // create class path folder based on the contents of spec.kotlinPackage

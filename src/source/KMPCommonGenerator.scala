@@ -3,7 +3,7 @@ package djinni
 import generatorTools.{ImportRef, Spec}
 
 import djinni.ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
-import djinni.meta.{MExpr, Meta}
+import djinni.meta.{MExpr, MExtern, Meta}
 import djinni.writer.IndentWriter
 
 import java.io.File
