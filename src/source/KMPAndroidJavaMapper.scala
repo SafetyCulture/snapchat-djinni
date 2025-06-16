@@ -47,8 +47,9 @@ class KMPAndroidJavaMapper(javaMarshal: JavaMarshal, spec: Spec) {
       case e: MExtern if e.kotlin.isProtobufMessage =>
         val javaType = javaMarshal.fqTypename(tm)
         s"$javaType.parseFrom($valueName.encode())"
+
       case e: MExtern =>
-        throw new AssertionError("map called on extern type which isn't a protobuf message")
+        generateTodo(s"Map external type: ${e.kotlin.typename}")
 
       case MOptional =>
         val arg = tm.args.head

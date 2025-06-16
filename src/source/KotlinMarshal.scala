@@ -40,7 +40,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
           arg.base match {
             case m => f(arg) + "?"
           }
-        case e: MExtern => withPackage(Option(e.kotlin.pkg), e.kotlin.typename)
+        case e: MExtern => e.kotlin.typename
         case o =>
           val base = o match {
             case p: MPrimitive => p.kName
