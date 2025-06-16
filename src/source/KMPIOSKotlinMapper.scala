@@ -98,6 +98,9 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         val kotlinName = kotlinMarshal.fqTypename(tm)
         s"$kotlinName.ADAPTER.decode($valueName.data()?.toByteArray() ?: ByteArray(0))"
 
+      case e: MExtern =>
+        generateTodo(s"Map external type: ${e.kotlin.typename}")
+
       case MOptional =>
         val arg = tm.args.head
         arg.base match {

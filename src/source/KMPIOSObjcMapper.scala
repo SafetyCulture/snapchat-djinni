@@ -67,6 +67,9 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
       case e: MExtern =>
         generateTodo(s"Map external type: ${e.kotlin.typename}")
 
+      case e: MExtern =>
+        generateTodo(s"Map external type: ${e.kotlin.typename}")
+
       case MOptional =>
         val arg = tm.args.head
         arg.base match {
