@@ -75,7 +75,6 @@ object MExtern {
   )
   case class Kotlin(
     typename: String,
-    pkg: String,
     isProtobufMessage: Boolean
   )
   case class Wasm(

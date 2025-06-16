@@ -46,6 +46,9 @@ class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal) {
         val kotlinType = kotlinMarshal.fqTypename(tm)
         s"$kotlinType.ADAPTER.decode($valueName.toByteArray())"
 
+      case e: MExtern =>
+        generateTodo(s"Map external type: ${e.kotlin.typename}")
+
       case MOptional =>
         val arg = tm.args.head
         arg.base match {
