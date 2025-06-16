@@ -16,6 +16,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   private val javaMapper = new KMPAndroidJavaMapper(javaMarshal, spec)
   private val kotlinMapper = new KMPAndroidKotlinMapper(kotlinMarshal)
 
+  private val utils = new KMPUtils()
+
   // create androidMain directory
   // create class path folder based on the contents of spec.kotlinPackage
   // e.g. 'com.safetyculture.djinni.test.bridge' -> /com/safetyculture/djinni/test/bridge
@@ -83,8 +85,11 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
 
+    // filter for supported methods
+    val interfaceMethods = utils.supportedMethods(i)
+
     // find any required imports for all method parameters / return types
-    i.methods.filterNot(_.static).foreach(m => {
+    interfaceMethods.foreach(m => {
       m.params.foreach(p => refs.find(p.ty))
       m.ret.foreach(refs.find)
     })
@@ -102,8 +107,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       // wrap the java generated interface in a class which conforms to the generated commonMain interface.
       w.w(s"class ${commonInterfaceType}Impl(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType").braced {
         val skipFirst = SkipFirst()
-        for (m <- i.methods if !m.static) {
-
+        for (m <- interfaceMethods) {
           skipFirst { w.wl }
 
           /* method implementation:

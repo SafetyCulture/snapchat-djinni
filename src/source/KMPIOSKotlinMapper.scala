@@ -132,7 +132,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
     }
   }
 
-  def cast(valueName: String, tm: MExpr): String = {
+  private def cast(valueName: String, tm: MExpr): String = {
     val castType = tm.base match {
       case MDate => "NSDate"
       case d: MDef =>
@@ -141,11 +141,12 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
           case _ => objcMarshal.typename(tm)
         }
       case _: MExtern => objcMarshal.typename(tm)
+      case MSet => "Set<*>"
       case _ => kotlinMarshal.typename(tm)
     }
 
     tm.base match {
-      case MDate | _: MDef | _: MExtern =>
+      case MDate | _: MDef | _: MExtern | MSet =>
         s"($valueName as $castType)"
       case _ => s"$valueName as $castType"
     }
