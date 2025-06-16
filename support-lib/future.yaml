@@ -36,3 +36,7 @@ ts:
   typename: 'Promise'
   module: ''
   generic: true
+kotlin:
+  typename: 'Future'
+  package: 'com.safetyculture.djinni.support'
+  isProtobufType: false

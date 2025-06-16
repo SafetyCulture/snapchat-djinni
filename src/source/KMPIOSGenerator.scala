@@ -15,6 +15,8 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   private val objcMapper = new KMPIOSObjcMapper(objcMarshal, spec)
   private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal, objcMarshal, spec)
 
+  private val utils = new KMPUtils()
+
   // create iosMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
   // e.g. 'com.safetyculture.krux.domain' -> /com/safetyculture.krux.domain
@@ -96,8 +98,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
 
-    // only cpp interfaces are supported for now
-    if(!i.ext.cpp) {
+    if(utils.isNotSupported(i)) {
       return
     }
 
@@ -105,15 +106,17 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     val objcInterfaceLocal = idKotlin.local(ident.name)
     val objcInterfaceType = objcMarshal.typename(ident, i)
 
-
     val refs = new KMPIOSRefs()
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
 
     // import the objc type from the cinterop package
     refs.kotlin.add(withCInteropPackage(objcInterfaceType))
 
+    // filter for supported methods
+    val interfaceMethods = utils.supportedMethods(i)
+
     // find any required imports for all method parameters / return types
-    i.methods.filterNot(_.static).foreach(m => {
+    interfaceMethods.foreach(m => {
       // for each parameter
       m.params.foreach { p =>
         // gather any imports required to map this parameter
@@ -153,8 +156,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
       w.wl("@OptIn(ExperimentalForeignApi::class)")
       w.w(s"class ${commonInterfaceType}Impl(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType").braced {
         val skipFirst = SkipFirst()
-        for (m <- i.methods if !m.static) {
-
+        for (m <- interfaceMethods) {
           skipFirst { w.wl }
 
           /* method implementation:
@@ -168,6 +170,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
            */
 
           val commonMainMethod = idKotlin.method(m.ident)
+          val objcMethod = idObjc.method(m.ident)
           val commonMainReturn = kotlinMarshal.returnType(m.ret)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
@@ -180,7 +183,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
             /* store return value if any */
             if(m.ret.nonEmpty) w.w(s"val ret = ")
 
-            w.w(s"$objcInterfaceLocal.$commonMainMethod").parens(m.params) { p =>
+            w.w(s"$objcInterfaceLocal.$objcMethod").parens(m.params) { p =>
               val paramName = idKotlin.local(p.ident)
               w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
             }

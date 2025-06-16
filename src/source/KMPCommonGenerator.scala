@@ -12,6 +12,7 @@ import scala.collection.mutable
 class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
 
   val marshal = new KotlinMarshal(spec)
+  val utils = new KMPUtils()
 
   // create commonMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
@@ -100,7 +101,10 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPCommonRefs()
 
-    i.methods.filterNot(_.static).map(m => {
+    // filter for supported methods
+    val interfaceMethods = utils.supportedMethods(i)
+
+    interfaceMethods.map(m => {
       m.params.map(p => refs.find(p.ty))
       m.ret.foreach(refs.find)
     })
@@ -112,7 +116,7 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
       val interfaceName = idKotlin.ty(ident.name)
       w.w(s"interface $interfaceName").braced {
-        for (m <- i.methods if !m.static) {
+        for (m <- interfaceMethods) {
           // method definitions
           val methodName = idKotlin.method(m.ident)
           w.w(s"fun $methodName").parens(m.params) { p =>
