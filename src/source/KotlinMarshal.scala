@@ -1,9 +1,8 @@
 package djinni
 
 import generatorTools.{ImportRef, Spec, SymbolReference}
-
 import ast.TypeRef
-import meta.{MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
+import meta.{DEnum, DInterface, DRecord, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
 
 class KotlinMarshal(spec: Spec) extends Marshal(spec) {
 
@@ -27,6 +26,22 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
         case _ => List()
       }
     case _ => List()
+  }
+
+  def cinteropReturnType(ret: Option[TypeRef]): String = ret.fold("Unit")(ty => cinteropType(ty.resolved))
+  def cinteropType(tm: meta.MExpr, fullyQualified: Boolean = false): String = {
+    tm.base match {
+      case d: MDef => d.defType match {
+        case DRecord | DEnum => idObjc.ty(d.name)
+        case DInterface => idObjc.ty(d.name) + "Protocol"
+      }
+      case e: MExtern => e.objc.typename
+      case MList => "List<*>"
+      case MMap => "Map<Any?, *>"
+      case MDate => "NSDate"
+      case MOptional => cinteropType(tm.args.head, fullyQualified) + "?"
+      case _ => toKotlinType(tm, fullyQualified)
+    }
   }
 
   /* generate a kotlin type for the given MExpr */

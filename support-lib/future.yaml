@@ -37,6 +37,5 @@ ts:
   module: ''
   generic: true
 kotlin:
-  typename: 'Future'
-  package: 'com.safetyculture.djinni.support'
+  typename: 'com.safetyculture.djinni.support.Future'
   isProtobufType: false

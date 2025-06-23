@@ -2,7 +2,8 @@ package djinni
 
 import meta._
 
-import djinni.generatorTools.Spec
+import djinni.ast.{Interface, Record}
+import djinni.generatorTools.{Spec, useProtocol}
 
 import scala.collection.mutable
 
@@ -54,10 +55,14 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
         s"$valueName.map { ${map("it.key", key)} to ${map("it.value", value)} }.toMap()"
 
 
-      case d: MDef => d.defType match {
-        case DEnum => s"$valueName.toObjc()"
-        case DRecord => s"$valueName.toObjc()"
-        case DInterface => generateTodo(d)
+      case d: MDef => d.body match {
+        case i: Interface =>
+          if(useProtocol(i.ext, spec)) {
+            s"${objcMarshal.typename(d.name, d.body)}Impl($valueName)"
+          } else {
+            generateTodo(s"Map: ${objcMarshal.typename(tm)}")
+          }
+        case _ => s"$valueName.toObjc()"
       }
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
@@ -86,10 +91,15 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
               case _ => generateTodo("Map boxed primitive type: " + p._idlName)
             }
 
-          case d: MDef if d.defType == DEnum => s"$valueName?.toNSNumber()"
+          case d: MDef => d.defType match {
+            case DEnum => s"$valueName?.toNSNumber()"
+            case DRecord => s"$valueName?.toObjc()"
+            case DInterface => s"$valueName?.let { ${map("it", arg)} }"
+          }
+
           case _: MExtern => s"$valueName?.let { ${map("it", arg)} }"
-          case MList => s"$valueName?.let { list -> " + map("list", tm.args.head) + " }"
-          case MSet => s"$valueName?.map { " + map("it", arg.args.head) + " }?.toSet()"
+          case MList => s"$valueName?.let { list -> " + map("list", arg) + " }"
+          case MSet => s"$valueName?.map { set -> " + map("set", arg.args.head) + " }?.toSet()"
           case MMap =>
             val key = arg.args.head
             val value = arg.args.last

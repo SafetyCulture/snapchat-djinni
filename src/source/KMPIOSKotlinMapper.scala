@@ -8,12 +8,12 @@ import scala.collection.mutable
 
 class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
 
-  def typeRefs(m: MExpr): Set[String] = {
+  def typeRefs(m: MExpr, requiresCast: Boolean = false): Set[String] = {
     val refs = mutable.Set[String]()
     m.base match {
       case MOptional =>
         // evaluate optional type
-        refs ++= typeRefs(m.args.head)
+        refs ++= typeRefs(m.args.head, requiresCast = true)
 
       case MList | MSet =>
         // special cases for list / set types
@@ -25,7 +25,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         }
 
         // evaluate list / set type
-        refs ++= typeRefs(m.args.head)
+        refs ++= typeRefs(m.args.head, requiresCast = true)
 
       case MMap =>
         val key = m.args.head
@@ -46,7 +46,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         }
 
         // evaluate key and value types
-        refs ++= typeRefs(key) ++ typeRefs(value)
+        refs ++= typeRefs(key, requiresCast = true) ++ typeRefs(value, requiresCast = true)
 
       case MDate =>
         refs.add("kotlinx.datetime.toKotlinInstant")
@@ -61,7 +61,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
           // we don't support mapping of interfaces yet
           case DRecord =>
             // we need this when unboxing map values / optionals
-            refs.add(withCInteropPackage(objcMarshal.typename(m)))
+            if(requiresCast) refs.add(withCInteropPackage(objcMarshal.typename(m)))
           case _ =>
         }
 
@@ -91,7 +91,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
       case d: MDef => d.defType match {
         case DEnum => s"${kotlinMarshal.typename(tm)}.fromObjc($valueName)"
         case DRecord => s"$valueName.toKotlin()"
-        case DInterface => generateTodo(d)
+        case DInterface => generateTodo(s"Map interface: ${kotlinMarshal.typename(tm)}")
       }
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
@@ -137,6 +137,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
 
   private def cast(valueName: String, tm: MExpr): String = {
     val castType = tm.base match {
+      case MOptional => s"${objcMarshal.typename(tm)}?"
       case MDate => "NSDate"
       case d: MDef =>
         d.defType match {
@@ -149,7 +150,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
     }
 
     tm.base match {
-      case MDate | _: MDef | _: MExtern | MSet =>
+      case MDate | _: MDef | _: MExtern | MSet | MOptional =>
         s"($valueName as $castType)"
       case _ => s"$valueName as $castType"
     }
