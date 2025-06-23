@@ -1,7 +1,7 @@
 package djinni
 
 import ast._
-import generatorTools.{ImportRef, SkipFirst, Spec, SymbolReference}
+import generatorTools.{ImportRef, SkipFirst, Spec, SymbolReference, useProtocol}
 import meta._
 import writer.IndentWriter
 
@@ -75,7 +75,14 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
         List(ImportRef(withCInteropPackage(e.objc.typename)))
 
       case d: MDef =>
-        List(ImportRef(withCInteropPackage(idObjc.ty(d.name))))
+        val typeName = idObjc.ty(d.name)
+        d.defType match {
+        case DInterface =>
+          List(ImportRef(withCInteropPackage(typeName + "Protocol")))
+        case _ =>
+          List(ImportRef(withCInteropPackage(typeName)))
+        }
+      case MDate => List(ImportRef("platform.Foundation.NSDate"))
 
       case _ => List()
     }
@@ -97,20 +104,25 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   }
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
-
-    if(utils.isNotSupported(i)) {
-      return
+    if(useProtocol(i.ext, spec)) {
+      generateObjcInterface(origin, ident, doc, typeParams, i)
+    } else {
+      generateCppInterface(origin, ident, doc, typeParams, i)
     }
+  }
 
-    val commonInterfaceType = idKotlin.ty(ident.name)
-    val objcInterfaceLocal = idKotlin.local(ident.name)
-    val objcInterfaceType = objcMarshal.typename(ident, i)
-
+  def generateCppInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPIOSRefs()
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
 
-    // import the objc type from the cinterop package
+    val objcInterfaceType: String = objcMarshal.typename(ident, i)
+
+    // import the objc interface type from the cinterop package
     refs.kotlin.add(withCInteropPackage(objcInterfaceType))
+
+    val commonInterfaceName = s"${idKotlin.ty(ident.name)}Impl"
+    val commonInterfaceType = idKotlin.ty(ident.name)
+    val objcInterfaceLocal = idKotlin.local(ident.name)
 
     // filter for supported methods
     val interfaceMethods = utils.supportedMethods(i)
@@ -119,26 +131,17 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     interfaceMethods.foreach(m => {
       // for each parameter
       m.params.foreach { p =>
-        // gather any imports required to map this parameter
-        refs.kotlin ++= kotlinMapper.typeRefs(p.ty.resolved)
+        // gather any imports required to map this parameter from kotlin to objc
         refs.kotlin ++= objcMapper.typeRefs(p.ty.resolved)
 
         // find imports associated with the parameter type
         refs.find(p.ty)
-
-        // special case for any external types
-        p.ty.resolved.base match {
-          // include cinterop import for this external type
-          case e: MExtern => refs.findCInterop(e)
-          case _ =>
-        }
       }
 
       // check for required imports for the return type
       m.ret.foreach(r => {
-        // gather any imports required to map the return type
+        // gather any imports required to map the return type from objc back to kotlin
         refs.kotlin ++= kotlinMapper.typeRefs(r.resolved)
-        refs.kotlin ++= objcMapper.typeRefs(r.resolved)
 
         // find imports associated with the return type
         refs.find(r)
@@ -150,11 +153,12 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
       refs.find(c.ty)
     })
 
+
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
 
       // wrap the objc generated interface in a class which conforms to the generated commonMain interface.
       w.wl("@OptIn(ExperimentalForeignApi::class)")
-      w.w(s"class ${commonInterfaceType}Impl(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType").braced {
+      w.w(s"class ${commonInterfaceName}(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType").braced {
         val skipFirst = SkipFirst()
         for (m <- interfaceMethods) {
           skipFirst { w.wl }
@@ -174,9 +178,9 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           val commonMainReturn = kotlinMarshal.returnType(m.ret)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
-                val paramName = idKotlin.local(p.ident)
-                val paramType = kotlinMarshal.paramType(p.ty)
-                w.w(s"$paramName: $paramType")
+            val paramName = idKotlin.local(p.ident)
+            val paramType = kotlinMarshal.paramType(p.ty)
+            w.w(s"$paramName: $paramType")
           }
 
           w.w(s": $commonMainReturn").braced {
@@ -191,6 +195,98 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
             // return stored value if any
             m.ret.map { ty =>
               w.wl.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+            }
+          }
+        }
+      }
+    })
+  }
+
+  def generateObjcInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
+    val refs = new KMPIOSRefs()
+    refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
+    refs.kotlin.add("platform.darwin.NSObject")
+
+    val objcProtocolName: String = s"${idObjc.ty(ident.name)}Protocol"
+
+    // import the objc interface type from the cinterop package
+    refs.kotlin.add(withCInteropPackage(objcProtocolName))
+
+    val interfaceName = s"${idObjc.ty(ident.name)}"
+    val commonInterfaceType = idKotlin.ty(ident.name)
+    val commonInterfaceLocal = idKotlin.local(ident.name)
+
+    // filter for supported methods
+    val interfaceMethods = utils.supportedMethods(i)
+
+    // find any required imports for all method parameters / return types
+    interfaceMethods.foreach(m => {
+      // for each parameter
+      m.params.foreach { p =>
+        // gather any imports required to map this parameter from objc to kotlin
+        refs.kotlin ++= kotlinMapper.typeRefs(p.ty.resolved)
+
+        // find imports associated with the parameter type
+        refs.findCInterop(p.ty.resolved)
+      }
+
+      // check for required imports for the return type
+      m.ret.foreach(r => {
+        // gather any imports required to map the return type from kotlin back to objc
+        refs.kotlin ++= objcMapper.typeRefs(r.resolved)
+
+        // find imports associated with the return type
+        refs.findCInterop(r.resolved)
+      })
+    })
+
+    // search for imports associated with constants
+    i.consts.foreach(c => {
+      refs.find(c.ty)
+    })
+
+
+    writeKotlinFile(interfaceName, origin, refs.kotlin, w => {
+
+      // wrap the objc generated interface in a class which conforms to the generated commonMain interface.
+      w.wl("@OptIn(ExperimentalForeignApi::class)")
+      w.w(s"class ${interfaceName}Impl(private val $commonInterfaceLocal: $commonInterfaceType): NSObject(), $objcProtocolName").braced {
+        val skipFirst = SkipFirst()
+        for (m <- interfaceMethods) {
+          skipFirst { w.wl }
+
+          /* method implementation:
+           * override fun $objcMethod( $objcMethodParams ): $methodReturnType {
+           *   val ret = $commonInterfaceLocal.$commonMethod(
+           *     kotlinMapper.map($objcMethodParam),
+           *     ...
+           *   )
+           *   return objcMapper.map(ret)
+           * }
+           */
+
+          val objcMethod = idObjc.method(m.ident)
+          val commonMethod = idKotlin.method(m.ident)
+          val methodReturnType = kotlinMarshal.cinteropReturnType(m.ret)
+
+          w.w(s"override fun $objcMethod").parens(m.params) { p =>
+                val paramName = idObjc.local(p.ident)
+                val paramType = kotlinMarshal.cinteropType(p.ty.resolved)
+                w.w(s"$paramName: $paramType")
+          }
+
+          w.w(s": $methodReturnType").braced {
+            /* store return value if any */
+            if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+            w.w(s"$commonInterfaceLocal.$commonMethod").parens(m.params) { p =>
+              val paramName = idObjc.local(p.ident)
+              w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
+            }
+
+            // return stored value if any
+            m.ret.map { ty =>
+              w.wl.wl(s"return ${objcMapper.map("ret", ty.resolved)}")
             }
           }
         }
