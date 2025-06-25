@@ -2,12 +2,13 @@ package djinni
 
 import meta._
 
-import djinni.ast.{Interface, Record}
+import djinni.ast.{Enum, Interface, Record}
 import djinni.generatorTools.{Spec, useProtocol}
 
 import scala.collection.mutable
 
-class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
+class KMPIOSObjcMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
+  private val utils = new KMPUtils(spec)
 
   def typeRefs(m: MExpr): Set[String] = {
     val refs = mutable.Set[String]()
@@ -28,8 +29,8 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
       case MMap => refs ++= typeRefs(m.args.head) ++ typeRefs(m.args.last)
       case MDate => refs.add("kotlinx.datetime.toNSDate")
       case e: MExtern if e.kotlin.isProtobufMessage =>
-        refs.add(withSupportPackage("parseFromByteArray"))
-        refs.add(withCInteropPackage(objcMarshal.typename(m)))
+        refs.add(utils.withSupportPackage("parseFromByteArray"))
+        refs.add(utils.withCInteropPackage(objcMarshal.typename(m)))
 
       case _ =>
     }
@@ -54,26 +55,23 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
         // primitive key / value case
         s"$valueName.map { ${map("it.key", key)} to ${map("it.value", value)} }.toMap()"
 
-
       case d: MDef => d.body match {
         case i: Interface =>
-          if(useProtocol(i.ext, spec)) {
+          if(i.ext.objc) {
             s"${objcMarshal.typename(d.name, d.body)}Impl($valueName)"
           } else {
-            generateTodo(s"Map: ${objcMarshal.typename(tm)}")
+            utils.generateTodo(s"Impossible to map ${kotlinMarshal.typename(tm)} in this direction")
           }
         case _ => s"$valueName.toObjc()"
       }
 
-      case e: MExtern if e.kotlin.isProtobufMessage =>
-        val objcType = objcMarshal.typename(tm)
-        s"parseFromByteArray($valueName.encode(), $objcType::parseFromData)"
-
       case e: MExtern =>
-        generateTodo(s"Map external type: ${e.kotlin.typename}")
-
-      case e: MExtern =>
-        generateTodo(s"Map external type: ${e.kotlin.typename}")
+        if(e.kotlin.isProtobufMessage) {
+          val objcType = objcMarshal.typename(tm)
+          s"parseFromByteArray($valueName.encode(), $objcType::parseFromData)"
+        } else {
+          utils.generateTodo(s"Map external type: ${e.kotlin.typename}")
+        }
 
       case MOptional =>
         val arg = tm.args.head
@@ -88,13 +86,19 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
               case "i64" => s"$valueName?.let { NSNumber(long = it) }"
               case "f32" => s"$valueName?.let { NSNumber(float = it) }"
               case "f64" => s"$valueName?.let { NSNumber(double = it) }"
-              case _ => generateTodo("Map boxed primitive type: " + p._idlName)
+              case _ => utils.generateTodo("Map boxed primitive type: " + p._idlName)
             }
 
-          case d: MDef => d.defType match {
-            case DEnum => s"$valueName?.toNSNumber()"
-            case DRecord => s"$valueName?.toObjc()"
-            case DInterface => s"$valueName?.let { ${map("it", arg)} }"
+          case d: MDef => d.body match {
+            case _: Enum => s"$valueName?.toNSNumber()"
+            case _: Record => s"$valueName?.toObjc()"
+            case i: Interface =>
+              if(i.ext.objc) {
+                s"$valueName?.let { ${map("it", arg)} }"
+              } else {
+                utils.throwUnsupported(s"Impossible to map ${kotlinMarshal.typename(arg)} in this direction")
+              }
+            case _ => utils.generateTodo(tm.base)
           }
 
           case _: MExtern => s"$valueName?.let { ${map("it", arg)} }"
@@ -108,23 +112,7 @@ class KMPIOSObjcMapper(objcMarshal: ObjcMarshal, spec: Spec) {
           case _ => map(s"$valueName?", arg)
         }
 
-      case _ => generateTodo(tm.base)
+      case _ => utils.generateTodo(tm.base)
     }
-  }
-
-  def withCInteropPackage(typeName: String): String = {
-    spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
-  }
-
-  def withSupportPackage(typeName: String): String = {
-    spec.kotlinSupportPackage.fold(typeName)(_ + "." + typeName)
-  }
-
-  def generateTodo(m: Meta): String = {
-    generateTodo(m.getClass.getSimpleName.replace("$", ""))
-  }
-
-  def generateTodo(s: String): String = {
-    s"TODO(${'"'}$s${'"'})"
   }
 }

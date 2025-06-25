@@ -3,16 +3,15 @@ package djinni
 import generatorTools.{ImportRef, Spec}
 
 import djinni.ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
-import djinni.meta.{MExpr, MExtern, Meta}
+import djinni.meta.{MDef, MExpr, MExtern, Meta}
 import djinni.writer.IndentWriter
 
 import java.io.File
 import scala.collection.mutable
 
 class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
-
   val marshal = new KotlinMarshal(spec)
-  val utils = new KMPUtils()
+  val utils = new KMPUtils(spec)
 
   // create commonMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
@@ -124,8 +123,17 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
             val paramType = marshal.paramType(p.ty)
             w.w(s"$paramName: $paramType")
           }
-          // return type
-          w.wl(s": ${marshal.returnType(m.ret)}")
+
+          m.ret.map { ty =>
+            val returnType = ty.resolved.base match {
+              // iOS cinterop interface return types are optional
+              case MDef(_, _, _, i: Interface) if i.ext.cpp => marshal.returnType(m.ret) + "?"
+              case _ => marshal.returnType(m.ret)
+            }
+            w.w(s": $returnType")
+          }
+
+          w.wl
         }
       }
     })
