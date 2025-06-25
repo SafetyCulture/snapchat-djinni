@@ -5,6 +5,7 @@ import ast.TypeRef
 import meta.{DEnum, DInterface, DRecord, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
 
 class KotlinMarshal(spec: Spec) extends Marshal(spec) {
+  private val utils = new KMPUtils(spec)
 
   override def typename(tm: meta.MExpr): String = toKotlinType(tm)
   override def fqTypename(tm: meta.MExpr): String = toKotlinType(tm, fullyQualified = true)
@@ -64,7 +65,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
             case MList => "List"
             case MSet => "Set"
             case MMap => "Map"
-            case d: MDef => if (fullyQualified) withPackage(spec.kotlinPackage, idKotlin.ty(d.name)) else idKotlin.ty(d.name)
+            case d: MDef => if (fullyQualified) utils.withPackage(spec.kotlinPackage, idKotlin.ty(d.name)) else idKotlin.ty(d.name)
             case _ => ""
           }
           base + args(tm)
@@ -72,6 +73,4 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
     }
     f(tm)
   }
-
-  private def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
 }

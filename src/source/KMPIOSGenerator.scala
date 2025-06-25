@@ -6,16 +6,17 @@ import meta._
 import writer.IndentWriter
 
 import java.io.File
+import scala.Option.option2Iterable
 import scala.collection.mutable
 
 class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   private val kotlinMarshal = new KotlinMarshal(spec)
   private val objcMarshal = new ObjcMarshal(spec)
 
-  private val objcMapper = new KMPIOSObjcMapper(objcMarshal, spec)
+  private val objcMapper = new KMPIOSObjcMapper(kotlinMarshal, objcMarshal, spec)
   private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal, objcMarshal, spec)
 
-  private val utils = new KMPUtils()
+  private val utils = new KMPUtils(spec)
 
   // create iosMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
@@ -72,15 +73,15 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
     def cinteropReferences(m: Meta): Seq[SymbolReference] = m match {
       case e: MExtern =>
-        List(ImportRef(withCInteropPackage(e.objc.typename)))
+        List(ImportRef(utils.withCInteropPackage(e.objc.typename)))
 
       case d: MDef =>
         val typeName = idObjc.ty(d.name)
         d.defType match {
         case DInterface =>
-          List(ImportRef(withCInteropPackage(typeName + "Protocol")))
+          List(ImportRef(utils.withCInteropPackage(typeName + "Protocol")))
         case _ =>
-          List(ImportRef(withCInteropPackage(typeName)))
+          List(ImportRef(utils.withCInteropPackage(typeName)))
         }
       case MDate => List(ImportRef("platform.Foundation.NSDate"))
 
@@ -118,7 +119,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     val objcInterfaceType: String = objcMarshal.typename(ident, i)
 
     // import the objc interface type from the cinterop package
-    refs.kotlin.add(withCInteropPackage(objcInterfaceType))
+    refs.kotlin.add(utils.withCInteropPackage(objcInterfaceType))
 
     val commonInterfaceName = s"${idKotlin.ty(ident.name)}Impl"
     val commonInterfaceType = idKotlin.ty(ident.name)
@@ -175,7 +176,6 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
           val commonMainMethod = idKotlin.method(m.ident)
           val objcMethod = idObjc.method(m.ident)
-          val commonMainReturn = kotlinMarshal.returnType(m.ret)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
             val paramName = idKotlin.local(p.ident)
@@ -183,7 +183,15 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
             w.w(s"$paramName: $paramType")
           }
 
-          w.w(s": $commonMainReturn").braced {
+          m.ret.map { ty =>
+            val commonReturnType = ty.resolved.base match {
+              case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
+              case _ => kotlinMarshal.returnType(m.ret)
+            }
+            w.w(s": $commonReturnType")
+          }
+
+          w.braced {
             /* store return value if any */
             if(m.ret.nonEmpty) w.w(s"val ret = ")
 
@@ -210,7 +218,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     val objcProtocolName: String = s"${idObjc.ty(ident.name)}Protocol"
 
     // import the objc interface type from the cinterop package
-    refs.kotlin.add(withCInteropPackage(objcProtocolName))
+    refs.kotlin.add(utils.withCInteropPackage(objcProtocolName))
 
     val interfaceName = s"${idObjc.ty(ident.name)}"
     val commonInterfaceType = idKotlin.ty(ident.name)
@@ -301,7 +309,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
 
     // import the enum type from the cinterop package
-    refs.kotlin.add(withCInteropPackage(objcEnumType))
+    refs.kotlin.add(utils.withCInteropPackage(objcEnumType))
 
     // import NSNumber for a helper function
     refs.kotlin.add("platform.Foundation.NSNumber")
@@ -317,7 +325,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           for (o <- e.options) {
             val kotlinOption = idKotlin.enum(o.ident)
             val objcOption = objcEnumType + idObjc.enum(o.ident)
-            w.wl(s"$kotlinEnum.$kotlinOption -> ${withCInteropPackage(objcOption)}")
+            w.wl(s"$kotlinEnum.$kotlinOption -> ${utils.withCInteropPackage(objcOption)}")
           }
         }
       }
@@ -339,7 +347,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           for (o <- e.options) {
             val kotlinOption = idKotlin.enum(o.ident)
             val objcOption = objcEnumType + idObjc.enum(o.ident)
-            w.wl(s"${withCInteropPackage(objcOption)} -> $kotlinEnum.$kotlinOption")
+            w.wl(s"${utils.withCInteropPackage(objcOption)} -> $kotlinEnum.$kotlinOption")
           }
           w.wl(s" else -> throw IllegalArgumentException(${'"'}Unknown ${kotlinEnum}: $$e${'"'})")
         }
@@ -361,7 +369,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
     val refs = new KMPIOSRefs()
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
-    refs.kotlin.add(withCInteropPackage(objcRecord))
+    refs.kotlin.add(utils.withCInteropPackage(objcRecord))
 
     r.fields.foreach(f => {
       // search for imports required when mapping this field
@@ -394,13 +402,5 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
         w.wl
       }
     })
-  }
-
-  def withCInteropPackage(typeName: String): String = {
-    spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
-  }
-
-  def withSupportPackage(typeName: String): String = {
-    spec.kotlinSupportPackage.fold(typeName)(_ + "." + typeName)
   }
 }
