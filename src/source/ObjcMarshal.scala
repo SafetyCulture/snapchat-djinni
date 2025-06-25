@@ -23,7 +23,6 @@ import djinni.generatorTools._
 import djinni.meta._
 
 class ObjcMarshal(spec: Spec) extends Marshal(spec) {
-
   override def typename(tm: MExpr): String = {
     val (name, _) = toObjcType(tm)
     name

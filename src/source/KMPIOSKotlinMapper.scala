@@ -2,11 +2,13 @@ package djinni
 
 import meta._
 
-import djinni.generatorTools.Spec
+import djinni.ast.{Enum, Interface, Record}
+import djinni.generatorTools.{Spec, useProtocol}
 
 import scala.collection.mutable
 
 class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
+  private val utils = new KMPUtils(spec)
 
   def typeRefs(m: MExpr, requiresCast: Boolean = false): Set[String] = {
     val refs = mutable.Set[String]()
@@ -52,8 +54,8 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         refs.add("kotlinx.datetime.toKotlinInstant")
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
-        refs.add(withSupportPackage("toByteArray"))
-        refs.add(withCInteropPackage(objcMarshal.typename(m)))
+        refs.add(utils.withSupportPackage("toByteArray"))
+        refs.add(utils.withCInteropPackage(objcMarshal.typename(m)))
 
       case d: MDef =>
         d.defType match {
@@ -61,7 +63,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
           // we don't support mapping of interfaces yet
           case DRecord =>
             // we need this when unboxing map values / optionals
-            if(requiresCast) refs.add(withCInteropPackage(objcMarshal.typename(m)))
+            if(requiresCast) refs.add(utils.withCInteropPackage(objcMarshal.typename(m)))
           case _ =>
         }
 
@@ -88,10 +90,17 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         // primitive key / value case
         s"$valueName.map { ${map(cast("it.key", key), key)} to ${map(cast("it.value", value), value)} }.toMap()"
 
-      case d: MDef => d.defType match {
-        case DEnum => s"${kotlinMarshal.typename(tm)}.fromObjc($valueName)"
-        case DRecord => s"$valueName.toKotlin()"
-        case DInterface => generateTodo(s"Map interface: ${kotlinMarshal.typename(tm)}")
+      case d: MDef => d.body match {
+        case _: Enum => s"${kotlinMarshal.typename(tm)}.fromObjc($valueName)"
+        case _: Record => s"$valueName.toKotlin()"
+        case i: Interface =>
+          if(i.ext.cpp) {
+            // a generated objc method return type for +c interfaces is optional
+            s"$valueName?.let { ${kotlinMarshal.typename(tm)}Impl(it) }"
+          } else {
+            utils.throwUnsupported(s"Impossible to map ${objcMarshal.typename(tm)} in this direction")
+          }
+        case _ => utils.generateTodo(tm.base)
       }
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
@@ -99,7 +108,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         s"$kotlinName.ADAPTER.decode($valueName.data()?.toByteArray() ?: ByteArray(0))"
 
       case e: MExtern =>
-        generateTodo(s"Map external type: ${e.kotlin.typename}")
+        utils.generateTodo(s"Map external type: ${e.kotlin.typename}")
 
       case MOptional =>
         val arg = tm.args.head
@@ -113,10 +122,20 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
               case "i64" => s"$valueName?.longValue()"
               case "f32" => s"$valueName?.floatValue()"
               case "f64" => s"$valueName?.doubleValue()"
-              case _ => generateTodo("Map boxed primitive type: " + p._idlName)
+              case _ => utils.generateTodo("Map boxed primitive type: " + p._idlName)
             }
           case MString => map(s"$valueName", arg)
-          case d: MDef if d.defType == DEnum => s"$valueName?.let { ${kotlinMarshal.typename(arg)}.fromNSNumber(it) }"
+          case d: MDef => d.body match {
+            case _: Enum => s"$valueName?.let { ${kotlinMarshal.typename(arg)}.fromNSNumber(it) }"
+            case _: Record => map(s"$valueName?", arg)
+            case i: Interface =>
+              if(i.ext.cpp) {
+                s"$valueName?.let { ${kotlinMarshal.typename(arg)}Impl(it) }"
+              } else {
+                utils.throwUnsupported(s"Impossible to map ${objcMarshal.typename(arg)} in this direction")
+              }
+            case _ => utils.generateTodo(tm.base)
+          }
 
           case MSet =>
             val item = arg.args.head
@@ -131,7 +150,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
           case _ => map(s"$valueName?", arg)
         }
 
-      case _ => generateTodo(tm.base)
+      case _ => utils.generateTodo(tm.base)
     }
   }
 
@@ -154,23 +173,5 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         s"($valueName as $castType)"
       case _ => s"$valueName as $castType"
     }
-  }
-
-  def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
-
-  def withCInteropPackage(typeName: String): String = {
-    spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
-  }
-
-  def withSupportPackage(typeName: String): String = {
-    spec.kotlinSupportPackage.fold(typeName)(_ + "." + typeName)
-  }
-
-  def generateTodo(m: Meta): String = {
-    generateTodo(m.getClass.getSimpleName.replace("$", ""))
-  }
-
-  def generateTodo(s: String): String = {
-    s"TODO(${'"'}$s${'"'})"
   }
 }
