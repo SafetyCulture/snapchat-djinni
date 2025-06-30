@@ -12,7 +12,7 @@ class KMPUtils(spec: Spec) {
     .filterNot(_.static) // no static method support
   }
 
-  def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
+  def withPackage(packageName: Option[String], t: String): String = packageName.fold(t)(_ + "." + t)
 
   def withCInteropPackage(typeName: String): String = {
     spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
