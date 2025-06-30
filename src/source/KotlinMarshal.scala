@@ -45,6 +45,23 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
     }
   }
 
+  def javaInteropReturnType(ret: Option[TypeRef]): String = ret.fold("Unit")(ty => javaInteropType(ty.resolved))
+  def javaInteropType(tm: meta.MExpr): String = {
+    def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(f).mkString("<", ", ", ">")
+    def f(tm: MExpr): String = {
+      tm.base match {
+        case d: MDef => utils.withPackage(spec.javaPackage, idJava.ty(d.name))
+        case e: MExtern => e.java.typename + (if(e.java.generic) args(tm) else "")
+        case MList => "ArrayList" + args(tm)
+        case MMap => "HashMap" + args(tm)
+        case MDate => "Date"
+        case MOptional => javaInteropType(tm.args.head) + "?"
+        case _ => toKotlinType(tm)
+      }
+    }
+    f(tm)
+  }
+
   /* generate a kotlin type for the given MExpr */
   def toKotlinType(tm: meta.MExpr, fullyQualified: Boolean = false): String = {
     def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(f).mkString("<", ", ", ">")

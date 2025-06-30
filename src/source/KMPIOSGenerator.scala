@@ -1,12 +1,11 @@
 package djinni
 
 import ast._
-import generatorTools.{ImportRef, SkipFirst, Spec, SymbolReference, useProtocol}
+import generatorTools.{ImportRef, SkipFirst, Spec, SymbolReference}
 import meta._
 import writer.IndentWriter
 
 import java.io.File
-import scala.Option.option2Iterable
 import scala.collection.mutable
 
 class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
@@ -103,11 +102,10 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
       f(w)
     })
   }
-
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
-    if(useProtocol(i.ext, spec)) {
+    if(i.ext.objc) {
       generateObjcInterface(origin, ident, doc, typeParams, i)
-    } else {
+    } else if(i.ext.cpp) {
       generateCppInterface(origin, ident, doc, typeParams, i)
     }
   }
@@ -165,7 +163,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           skipFirst { w.wl }
 
           /* method implementation:
-           * override fun method( $commonMainParams ): $commonMainReturn {
+           * override fun commonMainMethod( $commonMainParams ): $commonMainReturn {
            *   val ret = $objcInterfaceLocal.$objcMethod(
            *     objcMapper.map($commonMainParam),
            *     ...
@@ -174,7 +172,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
            * }
            */
 
-          val commonMainMethod = idKotlin.method(m.ident)
+          val commonMainMethod =   idKotlin.method(m.ident)
           val objcMethod = idObjc.method(m.ident)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
@@ -200,7 +198,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
               w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
             }
 
-            // return stored value if any
+            /* map return value if any */
             m.ret.map { ty =>
               w.wl.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
             }
@@ -403,4 +401,5 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
       }
     })
   }
+
 }
