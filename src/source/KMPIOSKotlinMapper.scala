@@ -1,9 +1,8 @@
 package djinni
 
+import ast.{Enum, Interface, Record}
+import generatorTools.Spec
 import meta._
-
-import djinni.ast.{Enum, Interface, Record}
-import djinni.generatorTools.{Spec, useProtocol}
 
 import scala.collection.mutable
 
@@ -94,7 +93,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
         case _: Enum => s"${kotlinMarshal.typename(tm)}.fromObjc($valueName)"
         case _: Record => s"$valueName.toKotlin()"
         case i: Interface =>
-          if(i.ext.cpp) {
+          if (i.ext.cpp) {
             // a generated objc method return type for +c interfaces is optional
             s"$valueName?.let { ${kotlinMarshal.typename(tm)}Impl(it) }"
           } else {

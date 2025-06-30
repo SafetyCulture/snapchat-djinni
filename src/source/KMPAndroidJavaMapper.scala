@@ -1,11 +1,12 @@
 package djinni
 
+import ast.Interface
 import generatorTools.Spec
 import meta._
 
-import scala.collection.mutable
-
 class KMPAndroidJavaMapper(javaMarshal: JavaMarshal, spec: Spec) {
+  private val utils = new KMPUtils(spec)
+
   def map(valueName: String, tm: MExpr, optional: Boolean = false): String = {
     tm.base match {
       case _: MPrimitive => valueName
@@ -36,9 +37,14 @@ class KMPAndroidJavaMapper(javaMarshal: JavaMarshal, spec: Spec) {
           case _ => generateTodo(tm.base)
         }
 
-      case m: MDef => m.defType match {
-        case DEnum | DRecord => s"$valueName.toJava()"
-        case DInterface => "TODO()"
+      case m: MDef => m.body match {
+        case i: Interface =>
+          if (i.ext.java) {
+            s"${javaMarshal.typename(tm)}Impl($valueName)"
+          } else {
+            utils.throwUnsupported(s"Impossible to map ${javaMarshal.typename(tm)} in this direction")
+          }
+        case _ => s"$valueName.toJava()"
       }
 
       case MList =>
@@ -58,6 +64,7 @@ class KMPAndroidJavaMapper(javaMarshal: JavaMarshal, spec: Spec) {
           case MDate | _: MExtern  => s"$valueName?.let { ${map("it", arg, optional = true)} }"
           case MList => s"$valueName?.let { list -> ${map("list", arg, optional = true)} }"
           case MSet => s"$valueName?.let { set -> ${map("set", arg, optional = true)} }"
+          case MDef(_, _, _, _: Interface) => s"$valueName?.let { ${map(s"it", arg, optional = true)} }"
           case _ => map(s"$valueName?", arg, optional = true)
         }
 

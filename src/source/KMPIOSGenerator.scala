@@ -172,7 +172,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
            * }
            */
 
-          val commonMainMethod =   idKotlin.method(m.ident)
+          val commonMainMethod = idKotlin.method(m.ident)
           val objcMethod = idObjc.method(m.ident)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
