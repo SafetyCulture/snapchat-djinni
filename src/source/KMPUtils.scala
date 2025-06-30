@@ -1,8 +1,8 @@
 package djinni
 
-import ast.Interface
+import ast.{Ident, Interface, TypeRef}
 import generatorTools.Spec
-import meta.Meta
+import meta.{MPrimitive, Meta}
 
 class KMPUtils(spec: Spec) {
   // filter for supported interface methods
