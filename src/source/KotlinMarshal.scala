@@ -1,7 +1,7 @@
 package djinni
 
 import generatorTools.{ImportRef, Spec, SymbolReference}
-import ast.TypeRef
+import ast.{Interface, TypeRef}
 import meta.{DEnum, DInterface, DRecord, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
 
 class KotlinMarshal(spec: Spec) extends Marshal(spec) {
@@ -60,6 +60,42 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
       }
     }
     f(tm)
+  }
+
+  def synthesisedJavaProperty(m: Interface.Method): Option[String] = {
+
+    def kotlinDecapitalize(name: String): String = {
+      if (name.isEmpty) return name
+
+      // Count consecutive uppercase letters from the start
+      val upperCount = name.takeWhile(_.isUpper).length
+
+      upperCount match {
+        case 0 => name // No uppercase letters at start
+        case 1 => name.head.toLower + name.tail // Single uppercase letter
+        case n if n == name.length => name.toLowerCase // All uppercase
+        case n =>
+          // Multiple uppercase letters: lowercase all but the last uppercase
+          // e.g. "UIService" -> "uiService", "HTTPClient" -> "httpClient"
+          name.take(n - 1).toLowerCase + name.drop(n - 1)
+      }
+    }
+
+    m.ret.flatMap(r =>
+      if (m.params.nonEmpty) None
+      else idJava.method(m.ident.name) match {
+        case n if n.startsWith("get") =>
+          val propertyPart = n.substring(3)
+          if (propertyPart.nonEmpty) Some(kotlinDecapitalize(propertyPart))
+          else None
+        case n if n.startsWith("is") =>
+          r.resolved.base match {
+            case p: MPrimitive if p._idlName == "bool" => Some(n)
+            case _ => None
+          }
+        case _ => None
+      }
+    )
   }
 
   /* generate a kotlin type for the given MExpr */
