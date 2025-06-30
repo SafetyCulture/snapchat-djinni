@@ -1,11 +1,12 @@
 package djinni
 
+import ast.Interface
 import generatorTools.Spec
 import meta._
 
-import scala.collection.mutable
+class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal, spec: Spec) {
+ private val utils = new KMPUtils(spec)
 
-class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal) {
   def map(valueName: String, tm: MExpr, optional: Boolean = false): String = {
     val unwrap = if (optional) "?" else ""
     tm.base match {
@@ -34,9 +35,14 @@ class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal) {
           case _ => generateTodo(tm.base)
         }
 
-      case d: MDef => d.defType match {
-        case DEnum | DRecord => s"$valueName.toKotlin()"
-        case DInterface => generateTodo(tm.base)
+      case d: MDef => d.body match {
+        case i: Interface =>
+          if (i.ext.cpp) {
+            s"$valueName?.let { ${kotlinMarshal.typename(tm)}Impl(it) }"
+          } else {
+            utils.throwUnsupported(s"Impossible to map ${kotlinMarshal.typename(tm)} in this direction")
+          }
+        case _ =>s"$valueName.toKotlin()"
       }
 
       case MList =>
@@ -54,6 +60,7 @@ class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal) {
         arg.base match {
           case _: MPrimitive | MString => map(s"$valueName", arg, optional = true)
           case MDate | _: MExtern => s"$valueName?.let { ${map("it", arg, optional = true)} }"
+          case MDef(_, _, _, _: Interface) => map(s"$valueName", arg, optional = true)
           case _ => map(s"$valueName?", arg, optional = true)
         }
 

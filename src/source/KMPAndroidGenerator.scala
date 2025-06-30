@@ -2,18 +2,18 @@ package djinni
 
 import ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
 import generatorTools.{ImportRef, SkipFirst, Spec}
-import meta.{MExpr, Meta}
+import meta.{MDef, MExpr, Meta}
 import writer.IndentWriter
 
 import java.io.File
 import scala.collection.mutable
 
 class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
-  val kotlinMarshal = new KotlinMarshal(spec)
-  val javaMarshal = new JavaMarshal(spec)
+  private val kotlinMarshal = new KotlinMarshal(spec)
+  private val javaMarshal = new JavaMarshal(spec)
 
   private val javaMapper = new KMPAndroidJavaMapper(javaMarshal, spec)
-  private val kotlinMapper = new KMPAndroidKotlinMapper(kotlinMarshal)
+  private val kotlinMapper = new KMPAndroidKotlinMapper(kotlinMarshal, spec)
 
   private val utils = new KMPUtils(spec)
 
@@ -125,7 +125,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
            */
 
           val commonMainMethod = idKotlin.method(m.ident)
-          val commonMainReturn = kotlinMarshal.returnType(m.ret)
+          val javaMethod = idJava.method(m.ident)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
             val paramName = idKotlin.local(p.ident)
@@ -133,11 +133,19 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
             w.w(s"$paramName: $paramType")
           }
 
-          w.w(s": $commonMainReturn").braced {
+          m.ret.map { ty =>
+            val commonReturnType = ty.resolved.base match {
+              case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
+              case _ => kotlinMarshal.returnType(m.ret)
+            }
+            w.w(s": $commonReturnType")
+          }
+
+          w.braced {
             /* store return value if any */
             if(m.ret.nonEmpty) w.w(s"val ret = ")
 
-            w.w(s"$javaInterfaceLocal.$commonMainMethod").parens(m.params) { p =>
+            w.w(s"$javaInterfaceLocal.$javaMethod").parens(m.params) { p =>
               val paramName = idKotlin.local(p.ident)
               w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
             }

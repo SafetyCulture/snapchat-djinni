@@ -1,17 +1,16 @@
 package djinni
 
+import ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
 import generatorTools.{ImportRef, Spec}
-
-import djinni.ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
-import djinni.meta.{MDef, MExpr, MExtern, Meta}
-import djinni.writer.IndentWriter
+import meta.{MDef, MExpr, Meta}
+import writer.IndentWriter
 
 import java.io.File
 import scala.collection.mutable
 
 class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
-  val marshal = new KotlinMarshal(spec)
-  val utils = new KMPUtils(spec)
+  private val marshal = new KotlinMarshal(spec)
+  private val utils = new KMPUtils(spec)
 
   // create commonMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
