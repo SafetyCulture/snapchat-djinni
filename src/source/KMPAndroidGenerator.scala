@@ -125,7 +125,6 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
            */
 
           val commonMainMethod = idKotlin.method(m.ident)
-          val javaMethod = idJava.method(m.ident)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
             val paramName = idKotlin.local(p.ident)
@@ -145,14 +144,22 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
             /* store return value if any */
             if(m.ret.nonEmpty) w.w(s"val ret = ")
 
-            w.w(s"$javaInterfaceLocal.$javaMethod").parens(m.params) { p =>
-              val paramName = idKotlin.local(p.ident)
-              w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
+            /* kotlin likes us to use it's synthesized property accessors */
+            kotlinMarshal.synthesisedJavaProperty(m).map { javaProperty =>
+              w.w(s"$javaInterfaceLocal.$javaProperty")
+            }.getOrElse {
+              val javaMethod = idJava.method(m.ident)
+              w.w(s"$javaInterfaceLocal.$javaMethod").parens(m.params) { p =>
+                val paramName = idKotlin.local(p.ident)
+                w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
+              }
             }
+
+            w.wl
 
             // if m.ret isn't empty then write output of retToKotlin
             m.ret.map { ty =>
-              w.wl.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+              w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
             }
           }
         }
@@ -221,9 +228,11 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
               w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
             }
 
+            w.wl
+
             /* map return value if any */
             m.ret.map { ty =>
-              w.wl.wl(s"return ${javaMapper.map("ret", ty.resolved)}")
+              w.wl(s"return ${javaMapper.map("ret", ty.resolved)}")
             }
           }
         }
