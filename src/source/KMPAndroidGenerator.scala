@@ -1,10 +1,9 @@
 package djinni
 
+import ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
 import generatorTools.{ImportRef, SkipFirst, Spec}
-
-import djinni.ast.{Doc, Field, Ident, Interface, Record, TypeParam, TypeRef}
-import djinni.meta.{DEnum, DInterface, DRecord, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MString, Meta}
-import djinni.writer.IndentWriter
+import meta.{MExpr, Meta}
+import writer.IndentWriter
 
 import java.io.File
 import scala.collection.mutable
@@ -79,10 +78,15 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-
-
-
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
+    if(i.ext.java) {
+      generateJavaInterface(origin, ident, doc, typeParams, i)
+    } else if(i.ext.cpp) {
+      generateCppInterface(origin, ident, doc, typeParams, i)
+    }
+  }
+
+  def generateCppInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
 
     // filter for supported methods
@@ -124,9 +128,9 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
           val commonMainReturn = kotlinMarshal.returnType(m.ret)
 
           w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
-                val paramName = idKotlin.local(p.ident)
-                val paramType = kotlinMarshal.paramType(p.ty)
-                w.w(s"$paramName: $paramType")
+            val paramName = idKotlin.local(p.ident)
+            val paramType = kotlinMarshal.paramType(p.ty)
+            w.w(s"$paramName: $paramType")
           }
 
           w.w(s": $commonMainReturn").braced {
@@ -146,6 +150,78 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
         }
       }
     })
+
+  }
+
+  def generateJavaInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
+    val refs = new KMPAndroidRefs()
+
+    // filter for supported methods
+    val interfaceMethods = utils.supportedMethods(i)
+
+    // find any required imports for all method parameters / return types
+    interfaceMethods.foreach(m => {
+      m.params.foreach(p => refs.find(p.ty))
+      m.ret.foreach(refs.find)
+    })
+
+    // find any required imports for constant types
+    i.consts.foreach(c => {
+      refs.find(c.ty)
+    })
+
+    writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.java, w => {
+      val commonInterfaceType = idKotlin.ty(ident.name)
+      val commonInterfaceLocal = idKotlin.local(ident.name)
+      val javaInterfaceType = javaMarshal.fqTypename(ident, i)
+
+      w.w(s"class ${commonInterfaceType}Impl(private val $commonInterfaceLocal: $commonInterfaceType): $javaInterfaceType()").braced {
+        val skipFirst = SkipFirst()
+        for (m <- interfaceMethods) {
+          skipFirst { w.wl }
+
+          /* method implementation:
+           * override fun $javaMethod( $javaParams ): $javaReturnType {
+           *   val ret = $commonInterfaceLocal.$commonInterfaceMethod(
+           *     kotlinMapper.map($paramName),
+           *     ...
+           *   )
+           *   return javaMapper.map(ret)
+           * }
+           */
+
+          val javaMethod = idJava.method(m.ident)
+          val commonInterfaceMethod = idKotlin.method(m.ident)
+
+          w.w(s"override fun $javaMethod").parens(m.params) { p =>
+            val paramName = idJava.local(p.ident)
+            val paramType = kotlinMarshal.javaInteropType(p.ty.resolved)
+            w.w(s"$paramName: $paramType")
+          }
+
+          m.ret.map { ty =>
+            val javaReturnType = kotlinMarshal.javaInteropReturnType(m.ret)
+            w.w(s": $javaReturnType")
+          }
+
+          w.braced {
+            /* store return value if any */
+            if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+            w.w(s"$commonInterfaceLocal.$commonInterfaceMethod ").parens(m.params) { p =>
+              val paramName = idKotlin.local(p.ident)
+              w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
+            }
+
+            /* map return value if any */
+            m.ret.map { ty =>
+              w.wl.wl(s"return ${javaMapper.map("ret", ty.resolved)}")
+            }
+          }
+        }
+      }
+    })
+
   }
 
   override def generateEnum(origin: String, ident: Ident, doc: Doc, e: ast.Enum): Unit = {
