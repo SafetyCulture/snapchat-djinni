@@ -1,9 +1,8 @@
 package djinni
 
+import ast.{Enum, Interface, Record}
+import generatorTools.Spec
 import meta._
-
-import djinni.ast.{Enum, Interface, Record}
-import djinni.generatorTools.{Spec, useProtocol}
 
 import scala.collection.mutable
 
