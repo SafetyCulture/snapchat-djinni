@@ -5,12 +5,6 @@ import generatorTools.Spec
 import meta.{MPrimitive, Meta}
 
 class KMPUtils(spec: Spec) {
-  // filter for supported interface methods
-  def supportedMethods(i: Interface): Seq[Interface.Method] = {
-    i.methods
-    .filterNot(_.static) // no static method support
-  }
-
   def withPackage(packageName: Option[String], t: String): String = packageName.fold(t)(_ + "." + t)
 
   def withCInteropPackage(typeName: String): String = {
