@@ -1,6 +1,6 @@
 package djinni
 
-import ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
+import ast.{Doc, Field, Ident, Interface, Record, TypeParam, TypeRef}
 import generatorTools.{ImportRef, SkipFirst, Spec}
 import meta.{MDef, MExpr, Meta}
 import writer.IndentWriter
@@ -89,8 +89,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   def generateCppInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
 
-    // filter for supported methods
-    val interfaceMethods = utils.supportedMethods(i)
+    // filter methods
+    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
 
     // find any required imports for all method parameters / return types
     interfaceMethods.foreach(m => {
@@ -104,9 +104,57 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     })
 
     writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.java, w => {
+
+      def wParams(p: Field): Unit = {
+        val paramName = idKotlin.local(p.ident)
+        val paramType = kotlinMarshal.paramType(p.ty)
+        w.w(s"$paramName: $paramType")
+      }
+
+      def wReturnType(m: Interface.Method): Unit = {
+        m.ret.map { ty =>
+          val commonReturnType = ty.resolved.base match {
+            case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
+            case _ => kotlinMarshal.returnType(m.ret)
+          }
+          w.w(s": $commonReturnType")
+        }
+      }
+
       val commonInterfaceType = idKotlin.ty(ident.name)
       val javaInterfaceLocal = idKotlin.local(ident.name)
       val javaInterfaceType = javaMarshal.fqTypename(ident, i)
+
+      /* static methods are implemented using the kotlin expect / actual mechanism */
+      if (staticMethods.nonEmpty) {
+        for (m <- staticMethods) {
+          val methodName = idKotlin.method(m.ident)
+          w.w(s"internal actual fun $methodName$commonInterfaceType").parens(m.params)(wParams)
+          wReturnType(m)
+
+          w.braced {
+            /* store return value if any */
+            if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+            val javaMethod = idJava.method(m.ident)
+            w.w(s"$javaInterfaceType.$javaMethod").parens(m.params) { p =>
+              val paramName = idKotlin.local(p.ident)
+              w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
+            }
+
+            w.wl
+
+            /* map return value if any */
+            m.ret.map { ty =>
+              w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+            }
+          }
+
+
+        }
+      }
+
+      w.wl
 
       // wrap the java generated interface in a class which conforms to the generated commonMain interface.
       w.w(s"class ${commonInterfaceType}Impl(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType").braced {
@@ -126,19 +174,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
 
           val commonMainMethod = idKotlin.method(m.ident)
 
-          w.w(s"override fun $commonMainMethod").parens(m.params) { p =>
-            val paramName = idKotlin.local(p.ident)
-            val paramType = kotlinMarshal.paramType(p.ty)
-            w.w(s"$paramName: $paramType")
-          }
-
-          m.ret.map { ty =>
-            val commonReturnType = ty.resolved.base match {
-              case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
-              case _ => kotlinMarshal.returnType(m.ret)
-            }
-            w.w(s": $commonReturnType")
-          }
+          w.w(s"override fun $commonMainMethod").parens(m.params)(wParams)
+          wReturnType(m)
 
           w.braced {
             /* store return value if any */
@@ -157,7 +194,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
 
             w.wl
 
-            // if m.ret isn't empty then write output of retToKotlin
+            /* map return value if any */
             m.ret.map { ty =>
               w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
             }
@@ -171,8 +208,8 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   def generateJavaInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
 
-    // filter for supported methods
-    val interfaceMethods = utils.supportedMethods(i)
+    // filter methods
+    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
 
     // find any required imports for all method parameters / return types
     interfaceMethods.foreach(m => {
