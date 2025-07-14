@@ -1,6 +1,6 @@
 package djinni
 
-import ast.{Doc, Field, Ident, Interface, Record, TypeParam, TypeRef}
+import ast.{Doc, Ident, Interface, Record, TypeParam, TypeRef}
 import generatorTools.{ImportRef, SkipFirst, Spec}
 import meta.{MDef, MExpr, Meta}
 import writer.IndentWriter
@@ -78,6 +78,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
+
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     if(i.ext.java) {
       generateJavaInterface(origin, ident, doc, typeParams, i)
@@ -89,120 +90,30 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   def generateCppInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     val refs = new KMPAndroidRefs()
 
-    // filter methods
-    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
-
     // find any required imports for all method parameters / return types
-    interfaceMethods.foreach(m => {
+    i.methods.foreach(m => {
       m.params.foreach(p => refs.find(p.ty))
       m.ret.foreach(refs.find)
     })
 
-    // find any required imports for constant types
-    i.consts.foreach(c => {
-      refs.find(c.ty)
-    })
+    /* separate static methods from interface methods */
+    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
 
     writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.java, w => {
 
-      def wParams(p: Field): Unit = {
-        val paramName = idKotlin.local(p.ident)
-        val paramType = kotlinMarshal.paramType(p.ty)
-        w.w(s"$paramName: $paramType")
-      }
-
-      def wReturnType(m: Interface.Method): Unit = {
-        m.ret.map { ty =>
-          val commonReturnType = ty.resolved.base match {
-            case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
-            case _ => kotlinMarshal.returnType(m.ret)
-          }
-          w.w(s": $commonReturnType")
-        }
-      }
-
-      val commonInterfaceType = idKotlin.ty(ident.name)
-      val javaInterfaceLocal = idKotlin.local(ident.name)
-      val javaInterfaceType = javaMarshal.fqTypename(ident, i)
-
-      /* static methods are implemented using the kotlin expect / actual mechanism */
-      if (staticMethods.nonEmpty) {
-        for (m <- staticMethods) {
-          val methodName = idKotlin.method(m.ident)
-          w.w(s"internal actual fun $methodName$commonInterfaceType").parens(m.params)(wParams)
-          wReturnType(m)
-
-          w.braced {
-            /* store return value if any */
-            if(m.ret.nonEmpty) w.w(s"val ret = ")
-
-            val javaMethod = idJava.method(m.ident)
-            w.w(s"$javaInterfaceType.$javaMethod").parens(m.params) { p =>
-              val paramName = idKotlin.local(p.ident)
-              w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
-            }
-
-            w.wl
-
-            /* map return value if any */
-            m.ret.map { ty =>
-              w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
-            }
-          }
-
-
-        }
-      }
+      /* static method 'actual' implementations */
+      staticMethods.foreach(m => w.staticMethod(m, ident, i))
 
       w.wl
 
-      // wrap the java generated interface in a class which conforms to the generated commonMain interface.
-      w.w(s"class ${commonInterfaceType}Impl(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType").braced {
-        val skipFirst = SkipFirst()
-        for (m <- interfaceMethods) {
-          skipFirst { w.wl }
-
-          /* method implementation:
-           * override fun method( $commonMainParams ): $commonMainReturn {
-           *   val ret = $javaInterfaceLocal.$javaMethod(
-           *     javaMapper.map($commonMainParam),
-           *     ...
-           *   )
-           *   return kotlinMapper.map(ret)
-           * }
-           */
-
-          val commonMainMethod = idKotlin.method(m.ident)
-
-          w.w(s"override fun $commonMainMethod").parens(m.params)(wParams)
-          wReturnType(m)
-
-          w.braced {
-            /* store return value if any */
-            if(m.ret.nonEmpty) w.w(s"val ret = ")
-
-            /* kotlin likes us to use it's synthesized property accessors */
-            kotlinMarshal.synthesisedJavaProperty(m).map { javaProperty =>
-              w.w(s"$javaInterfaceLocal.$javaProperty")
-            }.getOrElse {
-              val javaMethod = idJava.method(m.ident)
-              w.w(s"$javaInterfaceLocal.$javaMethod").parens(m.params) { p =>
-                val paramName = idKotlin.local(p.ident)
-                w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
-              }
-            }
-
-            w.wl
-
-            /* map return value if any */
-            m.ret.map { ty =>
-              w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
-            }
-          }
-        }
+      /* wrap the C++ generated interface in a class which conforms to the generated commonMain interface. */
+      val skipFirst = SkipFirst()
+      w.cppInterfaceClass(ident, i).braced {
+        skipFirst { w.wl }
+        /* interface method implementations */
+        interfaceMethods.foreach(m => w.cppInterfaceMethod(m, ident))
       }
     })
-
   }
 
   def generateJavaInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
@@ -223,59 +134,15 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     })
 
     writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.java, w => {
-      val commonInterfaceType = idKotlin.ty(ident.name)
-      val commonInterfaceLocal = idKotlin.local(ident.name)
-      val javaInterfaceType = javaMarshal.fqTypename(ident, i)
 
-      w.w(s"class ${commonInterfaceType}Impl(private val $commonInterfaceLocal: $commonInterfaceType): $javaInterfaceType()").braced {
-        val skipFirst = SkipFirst()
-        for (m <- interfaceMethods) {
-          skipFirst { w.wl }
-
-          /* method implementation:
-           * override fun $javaMethod( $javaParams ): $javaReturnType {
-           *   val ret = $commonInterfaceLocal.$commonInterfaceMethod(
-           *     kotlinMapper.map($paramName),
-           *     ...
-           *   )
-           *   return javaMapper.map(ret)
-           * }
-           */
-
-          val javaMethod = idJava.method(m.ident)
-          val commonInterfaceMethod = idKotlin.method(m.ident)
-
-          w.w(s"override fun $javaMethod").parens(m.params) { p =>
-            val paramName = idJava.local(p.ident)
-            val paramType = kotlinMarshal.javaInteropType(p.ty.resolved)
-            w.w(s"$paramName: $paramType")
-          }
-
-          m.ret.map { ty =>
-            val javaReturnType = kotlinMarshal.javaInteropReturnType(m.ret)
-            w.w(s": $javaReturnType")
-          }
-
-          w.braced {
-            /* store return value if any */
-            if(m.ret.nonEmpty) w.w(s"val ret = ")
-
-            w.w(s"$commonInterfaceLocal.$commonInterfaceMethod ").parens(m.params) { p =>
-              val paramName = idKotlin.local(p.ident)
-              w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
-            }
-
-            w.wl
-
-            /* map return value if any */
-            m.ret.map { ty =>
-              w.wl(s"return ${javaMapper.map("ret", ty.resolved)}")
-            }
-          }
-        }
+      /* wrap the kotlin implementation of the interface in a class which implements the java abstract class for the interface */
+      val skipFirst = SkipFirst()
+      w.javaInterfaceClass(ident, i).braced {
+        skipFirst { w.wl }
+        /* interface method implementations */
+        interfaceMethods.foreach(m => w.javaInterfaceMethod(m, ident))
       }
     })
-
   }
 
   override def generateEnum(origin: String, ident: Ident, doc: Doc, e: ast.Enum): Unit = {
@@ -338,5 +205,297 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
         }
       }
     })
+  }
+
+  implicit class InterfaceIndentWriter(w: IndentWriter) {
+
+    /**
+     * Writes the declaration of a class which serves as a wrapper around the Java interface,
+     * implementing the corresponding Kotlin common interface.
+     *
+     * e.g.
+     * {{{
+     * class ${commonInterfaceName}(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType
+     * }}}
+     *
+     * @param ident The `Ident` object containing the name and metadata of the interface.
+     * @param i     The `Interface` for which to generate the declaration for.
+     * @return The `IndentWriter` with the Kotlin class code corresponding to the Java interface appended.
+     */
+    def cppInterfaceClass(ident: Ident, i: Interface): IndentWriter = {
+      val commonInterfaceType = idKotlin.ty(ident.name)
+      val javaInterfaceLocal = idKotlin.local(ident.name)
+      val javaInterfaceType = javaMarshal.fqTypename(ident, i)
+
+      w.w(s"class ${commonInterfaceType}Impl(private val $javaInterfaceLocal: $javaInterfaceType): $commonInterfaceType")
+    }
+
+    /**
+     * Writes an implementation of the given interface method that calls an instance of the underlying
+     * wrapped interface with mapped parameter values, mapping the return value if any.
+     *
+     * e.g.
+     * {{{
+     * override fun $methodName($methodParams): $returnType {
+     *   val ret = $javaInterfaceLocal.$javaMethodName($javaMappedParams)
+     *   return $kotlinMappedReturnValue
+     * }
+     * }}}
+     *
+     * @param m The Interface.Method object containing the method's identifier, parameters,
+     *          and return type.
+     * @return The IndentWriter instance with the formatted function declaration appended.
+     */
+    def cppInterfaceMethod(m: Interface.Method, ident: Ident): IndentWriter = {
+      val javaInterfaceLocal = idKotlin.local(ident.name)
+      val methodName = idKotlin.method(m.ident)
+
+      w.w(s"override fun $methodName").cppMethodParams(m).kotlinReturnType(m).braced {
+
+        /* store return value if any */
+        if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+        /* use it's synthesized property accessors */
+        kotlinMarshal.synthesisedJavaProperty(m).map { javaProperty =>
+          w.w(s"$javaInterfaceLocal.$javaProperty")
+        }.getOrElse {
+          val javaMethod = idJava.method(m.ident)
+          w.w(s"$javaInterfaceLocal.$javaMethod").javaMappedParams(m)
+        }
+
+        w.wl
+
+        /* map return value if any */
+        m.ret.map { ty =>
+          w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+        }
+      }
+      w.wl
+    }
+
+    /**
+     * Prints the parameter section of an interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * ($paramName: $paramType, $paramName: $paramType, ...)
+     * }}}
+     *
+     * @param m The Interface.Method containing the parameters to format
+     * @return The IndentWriter with the method parameters signature appended.
+     */
+    def cppMethodParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idKotlin.local(p.ident)
+        val paramType = kotlinMarshal.paramType(p.ty)
+        w.w(s"$paramName: $paramType")
+      }
+      w
+    }
+
+    /**
+     * Writes the Kotlin return type section of an interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * : $returnType
+     * }}}
+     *
+     * @param m The Interface.Method to write the return type for.
+     * @param explicitUnitType 'Unit' return type is omitted unless explicitUnitType is true, defaults to false.
+     * @return The IndentWriter with the return type declaration appended.
+     */
+    def kotlinReturnType(m: Interface.Method, explicitUnitType: Boolean = false): IndentWriter = {
+      m.ret.map { ty =>
+        val commonReturnType = ty.resolved.base match {
+          /* If the return type is another interface it will always be optional */
+          case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
+          case _ => kotlinMarshal.returnType(m.ret)
+        }
+        w.w(s": $commonReturnType")
+      }
+      w
+    }
+
+    /**
+     * Writes the local kotlin parameters mapped to their Java counterparts for use
+     * when invoking an Java interface method.
+     *
+     * e.g.
+     * {{{
+     * ($mappedParamValue, $mappedParamValue, ...)
+     * }}}
+     *
+     * @param m The `Interface.Method` containing the parameters to be mapped.
+     * @return The `IndentWriter` with the mapped parameters appended.
+     */
+    def javaMappedParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idKotlin.local(p.ident)
+        w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
+      }
+      w
+    }
+
+    /**
+     * Writes an internal 'actual' implementation for a static method, including its name, parameters,
+     * and return type.
+     *
+     * e.g.
+     * {{{
+     * internal actual fun $methodName$interfaceName($methodParams): $returnType {
+     *   val ret = $javaInterfaceType.$javaMethodName($mappedParams)
+     *   return $mappedReturnValue
+     * }
+     * }}}
+     *
+     * @param m     The Interface.Method containing the details of the static method,
+     *              including its identifier, parameters, and return type.
+     * @param ident The Ident representing the interface containing the static method.
+     * @param i     The interface which this method belongs to.
+     * @return The IndentWriter with the static method implementation appended.
+     */
+    def staticMethod(m: Interface.Method, ident: Ident, i: Interface): IndentWriter = {
+      val methodName = idKotlin.method(m.ident)
+      val commonInterfaceType = idKotlin.ty(ident.name)
+      val javaMethod = idJava.method(m.ident)
+      val javaInterfaceType = javaMarshal.fqTypename(ident, i)
+
+      w.w(s"internal actual fun $methodName$commonInterfaceType").cppMethodParams(m).kotlinReturnType(m).braced {
+        /* store the returned value if any */
+        if (m.ret.nonEmpty) w.w(s"val ret = ")
+
+        w.w(s"$javaInterfaceType.$javaMethod").parens(m.params) { p =>
+          val paramName = idKotlin.local(p.ident)
+          w.w(s"${javaMapper.map(paramName, p.ty.resolved)}")
+        }
+
+        w.wl
+
+        /* map return value if any */
+        m.ret.map { ty =>
+          w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+        }
+      }
+
+      w.wl
+    }
+
+    /**
+     * Writes the declaration header of a class which implements the Java abstract class and serves as a wrapper
+     * around an instance which implements the corresponding Kotlin interface.
+     *
+     * e.g.
+     * {{{
+     * class ${commonInterfaceType}Impl(private val $commonInterfaceLocal: $commonInterfaceType): $javaInterfaceType()
+     * }}}
+     *
+     * @param ident The `Ident` object containing the name and metadata of the interface.
+     * @param i     The `Interface` for which to generate the declaration for.
+     * @return The `IndentWriter` with the Kotlin class code corresponding to the Java interface appended.
+     */
+    def javaInterfaceClass(ident: Ident, i: Interface): IndentWriter = {
+      val commonInterfaceType = idKotlin.ty(ident.name)
+      val commonInterfaceLocal = idKotlin.local(ident.name)
+      val javaInterfaceType = javaMarshal.fqTypename(ident, i)
+
+      w.w(s"class ${commonInterfaceType}Impl(private val $commonInterfaceLocal: $commonInterfaceType): $javaInterfaceType()")
+    }
+
+    /**
+     * Writes an implementation of the given interface method that calls an instance of the underlying
+     * wrapped interface with mapped parameter values, mapping the return value if any.
+     *
+     * e.g.
+     * {{{
+     * override fun $methodName($methodParams): $returnType {
+     *   val ret = $commonInterfaceLocal.$commonMethodName($kotlinMappedParams)
+     *   return $kotlinMappedReturnValue
+     * }
+     * }}}
+     *
+     * @param m The Interface.Method object containing the method's identifier, parameters,
+     *          and return type.
+     * @return The IndentWriter instance with the formatted function declaration appended.
+     */
+    def javaInterfaceMethod(m: Interface.Method, ident: Ident): IndentWriter = {
+      val javaMethod = idJava.method(m.ident)
+      val commonInterfaceLocal = idKotlin.local(ident.name)
+      val commonInterfaceMethod = idKotlin.method(m.ident)
+
+      w.w(s"override fun $javaMethod").javaMethodParams(m).javaReturnType(m).braced {
+
+        /* store return value if any */
+        if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+        w.w(s"$commonInterfaceLocal.$commonInterfaceMethod ").kotlinMappedParams(m).wl
+
+        /* map return value if any */
+        m.ret.map { ty =>
+          w.wl(s"return ${javaMapper.map("ret", ty.resolved)}")
+        }
+      }
+      w.wl
+    }
+
+    /**
+     * Prints the parameter section of an interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * ($paramName: $paramType, $paramName: $paramType, ...)
+     * }}}
+     *
+     * @param m The Interface.Method containing the parameters to format
+     * @return The IndentWriter with the method parameters signature appended.
+     */
+    def javaMethodParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idJava.local(p.ident)
+        val paramType = kotlinMarshal.javaInteropType(p.ty.resolved)
+        w.w(s"$paramName: $paramType")
+      }
+      w
+    }
+
+    /**
+     * Writes the return type for a java interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * : $returnType
+     * }}}
+     *
+     * @param m The Interface.Method to write the return type for.
+     * @param explicitUnitType 'Unit' return type is omitted unless explicitUnitType is true, defaults to false.
+     * @return The IndentWriter with the return type declaration appended.
+     */
+    def javaReturnType(m: Interface.Method, explicitUnitType: Boolean = false): IndentWriter = {
+      m.ret.map { ty =>
+        val javaReturnType = kotlinMarshal.javaInteropReturnType(m.ret)
+        w.w(s": $javaReturnType")
+      }
+      w
+    }
+
+    /**
+     * Writes the local Java parameters mapped to their Kotlin counterparts for use
+     * when invoking an Kotlin interface method.
+     *
+     * e.g.
+     * {{{
+     * ($mappedParamValue, $mappedParamValue, ...)
+     * }}}
+     *
+     * @param m The `Interface.Method` containing the parameters to be mapped.
+     * @return The `IndentWriter` with the mapped parameters appended.
+     */
+    def kotlinMappedParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idKotlin.local(p.ident)
+        w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
+      }
+      w
+    }
   }
 }

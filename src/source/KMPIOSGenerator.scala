@@ -103,178 +103,6 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-  implicit class InterfaceIndentWriter(w: IndentWriter) {
-
-    /**
-     * Writes the declaration of a class which serves as a wrapper around the Objective-C interface,
-     * implementing the corresponding Kotlin common interface.
-     *
-     * e.g.
-     * {{{
-     * @OptIn(ExperimentalForeignApi::class)
-     * class ${commonInterfaceName}(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType
-     * }}}
-     *
-     * @param ident The `Ident` object containing the name and metadata of the interface.
-     * @param i     The `Interface` for which to generate the declaration for.
-     * @return The `IndentWriter` with the Kotlin class code corresponding to the Objective-C interface appended.
-     */
-    def cppInterfaceClass(ident: Ident, i: Interface): IndentWriter = {
-      val commonInterfaceName = s"${idKotlin.ty(ident.name)}Impl"
-      val commonInterfaceType = idKotlin.ty(ident.name)
-      val objcInterfaceLocal = idKotlin.local(ident.name)
-      val objcInterfaceType: String = objcMarshal.typename(ident, i)
-
-      w.wl("@OptIn(ExperimentalForeignApi::class)")
-      w.w(s"class ${commonInterfaceName}(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType")
-    }
-
-    /**
-     * Writes an implementation of the given interface method that calls an instance of the underlying
-     * wrapped interface with mapped parameter values, mapping the return value if any.
-     *
-     * e.g.
-     * {{{
-     * override fun $methodName($methodParams): $returnType {
-     *   val ret = $objcInterfaceLocal.$objcMethodName($objcMappedParams)
-     *   return $kotlinMappedReturnValue
-     * }
-     * }}}
-     *
-     * @param m The Interface.Method object containing the method's identifier, parameters,
-     *          and return type.
-     * @return The IndentWriter instance with the formatted function declaration appended.
-     */
-    def cppInterfaceMethod(m: Interface.Method, ident: Ident): IndentWriter = {
-      val objcInterfaceLocal = idKotlin.local(ident.name)
-      val methodName = idKotlin.method(m.ident)
-      val objcMethodName = idObjc.method(m.ident)
-
-      w.w(s"override fun $methodName").methodParams(m).returnType(m).braced {
-
-        /* store return value if any */
-        if(m.ret.nonEmpty) w.w(s"val ret = ")
-
-        w.w(s"$objcInterfaceLocal.$objcMethodName").objcMappedParams(m).wl
-
-        /* map return value if any */
-        m.ret.map { ty =>
-          w.wl.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
-        }
-      }
-      w.wl
-    }
-
-    /**
-     * Prints the parameter section of an interface method's signature.
-     *
-     * e.g.
-     * {{{
-     * ($paramName: $paramType, $paramName: $paramType, ...)
-     * }}}
-     *
-     * @param m The Interface.Method containing the parameters to format
-     * @return The IndentWriter with the method parameters signature appended.
-     */
-    def methodParams(m: Interface.Method): IndentWriter = {
-      w.parens(m.params) { p =>
-        val paramName = idKotlin.local(p.ident)
-        val paramType = kotlinMarshal.paramType(p.ty)
-        w.w(s"$paramName: $paramType")
-      }
-      w
-    }
-
-    /**
-     * Writes the return type section of an interface method's signature.
-     *
-     * e.g.
-     * {{{
-     * : $returnType
-     * }}}
-     *
-     * @param m The Interface.Method to write the return type for.
-     * @param explicitUnitType 'Unit' return type is omitted unless explicitUnitType is true, defaults to false.
-     * @return The IndentWriter with the return type declaration appended.
-     */
-    def returnType(m: Interface.Method, explicitUnitType: Boolean = false): IndentWriter = {
-      val returnType: Option[String] = m.ret.map { ty =>
-        ty.resolved.base match {
-          // iOS cinterop interface return types are optional
-          case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
-          case _ => kotlinMarshal.returnType(m.ret)
-        }
-      }.orElse { if (explicitUnitType) Some("Unit") else None }
-
-      returnType.map(r => w.w(s": $r"))
-      w
-    }
-
-    /**
-     * Writes the local kotlin parameters mapped to their Objective-C counterparts for use
-     * when invoking an Objective-C interface method.
-     *
-     * e.g.
-     * {{{
-     * ($mappedParamValue, $mappedParamValue, ...)
-     * }}}
-     *
-     * @param m The `Interface.Method` containing the parameters to be mapped.
-     * @return The `IndentWriter` with the mapped parameters appended.
-     */
-    def objcMappedParams(m: Interface.Method): IndentWriter = {
-      w.parens(m.params) { p =>
-        val paramName = idKotlin.local(p.ident)
-        w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
-      }
-      w
-    }
-
-    /**
-     * Writes an internal 'actual' declaration for a static method, including its name, parameters,
-     * and return type.
-     *
-     * e.g.
-     * {{{
-     * internal actual fun $methodName$interfaceName($methodParams): $returnType {
-     *   val ret = $objcInterfaceType.$objcMethodName($mappedParams)
-     *   return $mappedReturnValue
-     * }
-     * }}}
-     *
-     * @param m     The Interface.Method containing the details of the static method,
-     *              including its identifier, parameters, and return type.
-     * @param ident The Ident representing the interface containing the static method.
-     * @param i     The interface which this method belongs to.
-     * @return The IndentWriter with the static method declaration appended.
-     */
-    def staticMethod(m: Interface.Method, ident: Ident, i: Interface): IndentWriter = {
-      val interfaceType = idKotlin.ty(ident.name)
-      val objcInterfaceType: String = objcMarshal.typename(ident, i)
-      val methodName = idKotlin.method(m.ident)
-      val objcMethodName = idObjc.method(m.ident)
-
-      w.wl("@OptIn(ExperimentalForeignApi::class)")
-      w.w(s"internal actual fun $methodName$interfaceType").methodParams(m).returnType(m).braced {
-
-        /* store the returned value if any */
-        if(m.ret.nonEmpty) w.w(s"val ret = ")
-
-        w.w(s"$objcInterfaceType.$objcMethodName").parens(m.params) { p =>
-          val paramName = idKotlin.local(p.ident)
-          w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
-        }
-
-        w.wl
-
-        /* map return value if any */
-        m.ret.map { ty =>
-          w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
-        }
-      }
-      w.wl
-    }
-  }
 
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
     if(i.ext.objc) {
@@ -320,7 +148,9 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
       staticMethods.foreach(m => w.staticMethod(m, ident, i))
 
       /* wrap the C++ generated interface in a class which conforms to the generated commonMain interface. */
+      val skipFirst = SkipFirst()
       w.cppInterfaceClass(ident, i).braced {
+        skipFirst { w.wl }
         /* interface method implementations */
         interfaceMethods.foreach(m => w.cppInterfaceMethod(m, ident))
       }
@@ -332,89 +162,40 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     refs.kotlin.add("kotlinx.cinterop.ExperimentalForeignApi")
     refs.kotlin.add("platform.darwin.NSObject")
 
+    /* import the objc interface type from the cinterop package */
     val objcProtocolName: String = s"${idObjc.ty(ident.name)}Protocol"
-
-    // import the objc interface type from the cinterop package
     refs.kotlin.add(utils.withCInteropPackage(objcProtocolName))
 
-    val interfaceName = s"${idObjc.ty(ident.name)}"
-    val commonInterfaceType = idKotlin.ty(ident.name)
-    val commonInterfaceLocal = idKotlin.local(ident.name)
+    val interfaceMethods = i.methods.filterNot(_.static)
 
-    // filter methods
-    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
-
-    // find any required imports for all method parameters / return types
+    /* find any required imports for all method parameters / return types */
     interfaceMethods.foreach(m => {
-      // for each parameter
+      /* for each parameter */
       m.params.foreach { p =>
-        // gather any imports required to map this parameter from objc to kotlin
+        /* gather any imports required to map this parameter from objc to kotlin */
         refs.kotlin ++= kotlinMapper.typeRefs(p.ty.resolved)
 
-        // find imports associated with the parameter type
+        /* find imports associated with the parameter type */
         refs.findCInterop(p.ty.resolved)
       }
 
-      // check for required imports for the return type
+      /* check for required imports for the return type */
       m.ret.foreach(r => {
-        // gather any imports required to map the return type from kotlin back to objc
+        /* gather any imports required to map the return type from kotlin back to objc */
         refs.kotlin ++= objcMapper.typeRefs(r.resolved)
 
-        // find imports associated with the return type
+        /* find imports associated with the return type */
         refs.findCInterop(r.resolved)
       })
     })
 
-    // search for imports associated with constants
-    i.consts.foreach(c => {
-      refs.find(c.ty)
-    })
-
-
-    writeKotlinFile(interfaceName, origin, refs.kotlin, w => {
-
-      // wrap the objc generated interface in a class which conforms to the generated commonMain interface.
-      w.wl("@OptIn(ExperimentalForeignApi::class)")
-      w.w(s"class ${interfaceName}Impl(private val $commonInterfaceLocal: $commonInterfaceType): NSObject(), $objcProtocolName").braced {
-        val skipFirst = SkipFirst()
-        for (m <- interfaceMethods) {
-          skipFirst { w.wl }
-
-          /* method implementation:
-           * override fun $objcMethod( $objcMethodParams ): $methodReturnType {
-           *   val ret = $commonInterfaceLocal.$commonMethod(
-           *     kotlinMapper.map($objcMethodParam),
-           *     ...
-           *   )
-           *   return objcMapper.map(ret)
-           * }
-           */
-
-          val objcMethod = idObjc.method(m.ident)
-          val commonMethod = idKotlin.method(m.ident)
-          val methodReturnType = kotlinMarshal.cinteropReturnType(m.ret)
-
-          w.w(s"override fun $objcMethod").parens(m.params) { p =>
-                val paramName = idObjc.local(p.ident)
-                val paramType = kotlinMarshal.cinteropType(p.ty.resolved)
-                w.w(s"$paramName: $paramType")
-          }
-
-          w.w(s": $methodReturnType").braced {
-            /* store return value if any */
-            if(m.ret.nonEmpty) w.w(s"val ret = ")
-
-            w.w(s"$commonInterfaceLocal.$commonMethod").parens(m.params) { p =>
-              val paramName = idObjc.local(p.ident)
-              w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
-            }
-
-            // return stored value if any
-            m.ret.map { ty =>
-              w.wl.wl(s"return ${objcMapper.map("ret", ty.resolved)}")
-            }
-          }
-        }
+    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
+      /* wrap the objc generated interface in a class which conforms to the generated commonMain interface */
+      val skipFirst = SkipFirst()
+      w.objcInterfaceClass(ident, i).braced {
+        skipFirst { w.wl }
+        /* interface method implementations */
+        interfaceMethods.foreach(m => w.objcInterfaceMethod(m, ident))
       }
     })
   }
@@ -521,4 +302,278 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
+  implicit class InterfaceIndentWriter(w: IndentWriter) {
+
+    /**
+     * Writes the declaration of a class which implements a given Kotlin common interface and serves as
+     * a wrapper around the underlying C++ implementation which is exposed via an Objective-C interface.
+     *
+     * e.g.
+     * {{{
+     * @OptIn(ExperimentalForeignApi::class)
+     * class ${commonInterfaceName}(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType
+     * }}}
+     *
+     * @param ident The `Ident` object containing the name and metadata of the interface.
+     * @param i     The `Interface` for which to generate the declaration for.
+     * @return The `IndentWriter` with the Kotlin class code corresponding to the Objective-C interface appended.
+     */
+    def cppInterfaceClass(ident: Ident, i: Interface): IndentWriter = {
+      val commonInterfaceName = s"${idKotlin.ty(ident.name)}Impl"
+      val commonInterfaceType = idKotlin.ty(ident.name)
+      val objcInterfaceLocal = idKotlin.local(ident.name)
+      val objcInterfaceType: String = objcMarshal.typename(ident, i)
+
+      w.wl("@OptIn(ExperimentalForeignApi::class)")
+      w.w(s"class ${commonInterfaceName}(private val $objcInterfaceLocal: $objcInterfaceType): $commonInterfaceType")
+    }
+
+    /**
+     * Writes an implementation of the given interface method that calls an instance of the underlying
+     * wrapped interface with mapped parameter values, mapping the return value if any.
+     *
+     * e.g.
+     * {{{
+     * override fun $methodName($methodParams): $returnType {
+     *   val ret = $objcInterfaceLocal.$objcMethodName($objcMappedParams)
+     *   return $kotlinMappedReturnValue
+     * }
+     * }}}
+     *
+     * @param m The Interface.Method object containing the method's identifier, parameters,
+     *          and return type.
+     * @return The IndentWriter instance with the formatted function declaration appended.
+     */
+    def cppInterfaceMethod(m: Interface.Method, ident: Ident): IndentWriter = {
+      val objcInterfaceLocal = idKotlin.local(ident.name)
+      val methodName = idKotlin.method(m.ident)
+      val objcMethodName = idObjc.method(m.ident)
+
+      w.w(s"override fun $methodName").cppMethodParams(m).returnType(m).braced {
+
+        /* store return value if any */
+        if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+        w.w(s"$objcInterfaceLocal.$objcMethodName").objcMappedParams(m).wl
+
+        /* map return value if any */
+        m.ret.map { ty =>
+          w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+        }
+      }
+      w.wl
+    }
+
+    /**
+     * Prints the parameter section of an interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * ($paramName: $paramType, $paramName: $paramType, ...)
+     * }}}
+     *
+     * @param m The Interface.Method containing the parameters to format
+     * @return The IndentWriter with the method parameters signature appended.
+     */
+    def cppMethodParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idKotlin.local(p.ident)
+        val paramType = kotlinMarshal.paramType(p.ty)
+        w.w(s"$paramName: $paramType")
+      }
+      w
+    }
+
+    /**
+     * Writes the return type section of an interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * : $returnType
+     * }}}
+     *
+     * @param m The Interface.Method to write the return type for.
+     * @param explicitUnitType 'Unit' return type is omitted unless explicitUnitType is true, defaults to false.
+     * @return The IndentWriter with the return type declaration appended.
+     */
+    def returnType(m: Interface.Method, explicitUnitType: Boolean = false): IndentWriter = {
+      val returnType: Option[String] = m.ret.map { ty =>
+        ty.resolved.base match {
+          // iOS cinterop interface return types are optional
+          case MDef(_, _, _, i: Interface) if i.ext.cpp => kotlinMarshal.returnType(m.ret) + "?"
+          case _ => kotlinMarshal.returnType(m.ret)
+        }
+      }.orElse { if (explicitUnitType) Some("Unit") else None }
+
+      returnType.map(r => w.w(s": $r"))
+      w
+    }
+
+    /**
+     * Writes the local Kotlin parameters mapped to their Objective-C counterparts for use
+     * when invoking an Objective-C interface method.
+     *
+     * e.g.
+     * {{{
+     * ($mappedParamValue, $mappedParamValue, ...)
+     * }}}
+     *
+     * @param m The `Interface.Method` containing the parameters to be mapped.
+     * @return The `IndentWriter` with the mapped parameters appended.
+     */
+    def objcMappedParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idKotlin.local(p.ident)
+        w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
+      }
+      w
+    }
+
+    /**
+     * Writes an internal 'actual' implementation for a static method, including its name, parameters,
+     * and return type.
+     *
+     * e.g.
+     * {{{
+     * internal actual fun $methodName$interfaceName($methodParams): $returnType {
+     *   val ret = $objcInterfaceType.$objcMethodName($mappedParams)
+     *   return $mappedReturnValue
+     * }
+     * }}}
+     *
+     * @param m     The Interface.Method containing the details of the static method,
+     *              including its identifier, parameters, and return type.
+     * @param ident The Ident representing the interface containing the static method.
+     * @param i     The interface which this method belongs to.
+     * @return      The IndentWriter with the static method implementation appended.
+     */
+    def staticMethod(m: Interface.Method, ident: Ident, i: Interface): IndentWriter = {
+      val interfaceType = idKotlin.ty(ident.name)
+      val objcInterfaceType: String = objcMarshal.typename(ident, i)
+      val methodName = idKotlin.method(m.ident)
+      val objcMethodName = idObjc.method(m.ident)
+
+      w.wl("@OptIn(ExperimentalForeignApi::class)")
+      w.w(s"internal actual fun $methodName$interfaceType").cppMethodParams(m).returnType(m).braced {
+
+        /* store the returned value if any */
+        if(m.ret.nonEmpty) w.w(s"val ret = ")
+
+        w.w(s"$objcInterfaceType.$objcMethodName").parens(m.params) { p =>
+          val paramName = idKotlin.local(p.ident)
+          w.w(s"${objcMapper.map(paramName, p.ty.resolved)}")
+        }
+
+        w.wl
+
+        /* map return value if any */
+        m.ret.map { ty =>
+          w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
+        }
+      }
+      w.wl
+    }
+
+    /**
+     * Writes the declaration header of a class which serves as a wrapper around a Kotlin implementation of a
+     * common interface which conforms to a corresponding Objective-C protocol.
+     *
+     * e.g.
+     * {{{
+     * @OptIn(ExperimentalForeignApi::class)
+     * class ${objcInterfaceName}(private val $commonInterfaceLocal: $commonInterfaceType): NSObject(), $objcProtocolName
+     * }}}
+     *
+     * @param ident The `Ident` object containing the name and metadata of the interface.
+     * @param i     The `Interface` for which to generate the declaration for.
+     * @return      The `IndentWriter` with the Objective-C interface class header appended.
+     */
+    def objcInterfaceClass(ident: Ident, i: Interface): IndentWriter = {
+      val objcInterfaceClassName = s"${idObjc.ty(ident.name)}Impl"
+      val commonInterfaceLocal = idKotlin.local(ident.name)
+      val commonInterfaceType = idKotlin.ty(ident.name)
+      val objcProtocolName: String = s"${idObjc.ty(ident.name)}Protocol"
+
+      w.wl("@OptIn(ExperimentalForeignApi::class)")
+      w.w(s"class ${objcInterfaceClassName}(private val $commonInterfaceLocal: $commonInterfaceType): NSObject(), $objcProtocolName")
+    }
+
+    /**
+     * Writes an implementation of the given interface method that calls an instance of the underlying
+     * wrapped Objective-C interface with mapped parameter values, mapping the return value if any.
+     *
+     * e.g.
+     * {{{
+     * override fun $methodName($methodParams): $returnType {
+     *   val ret = $objcInterfaceLocal.$objcMethodName($objcMappedParams)
+     *   return $kotlinMappedReturnValue
+     * }
+     * }}}
+     *
+     * @param m The Interface.Method object containing the method's identifier, parameters,
+     *          and return type.
+     * @return The IndentWriter instance with the formatted function declaration appended.
+     */
+    def objcInterfaceMethod(m: Interface.Method, ident: Ident): IndentWriter = {
+      val objcMethod = idObjc.method(m.ident)
+      val commonMethod = idKotlin.method(m.ident)
+      val commonInterfaceLocal = idKotlin.local(ident.name)
+      val methodReturnType = kotlinMarshal.cinteropReturnType(m.ret)
+
+      w.w(s"override fun $objcMethod").objcMethodParams(m).w(s": $methodReturnType").braced {
+
+        /* store return value if any */
+        if (m.ret.nonEmpty) w.w(s"val ret = ")
+
+        w.w(s"$commonInterfaceLocal.$commonMethod").kotlinMappedParams(m).wl
+
+        /* return stored value if any */
+        m.ret.map { ty =>
+          w.wl.wl(s"return ${objcMapper.map("ret", ty.resolved)}")
+        }
+      }
+      w.wl
+    }
+
+    /**
+     * Prints the parameter section of an Objective-C interface method's signature.
+     *
+     * e.g.
+     * {{{
+     * ($paramName: $paramType, $paramName: $paramType, ...)
+     * }}}
+     *
+     * @param m The Interface.Method containing the parameters to format
+     * @return The IndentWriter with the method parameters signature appended.
+     */
+    def objcMethodParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idObjc.local(p.ident)
+        val paramType = kotlinMarshal.cinteropType(p.ty.resolved)
+        w.w(s"$paramName: $paramType")
+      }
+      w
+    }
+
+    /**
+     * Writes the Objective-C parameters mapped to their Kotlin counterparts for use
+     * when invoking a common Kotlin interface method.
+     *
+     * e.g.
+     * {{{
+     * ($mappedParamValue, $mappedParamValue, ...)
+     * }}}
+     *
+     * @param m The `Interface.Method` containing the parameters to be mapped.
+     * @return The `IndentWriter` with the mapped parameters appended.
+     */
+    def kotlinMappedParams(m: Interface.Method): IndentWriter = {
+      w.parens(m.params) { p =>
+        val paramName = idObjc.local(p.ident)
+        w.w(s"${kotlinMapper.map(paramName, p.ty.resolved)}")
+      }
+      w
+    }
+
+  }
 }
