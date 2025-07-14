@@ -1,7 +1,7 @@
 package djinni
 
-import ast.{Doc, Field, Ident, Interface, Record, TypeParam, TypeRef}
-import generatorTools.{ImportRef, SkipFirst, Spec}
+import ast.{Doc,  Ident, Interface, Record, TypeParam, TypeRef}
+import generatorTools.{ImportRef, Spec}
 import meta.{MDef, MExpr, Meta}
 import writer.IndentWriter
 
