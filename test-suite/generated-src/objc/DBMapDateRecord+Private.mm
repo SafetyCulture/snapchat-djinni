@@ -10,7 +10,7 @@ namespace djinni_generated {
 auto MapDateRecord::toCpp(ObjcType obj) -> CppType
 {
     assert(obj);
-    return {::djinni::Map<::djinni::String, ::djinni::Date>::toCpp(obj.datesById)};
+    return {::djinni::Map<::djinni::String, ::djinni::Date>::toCpp(obj.datesByID)};
 }
 
 auto MapDateRecord::fromCpp(const CppType& cpp) -> ObjcType

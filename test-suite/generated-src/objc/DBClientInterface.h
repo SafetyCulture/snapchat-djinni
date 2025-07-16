@@ -10,7 +10,7 @@
 @protocol DBClientInterface <NSObject>
 
 /** Returns record of given string */
-- (nonnull DBClientReturnedRecord *)getRecord:(int64_t)recordId
+- (nonnull DBClientReturnedRecord *)getRecord:(int64_t)recordID
                                    utf8string:(nonnull NSString *)utf8string
                                          misc:(nullable NSString *)misc;
 
