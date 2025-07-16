@@ -6,9 +6,9 @@
 @interface DBMapDateRecord : NSObject
 - (nonnull instancetype)init NS_UNAVAILABLE;
 + (nonnull instancetype)new NS_UNAVAILABLE;
-- (nonnull instancetype)initWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesById NS_DESIGNATED_INITIALIZER;
-+ (nonnull instancetype)mapDateRecordWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesById;
+- (nonnull instancetype)initWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesByID NS_DESIGNATED_INITIALIZER;
++ (nonnull instancetype)mapDateRecordWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesByID;
 
-@property (nonatomic, readonly, nonnull) NSDictionary<NSString *, NSDate *> * datesById;
+@property (nonatomic, readonly, nonnull) NSDictionary<NSString *, NSDate *> * datesByID;
 
 @end
