@@ -1,0 +1,29 @@
+package djinni
+
+import ast.{Ident, Interface, TypeRef}
+import generatorTools.Spec
+import meta.{MPrimitive, Meta}
+
+class KMPUtils(spec: Spec) {
+  def withPackage(packageName: Option[String], t: String): String = packageName.fold(t)(_ + "." + t)
+
+  def withCInteropPackage(typeName: String): String = {
+    spec.kotlinCInteropPackage.fold(typeName)(_ + "." + typeName)
+  }
+
+  def withSupportPackage(typeName: String): String = {
+    spec.kotlinSupportPackage.fold(typeName)(_ + "." + typeName)
+  }
+
+  def generateTodo(m: Meta): String = {
+    generateTodo(m.getClass.getSimpleName.replace("$", ""))
+  }
+
+  def generateTodo(s: String): String = {
+    s"TODO(${'"'}$s${'"'})"
+  }
+
+  def throwUnsupported(s: String): String = {
+    s"throw UnsupportedOperationException(${'"'}$s${'"'})"
+  }
+}

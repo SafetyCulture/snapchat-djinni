@@ -65,6 +65,11 @@ object Main {
     var cppExt: String = "cpp"
     var cppHeaderExt: String = "hpp"
     var javaIdentStyle = IdentStyle.javaDefault
+    var kotlinOutFolder: Option[File] = None
+    var kotlinIdentStyle = IdentStyle.kotlinDefault
+    var kotlinPackage: Option[String] = None
+    var kotlinSupportPackage: Option[String] = None
+    var kotlinCInteropPackage: Option[String] = None
     var cppIdentStyle = IdentStyle.cppDefault
     var cppTypeEnumIdentStyle: IdentConverter = null
     var objcOutFolder: Option[File] = None
@@ -143,6 +148,15 @@ object Main {
         .text("Whether generated Java classes for records should be marked 'final' (default: true). ")
       opt[Boolean]("java-gen-interface").valueName("<true/false>").foreach(x => javaGenInterface = x)
         .text("Generate Java interface instead of abstract class.")
+      note("")
+      opt[File]("kotlin-out").valueName("<out-folder>").foreach(x => kotlinOutFolder = Some(x))
+        .text("The folder for the Kotlin output files (Generator disabled if unspecified).")
+      opt[String]("kotlin-package").valueName("...").foreach(x => kotlinPackage = Some(x))
+        .text("The package name to use for generated Kotlin classes.")
+      opt[String]("kotlin-support-package").valueName("...").foreach(x => kotlinSupportPackage = Some(x))
+        .text("The support package used to translate to and from Kotlin classes.")
+      opt[String]("kotlin-cinterop-package").valueName("...").foreach(x => kotlinCInteropPackage = Some(x))
+        .text("The package name of generated cinterop bindings for Kotlin native targets.")
       note("")
       opt[File]("cpp-out").valueName("<out-folder>").foreach(x => cppOutFolder = Some(x))
         .text("The output folder for C++ files (Generator disabled if unspecified).")
@@ -377,6 +391,11 @@ object Main {
       javaImplementAndroidOsParcelable,
       javaUseFinalForRecord,
       javaGenInterface,
+      kotlinOutFolder,
+      kotlinPackage,
+      kotlinSupportPackage,
+      kotlinCInteropPackage,
+      kotlinIdentStyle,
       cppOutFolder,
       cppHeaderOutFolder,
       cppIncludePrefix,
@@ -454,5 +473,7 @@ object Main {
         objcSwiftBridgingHeaderWriter.get.close()
       }
     }
+
+    System.out.println("Complete!")
   }
 }
