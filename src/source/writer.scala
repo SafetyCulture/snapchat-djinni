@@ -16,6 +16,8 @@
 
 package djinni
 
+import djinni.generatorTools.SkipFirst
+
 import java.io.Writer
 
 package object writer {
@@ -69,6 +71,14 @@ class IndentWriter(out: Writer, indent: String = "    ", startIndent: String = "
     for (i <- 0 until amount) increase()
     f
     for (i <- 0 until amount) decrease()
+  }
+
+  def wlDivider[T](list: Seq[T])(f: T => Unit): Unit = {
+    val skipFirst = SkipFirst()
+    list.foreach { item =>
+      skipFirst { wl }
+      f(item)
+    }
   }
 
   def bracedEnd(end: String)(f: => Unit) {

@@ -1,10 +1,10 @@
 package djinni
 
-import ast.{Ident, Interface, TypeRef}
 import generatorTools.Spec
-import meta.{MPrimitive, Meta}
+import meta.Meta
 
-class KMPUtils(spec: Spec) {
+class KMPUtils(kotlinMarshal: KotlinMarshal, spec: Spec) {
+
   def withPackage(packageName: Option[String], t: String): String = packageName.fold(t)(_ + "." + t)
 
   def withCInteropPackage(typeName: String): String = {
@@ -15,8 +15,14 @@ class KMPUtils(spec: Spec) {
     spec.kotlinSupportPackage.fold(typeName)(_ + "." + typeName)
   }
 
-  def generateTodo(m: Meta): String = {
-    generateTodo(m.getClass.getSimpleName.replace("$", ""))
+  def generateTodo(tm: meta.MExpr): String = {
+    def className(m: Meta) = m.getClass.getSimpleName.replace("$", "")
+
+    val args = if (tm.args.isEmpty) "" else tm.args
+      .map(kotlinMarshal.typename)
+      .mkString("<", ", ", ">")
+
+    generateTodo(s"Map: ${className(tm.base)}$args")
   }
 
   def generateTodo(s: String): String = {
