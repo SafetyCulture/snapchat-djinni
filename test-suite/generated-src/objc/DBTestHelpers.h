@@ -61,13 +61,13 @@
 
 + (void)checkEnum:(DBColor)c;
 
-+ (nullable id<DBUserToken>)tokenId:(nullable id<DBUserToken>)t;
++ (nullable id<DBUserToken>)tokenID:(nullable id<DBUserToken>)t;
 
 + (nullable id<DBUserToken>)createCppToken;
 
 + (void)checkCppToken:(nullable id<DBUserToken>)t;
 
-+ (int64_t)cppTokenId:(nullable id<DBUserToken>)t;
++ (int64_t)cppTokenID:(nullable id<DBUserToken>)t;
 
 + (void)checkTokenType:(nullable id<DBUserToken>)t
                   type:(nonnull NSString *)type;
@@ -75,7 +75,7 @@
 + (nullable NSNumber *)returnNone;
 
 /** Ensures that we generate integer translation code */
-+ (nonnull DBAssortedPrimitives *)assortedPrimitivesId:(nonnull DBAssortedPrimitives *)i;
++ (nonnull DBAssortedPrimitives *)assortedPrimitivesID:(nonnull DBAssortedPrimitives *)i;
 
 + (nonnull NSData *)idBinary:(nonnull NSData *)b;
 

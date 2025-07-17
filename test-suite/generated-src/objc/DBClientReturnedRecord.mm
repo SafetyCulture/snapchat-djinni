@@ -6,23 +6,23 @@
 
 @implementation DBClientReturnedRecord
 
-- (nonnull instancetype)initWithRecordId:(int64_t)recordId
+- (nonnull instancetype)initWithRecordId:(int64_t)recordID
                                  content:(nonnull NSString *)content
                                     misc:(nullable NSString *)misc
 {
     if (self = [super init]) {
-        _recordId = recordId;
+        _recordID = recordID;
         _content = [content copy];
         _misc = [misc copy];
     }
     return self;
 }
 
-+ (nonnull instancetype)clientReturnedRecordWithRecordId:(int64_t)recordId
++ (nonnull instancetype)clientReturnedRecordWithRecordId:(int64_t)recordID
                                                  content:(nonnull NSString *)content
                                                     misc:(nullable NSString *)misc
 {
-    return [[self alloc] initWithRecordId:recordId
+    return [[self alloc] initWithRecordId:recordID
                                   content:content
                                      misc:misc];
 }
@@ -30,7 +30,7 @@
 #ifndef DJINNI_DISABLE_DESCRIPTION_METHODS
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@ %p recordId:%@ content:%@ misc:%@>", self.class, (void *)self, @(self.recordId), self.content, self.misc];
+    return [NSString stringWithFormat:@"<%@ %p recordID:%@ content:%@ misc:%@>", self.class, (void *)self, @(self.recordID), self.content, self.misc];
 }
 
 #endif
