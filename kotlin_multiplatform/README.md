@@ -50,15 +50,15 @@ Constants are not currently supported.
 | Common generation |    ✅    |
 | Extensions        |    ❌    |
 
-| Feature | Primitives | Optional | Date | List | Set | Map | Enum | Record | External |
-|---------|:----------:|:--------:|:----:|:----:|:---:|:---:|:----:|:------:|:--------:|
-| Fields  |     ✅      |    ✅     |  ✅   |  ✅   |  ✅  |  ✅  |  ✅   |   ✅    |    ✅     |
+| Feature | Primitives | Optional | Date | List | Set | Map | Enum | Record | External<sup>3</sup> |
+|---------|:----------:|:--------:|:----:|:----:|:---:|:---:|:----:|:------:|:--------------------:|
+| Fields  |     ✅      |    ✅     |  ✅   |  ✅   |  ✅  |  ✅  |  ✅   |   ✅    |          ⚠️          |
 
 ### Interfaces
 | Feature           | Support |
 |-------------------|:-------:|
 | Common generation |    ✅    |
-| Static methods    |    ❌    |
+| Static methods    |    ✅    |
 
 
 | Feature    | Primitives | Optional | Date | List | Set | Map | Enum | Record | External |
@@ -68,10 +68,10 @@ Constants are not currently supported.
 ### Mapping
 | Feature   | Primitives | Optional | Date | List | Set<sup>1</sup> | Map<sup>1</sup> | Enum | Record<sup>2</sup> | Interfaces | External<sup>3</sup> |
 |-----------|:----------:|:--------:|:----:|:----:|:---------------:|:---------------:|:----:|:------------------:|:----------:|:--------------------:|
-| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
-| From Java |     ✅      |    ✅     |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
-| To ObjC   |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
-| From ObjC |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ❌      |          ⚠️          |
+| To Java   |     ✅      |    ✅     |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ✅      |          ⚠️          |
+| From Java |     ✅      |    ✅     |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ✅      |          ⚠️          |
+| To ObjC   |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ✅      |          ⚠️          |
+| From ObjC |     ✅️     |    ✅️    |  ✅   |  ✅   |        ✅        |        ✅        |  ✅   |         ✅          |     ✅      |          ⚠️          |
 
 <sup>1</sup>Map keys and set item types are restricted to primitives, strings and enums.
 
