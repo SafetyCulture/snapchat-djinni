@@ -7,7 +7,7 @@ import meta._
 import scala.collection.mutable
 
 class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
-  private val utils = new KMPUtils(spec)
+  private val utils = new KMPUtils(kotlinMarshal, spec)
 
   def typeRefs(m: MExpr, requiresCast: Boolean = false): Set[String] = {
     val refs = mutable.Set[String]()
@@ -99,7 +99,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
           } else {
             utils.throwUnsupported(s"Impossible to map ${objcMarshal.typename(tm)} in this direction")
           }
-        case _ => utils.generateTodo(tm.base)
+        case _ => utils.generateTodo(tm)
       }
 
       case e: MExtern if e.kotlin.isProtobufMessage =>
@@ -133,7 +133,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
               } else {
                 utils.throwUnsupported(s"Impossible to map ${objcMarshal.typename(arg)} in this direction")
               }
-            case _ => utils.generateTodo(tm.base)
+            case _ => utils.generateTodo(tm)
           }
 
           case MSet =>
@@ -149,7 +149,7 @@ class KMPIOSKotlinMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal,
           case _ => map(s"$valueName?", arg)
         }
 
-      case _ => utils.generateTodo(tm.base)
+      case _ => utils.generateTodo(tm)
     }
   }
 

@@ -15,7 +15,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
   private val objcMapper = new KMPIOSObjcMapper(kotlinMarshal, objcMarshal, spec)
   private val kotlinMapper = new KMPIOSKotlinMapper(kotlinMarshal, objcMarshal, spec)
 
-  private val utils = new KMPUtils(spec)
+  private val utils = new KMPUtils(kotlinMarshal, spec)
 
   // create iosMain directory
   // we want to put it in the class path folder based on the contents of spec.kotlinPackage
@@ -148,11 +148,11 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
       staticMethods.foreach(m => w.staticMethod(m, ident, i))
 
       /* wrap the C++ generated interface in a class which conforms to the generated commonMain interface. */
-      val skipFirst = SkipFirst()
       w.cppInterfaceClass(ident, i).braced {
-        skipFirst { w.wl }
         /* interface method implementations */
-        interfaceMethods.foreach(m => w.cppInterfaceMethod(m, ident))
+        w.wlDivider(interfaceMethods) { m =>
+          w.cppInterfaceMethod(m, ident)
+        }
       }
     })
   }
@@ -191,11 +191,11 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
 
     writeKotlinFile(ident.name, origin, refs.kotlin, w => {
       /* wrap the objc generated interface in a class which conforms to the generated commonMain interface */
-      val skipFirst = SkipFirst()
       w.objcInterfaceClass(ident, i).braced {
-        skipFirst { w.wl }
         /* interface method implementations */
-        interfaceMethods.foreach(m => w.objcInterfaceMethod(m, ident))
+        w.wlDivider(interfaceMethods) { m =>
+          w.objcInterfaceMethod(m, ident)
+        }
       }
     })
   }
@@ -361,7 +361,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
         }
       }
-      w.wl
+      w
     }
 
     /**
@@ -532,7 +532,7 @@ class KMPIOSGenerator(spec: Spec) extends Generator(spec) {
           w.wl.wl(s"return ${objcMapper.map("ret", ty.resolved)}")
         }
       }
-      w.wl
+      w
     }
 
     /**

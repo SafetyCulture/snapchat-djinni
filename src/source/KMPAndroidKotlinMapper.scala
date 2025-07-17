@@ -5,12 +5,12 @@ import generatorTools.Spec
 import meta._
 
 class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal, spec: Spec) {
- private val utils = new KMPUtils(spec)
+ private val utils = new KMPUtils(kotlinMarshal, spec)
 
   def map(valueName: String, tm: MExpr, optional: Boolean = false): String = {
     val unwrap = if (optional) "?" else ""
     tm.base match {
-      case _: MPrimitive => valueName
+      case _: MPrimitive | MString => valueName
       case MDate => s"Instant.fromEpochMilliseconds($valueName.time)"
       case MMap =>
         val key = tm.args.head.base
@@ -32,7 +32,7 @@ class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal, spec: Spec) {
         setType.base match {
           case _: MPrimitive | MString => valueName
           case m: MDef if (m.defType == DEnum) => s"$valueName.map { ${map("it", setType)} }$unwrap.toSet()"
-          case _ => generateTodo(tm.base)
+          case _ => utils.generateTodo(tm)
         }
 
       case d: MDef => d.body match {
@@ -53,7 +53,7 @@ class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal, spec: Spec) {
         s"$kotlinType.ADAPTER.decode($valueName.toByteArray())"
 
       case e: MExtern =>
-        generateTodo(s"Map external type: ${e.kotlin.typename}")
+        utils.generateTodo(s"Map external type: ${e.kotlin.typename}")
 
       case MOptional =>
         val arg = tm.args.head
@@ -64,15 +64,7 @@ class KMPAndroidKotlinMapper(kotlinMarshal: KotlinMarshal, spec: Spec) {
           case _ => map(s"$valueName?", arg, optional = true)
         }
 
-      case _ => valueName
+      case _ => utils.generateTodo(tm)
     }
-  }
-
-  def generateTodo(m: Meta): String = {
-    generateTodo(m.getClass.getSimpleName.replace("$", ""))
-  }
-
-  def generateTodo(s: String): String = {
-    s"TODO(${'"'}$s${'"'})"
   }
 }
