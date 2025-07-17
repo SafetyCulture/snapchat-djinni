@@ -28,6 +28,29 @@ This project is experimental and **under active development**. The current focus
 
 As this effort is exploratory, there may be significant changes as it evolves.
 
+## Usage
+
+To generate bindings, the following arguments must be provided:
+
+`--kotlin-out <output_path>`
+
+Generator will create **commonMain**, **iosMain** and **androidMain** directories at this path containing
+the generated source sets.
+
+`--kotlin-package <kotlin_package>`
+
+Kotlin package name which is used for the generated bindings.
+
+`--kotlin-support-package com.safetyculture.djinni.support` 
+
+Kotlin multiplatform library package which contains supporting code required by the generated bindings. This can be
+found in `support-lib/kmp`.
+
+`--kotlin-cinterop-package <cinterop_package>`
+
+Name of the cinterop package specified in the cinterop.def file. This usually matches the xcframework name provided
+to cinterop.
+
 ## Supported Features
  Legend:
  ✅ Supported 
