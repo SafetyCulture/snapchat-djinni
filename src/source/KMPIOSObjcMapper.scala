@@ -7,7 +7,7 @@ import meta._
 import scala.collection.mutable
 
 class KMPIOSObjcMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, spec: Spec) {
-  private val utils = new KMPUtils(spec)
+  private val utils = new KMPUtils(kotlinMarshal, spec)
 
   def typeRefs(m: MExpr): Set[String] = {
     val refs = mutable.Set[String]()
@@ -97,7 +97,7 @@ class KMPIOSObjcMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, s
               } else {
                 utils.throwUnsupported(s"Impossible to map ${kotlinMarshal.typename(arg)} in this direction")
               }
-            case _ => utils.generateTodo(tm.base)
+            case _ => utils.generateTodo(tm)
           }
 
           case _: MExtern => s"$valueName?.let { ${map("it", arg)} }"
@@ -111,7 +111,7 @@ class KMPIOSObjcMapper(kotlinMarshal: KotlinMarshal, objcMarshal: ObjcMarshal, s
           case _ => map(s"$valueName?", arg)
         }
 
-      case _ => utils.generateTodo(tm.base)
+      case _ => utils.generateTodo(tm)
     }
   }
 }

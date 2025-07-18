@@ -15,7 +15,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
   private val javaMapper = new KMPAndroidJavaMapper(javaMarshal, spec)
   private val kotlinMapper = new KMPAndroidKotlinMapper(kotlinMarshal, spec)
 
-  private val utils = new KMPUtils(spec)
+  private val utils = new KMPUtils(kotlinMarshal, spec)
 
   // create androidMain directory
   // create class path folder based on the contents of spec.kotlinPackage
@@ -104,14 +104,12 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       /* static method 'actual' implementations */
       staticMethods.foreach(m => w.staticMethod(m, ident, i))
 
-      w.wl
-
       /* wrap the C++ generated interface in a class which conforms to the generated commonMain interface. */
-      val skipFirst = SkipFirst()
       w.cppInterfaceClass(ident, i).braced {
-        skipFirst { w.wl }
         /* interface method implementations */
-        interfaceMethods.foreach(m => w.cppInterfaceMethod(m, ident))
+        w.wlDivider(interfaceMethods) { m =>
+          w.cppInterfaceMethod(m, ident)
+        }
       }
     })
   }
@@ -120,7 +118,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
     val refs = new KMPAndroidRefs()
 
     // filter methods
-    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
+    val interfaceMethods = i.methods.filterNot(_.static)
 
     // find any required imports for all method parameters / return types
     interfaceMethods.foreach(m => {
@@ -128,19 +126,14 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
       m.ret.foreach(refs.find)
     })
 
-    // find any required imports for constant types
-    i.consts.foreach(c => {
-      refs.find(c.ty)
-    })
-
     writeKotlinFile(ident.name, origin, refs.kotlin ++ refs.java, w => {
 
       /* wrap the kotlin implementation of the interface in a class which implements the java abstract class for the interface */
-      val skipFirst = SkipFirst()
       w.javaInterfaceClass(ident, i).braced {
-        skipFirst { w.wl }
         /* interface method implementations */
-        interfaceMethods.foreach(m => w.javaInterfaceMethod(m, ident))
+        w.wlDivider(interfaceMethods) { m =>
+          w.javaInterfaceMethod(m, ident)
+        }
       }
     })
   }
@@ -195,7 +188,10 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
           val fieldName = idJava.local(f.ident)
           w.w(s"${javaMapper.map(s"this.$fieldName", f.ty.resolved)}")
         }
+        w.wl
       }
+
+      w.wl
 
       /* generate the toKotlin() method */
       w.w(s"fun $javaRecord.toKotlin(): $kotlinRecord").braced {
@@ -203,6 +199,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
             val fieldName = idKotlin.local(f.ident)
             w.w(s"$fieldName = ${kotlinMapper.map(s"this.$fieldName", f.ty.resolved)}")
         }
+        w.wl
       }
     })
   }
@@ -270,7 +267,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
           w.wl(s"return ${kotlinMapper.map("ret", ty.resolved)}")
         }
       }
-      w.wl
+      w
     }
 
     /**
@@ -435,7 +432,7 @@ class KMPAndroidGenerator(spec: Spec) extends Generator(spec) {
           w.wl(s"return ${javaMapper.map("ret", ty.resolved)}")
         }
       }
-      w.wl
+      w
     }
 
     /**

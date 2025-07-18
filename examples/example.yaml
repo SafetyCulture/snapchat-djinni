@@ -69,3 +69,6 @@ jni:
   # The mangled type signature of your type to be found by JNI.
   # See the JNI docs for its format
   typeSignature: 'Lcom/example/mylib/Record1;'
+kotlin:
+  typename: 'com.example.mylib.kotlin.Record1'
+  isProtobufMessage: false

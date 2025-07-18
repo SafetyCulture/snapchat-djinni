@@ -95,6 +95,47 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
+
+  override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
+    val refs = new KMPCommonRefs()
+
+    /* find any imports associated with all interface method parameters and return types */
+    i.methods.map(m => {
+      m.params.map(p => refs.find(p.ty))
+      m.ret.foreach(refs.find)
+    })
+
+    /* separate static methods from interface methods */
+    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
+
+    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
+
+      /* static method 'expect' declarations */
+      staticMethods.foreach(m => w.staticMethod(m, ident))
+
+      w.wl
+
+      /* interface declaration */
+      val interfaceName = idKotlin.ty(ident.name)
+      w.w(s"interface $interfaceName").braced {
+
+        /* companion object */
+        if (staticMethods.nonEmpty) {
+          w.w("companion object").braced {
+            /* static method companion declarations, mapped to internal expect declarations */
+            staticMethods.foreach {
+              m => w.staticMethodCompanion(m, ident)
+            }
+          }
+          w.wl
+        }
+
+        /* interface method declarations */
+        interfaceMethods.foreach(w.method)
+      }
+    })
+  }
+
   implicit class InterfaceIndentWriter(w: IndentWriter) {
 
     /**
@@ -201,46 +242,5 @@ class KMPCommonGenerator(spec: Spec) extends Generator(spec) {
         }
       w.wl
     }
-  }
-
-  override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface): Unit = {
-    val refs = new KMPCommonRefs()
-
-    /* find any imports associated with all interface method parameters and return types */
-    i.methods.map(m => {
-      m.params.map(p => refs.find(p.ty))
-      m.ret.foreach(refs.find)
-    })
-
-    /* separate static methods from interface methods */
-    val (staticMethods, interfaceMethods) = i.methods.partition(_.static)
-
-    writeKotlinFile(ident.name, origin, refs.kotlin, w => {
-
-      /* static method 'expect' declarations */
-      staticMethods.foreach(m => w.staticMethod(m, ident))
-
-      w.wl
-
-      /* interface declaration */
-      val interfaceName = idKotlin.ty(ident.name)
-      w.w(s"interface $interfaceName").braced {
-
-        /* companion object */
-        if (staticMethods.nonEmpty) {
-          w.w("companion object").braced {
-            /* static method companion declarations, mapped to internal expect declarations */
-            staticMethods.foreach {
-              m => w.staticMethodCompanion(m, ident)
-            }
-          }
-        }
-
-        w.wl
-
-        /* interface method declarations */
-        interfaceMethods.foreach(w.method)
-      }
-    })
   }
 }

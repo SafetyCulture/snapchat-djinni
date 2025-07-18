@@ -25,8 +25,10 @@ objc_out="$base_dir/generated-src/objc"
 java_out="$base_dir/generated-src/java/com/dropbox/textsort"
 wasm_out="$base_dir/generated-src/wasm"
 ts_out="$base_dir/generated-src/ts"
+kotlin_out="$base_dir/generated-src/kotlin"
 
 java_package="com.dropbox.textsort"
+kotlin_package="com.dropbox.textsort.interop"
 
 gen_stamp="$temp_out/gen.stamp"
 
@@ -39,7 +41,7 @@ elif [ $# -eq 1 ]; then
         echo "Unexpected argument: \"$command\"." 1>&2
         exit 1
     fi
-    for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out"; do
+    for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out"; do
         if [ -e "$dir" ]; then
             echo "Deleting \"$dir\"..."
             rm -r "$dir"
@@ -73,6 +75,11 @@ fi
     --objc-type-prefix TXS \
     --objc-swift-bridging-header "TextSort-Bridging-Header" \
     \
+    --kotlin-out "$temp_out/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TextSort" \
+    \
     --wasm-out "$temp_out/wasm" \
     --ts-out "$temp_out/ts" \
     --ts-module "example" \
@@ -94,6 +101,7 @@ mirror "cpp" "$temp_out/cpp" "$cpp_out"
 mirror "java" "$temp_out/java" "$java_out"
 mirror "jni" "$temp_out/jni" "$jni_out"
 mirror "objc" "$temp_out/objc" "$objc_out"
+mirror "kotlin" "$temp_out/kotlin" "$kotlin_out"
 mirror "wasm" "$temp_out/wasm" "$wasm_out"
 mirror "ts" "$temp_out/ts" "$ts_out"
 

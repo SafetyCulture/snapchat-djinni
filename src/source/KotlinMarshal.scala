@@ -2,10 +2,10 @@ package djinni
 
 import generatorTools.{ImportRef, Spec, SymbolReference}
 import ast.{Interface, TypeRef}
-import meta.{DEnum, DInterface, DRecord, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
+import meta.{DEnum, DInterface, DRecord, MBinary, MDate, MDef, MExpr, MExtern, MList, MMap, MOpaque, MOptional, MPrimitive, MSet, MString, Meta}
 
 class KotlinMarshal(spec: Spec) extends Marshal(spec) {
-  private val utils = new KMPUtils(spec)
+  private val utils = new KMPUtils(this, spec)
 
   override def typename(tm: meta.MExpr): String = toKotlinType(tm)
   override def fqTypename(tm: meta.MExpr): String = toKotlinType(tm, fullyQualified = true)
@@ -24,6 +24,7 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
     case o: MOpaque =>
       o match {
         case MDate => List(ImportRef("kotlinx.datetime.Instant"))
+        case MBinary => List(ImportRef("kotlinx.io.Buffer"))
         case _ => List()
       }
     case _ => List()
@@ -119,7 +120,8 @@ class KotlinMarshal(spec: Spec) extends Marshal(spec) {
             case MSet => "Set"
             case MMap => "Map"
             case d: MDef => if (fullyQualified) utils.withPackage(spec.kotlinPackage, idKotlin.ty(d.name)) else idKotlin.ty(d.name)
-            case _ => ""
+            case MBinary => "Buffer"
+            case _ => utils.generateTodo(tm)
           }
           base + args(tm)
       }
