@@ -36,9 +36,11 @@ objc_out="$base_dir/generated-src/objc"
 java_out="$base_dir/generated-src/java/com/dropbox/djinni/test"
 wasm_out="$base_dir/generated-src/wasm"
 ts_out="$base_dir/generated-src/ts"
+kotlin_out="$base_dir/generated-src/kotlin"
 yaml_out="$base_dir/generated-src/yaml"
 
 java_package="com.dropbox.djinni.test"
+kotlin_package="com.dropbox.djinni.test.interop"
 
 gen_stamp="$temp_out/gen.stamp"
 
@@ -51,7 +53,7 @@ elif [ $# -eq 1 ]; then
         echo "Unexpected arguemnt: \"$command\"." 1>&2
         exit 1
     fi
-    for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out"; do
+    for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out"; do
         if [ -e "$dir" ]; then
             echo "Deleting \"$dir\"..."
             rm -r "$dir"
@@ -92,6 +94,11 @@ fi
     --objcpp-out "$temp_out_relative/objc" \
     --objc-type-prefix DB \
     \
+    --kotlin-out "$temp_out_relative/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TestSuite" \
+    \
     --wasm-out "$temp_out_relative/wasm" \
     --wasm-namespace "testsuite" \
     --ts-out "$temp_out_relative/ts" \
@@ -126,6 +133,11 @@ fi
     --objc-out "$temp_out_relative/objc" \
     --objcpp-out "$temp_out_relative/objc" \
     --objc-type-prefix DB \
+    \
+    --kotlin-out "$temp_out_relative/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TestSuite" \
     \
     --wasm-out "$temp_out_relative/wasm" \
     --wasm-namespace "testsuite" \
@@ -166,6 +178,11 @@ fi
     --objc-type-prefix DB \
     --objcpp-function-prologue-file "../../handwritten-src/cpp/objcpp-prologue.hpp" \
     \
+    --kotlin-out "$temp_out_relative/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TestSuite" \
+    \
     --idl "$prologue_in_relative" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/java" \
@@ -197,6 +214,11 @@ fi
     --ident-objc-enum NativeFooBar! \
     --ident-objc-const NativeFooBar! \
     \
+    --kotlin-out "$temp_out_relative/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TestSuite" \
+    \
     --idl "$ident_explicit_in_relative" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/java" \
@@ -223,6 +245,11 @@ fi
     --objc-out "$temp_out_relative/objc" \
     --objcpp-out "$temp_out_relative/objc" \
     --objc-type-prefix DB \
+    \
+    --kotlin-out "$temp_out_relative/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TestSuite" \
     \
     --yaml-out "$temp_out_relative/yaml" \
     --yaml-out-file "yaml-interface-test.yaml" \
@@ -259,6 +286,11 @@ cp "$base_dir/djinni/yaml-test.djinni" "$temp_out/yaml"
     --ts-out "$temp_out_relative/ts" \
     --ts-module "test_yaml" \
     \
+    --kotlin-out "$temp_out_relative/kotlin" \
+    --kotlin-package $kotlin_package \
+    --kotlin-support-package "com.safetyculture.djinni.support" \
+    --kotlin-cinterop-package "TestSuite" \
+    \
     --idl "$temp_out_relative/yaml/yaml-test.djinni" \
 )
 
@@ -277,6 +309,7 @@ mirror "cpp" "$temp_out/cpp" "$cpp_out"
 mirror "java" "$temp_out/java" "$java_out"
 mirror "jni" "$temp_out/jni" "$jni_out"
 mirror "objc" "$temp_out/objc" "$objc_out"
+mirror "kotlin" "$temp_out/kotlin" "$kotlin_out"
 mirror "wasm" "$temp_out/wasm" "$wasm_out"
 mirror "ts" "$temp_out/ts" "$ts_out"
 

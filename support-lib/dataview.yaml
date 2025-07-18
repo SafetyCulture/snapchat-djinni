@@ -33,3 +33,6 @@ wasm:
 ts:
   typename: 'Uint8Array'
   module: ''
+kotlin:
+  typename: 'com.safetyculture.djinni.support.ByteBuffer'
+  isProtobufType: false
