@@ -18,14 +18,10 @@
 
 package djinni
 
-import java.util
-import djinni.ast.Record.DerivingType
-import djinni.ast.Record.DerivingType.DerivingType
-import djinni.ast.Record.DerivingType.DerivingType
-import djinni.syntax._
-import djinni.ast._
-import djinni.generatorTools.Spec
-import djinni.meta._
+import ast.Record.DerivingType
+import syntax._
+import ast._
+import meta._
 
 import scala.collection.immutable
 import scala.collection.mutable

@@ -18,16 +18,14 @@
 
 package djinni
 
-import djinni.ast._
-import djinni.ast.Record.DerivingType.DerivingType
-import djinni.generatorTools._
-import djinni.meta._
-import djinni.writer.IndentWriter
+import ast._
+import generatorTools._
+import meta._
+import writer.IndentWriter
 import java.util.{Map => JMap}
 import scala.collection.JavaConversions._
-import scala.collection.mutable
 
-case class YamlOptions(kotlinWarnings: Boolean)
+case class YamlOptions(enableKotlinWarnings: Boolean)
 
 class YamlGenerator(spec: Spec) extends Generator(spec) {
 
@@ -274,8 +272,8 @@ object YamlGenerator {
       nested(td, "jni")("typename").toString,
       nested(td, "jni")("typeSignature").toString),
     MExtern.Kotlin(
-      getOptionalField(td, "kotlin", "typename", warnIfMissing = yamlOptions.kotlinWarnings),
-      getOptionalFieldWithDefault(td, "kotlin", "isProtobufMessage", false, warnIfMissing = yamlOptions.kotlinWarnings)),
+      getOptionalField(td, "kotlin", "typename", warnIfMissing = yamlOptions.enableKotlinWarnings),
+      getOptionalFieldWithDefault(td, "kotlin", "isProtobufMessage", false, warnIfMissing = yamlOptions.enableKotlinWarnings)),
     MExtern.Wasm(
       getOptionalField(td, "wasm", "typename"),
       getOptionalField(td, "wasm", "translator"),
@@ -294,7 +292,7 @@ object YamlGenerator {
     if (nested(td, key) contains subKey)
       nested(td, key)(subKey).asInstanceOf[T]
     else {
-      if(warnIfMissing) println(s"Warning: $key: ${td.ident.name} has unspecified $subKey")
+      if(warnIfMissing) println(s"Warning: ${td.ident.name}: $key: $subKey is unspecified")
       defVal
     }
   }
@@ -304,7 +302,7 @@ object YamlGenerator {
       nested(td, key)(subKey).toString
     } catch {
       case e: java.util.NoSuchElementException =>
-        if(warnIfMissing) println(s"Warning: $key: ${td.ident.name} has unspecified $subKey")
+        if(warnIfMissing) println(s"Warning: ${td.ident.name}: $key: $subKey is unspecified")
 
         "[unspecified]"
     }

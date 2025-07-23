@@ -353,7 +353,7 @@ object Main {
       }
     }
 
-    val yamlOptions = YamlOptions(kotlinWarnings = kotlinOutFolder.isDefined)
+    val yamlOptions = YamlOptions(enableKotlinWarnings = kotlinOutFolder.isDefined)
 
     // Resolve names in IDL file, check types.
     System.out.println("Resolving...")
