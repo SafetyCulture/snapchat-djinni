@@ -298,7 +298,13 @@ object YamlGenerator {
     try {
       nested(td, key)(subKey).toString
     } catch {
-      case e: java.util.NoSuchElementException => "[unspecified]"
+      case e: java.util.NoSuchElementException =>
+        key match {
+          case "kotlin" => println("Warning: Kotlin type not specified for " + td.ident.name)
+          case _ =>
+        }
+
+        "[unspecified]"
     }
   }
 
