@@ -18,14 +18,11 @@
 
 package djinni
 
-import java.util
+import ast.Record.DerivingType
+import syntax._
+import ast._
+import meta._
 
-import djinni.ast.Record.DerivingType
-import djinni.ast.Record.DerivingType.DerivingType
-import djinni.ast.Record.DerivingType.DerivingType
-import djinni.syntax._
-import djinni.ast._
-import djinni.meta._
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -34,7 +31,7 @@ package object resolver {
 
 type Scope = immutable.Map[String,Meta]
 
-def resolve(metas: Scope, idl: Seq[TypeDecl]): Option[Error] = {
+def resolve(metas: Scope, idl: Seq[TypeDecl], yamlOptions: YamlOptions): Option[Error] = {
 
   try {
     var topScope = metas
@@ -56,7 +53,7 @@ def resolve(metas: Scope, idl: Seq[TypeDecl]): Option[Error] = {
       }
       topScope = topScope.updated(typeDecl.ident.name, typeDecl match {
         case td: InternTypeDecl => MDef(typeDecl.ident.name, typeDecl.params.length, defType, typeDecl.body)
-        case td: ExternTypeDecl => YamlGenerator.metaFromYaml(td)
+        case td: ExternTypeDecl => YamlGenerator.metaFromYaml(td, yamlOptions)
         case td: ProtobufTypeDecl => MProtobuf(td.ident.name, 0, td.body.asInstanceOf[ProtobufMessage])
       })
     }

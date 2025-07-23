@@ -18,14 +18,14 @@
 
 package djinni
 
-import djinni.ast._
-import djinni.ast.Record.DerivingType.DerivingType
-import djinni.generatorTools._
-import djinni.meta._
-import djinni.writer.IndentWriter
+import ast._
+import generatorTools._
+import meta._
+import writer.IndentWriter
 import java.util.{Map => JMap}
 import scala.collection.JavaConversions._
-import scala.collection.mutable
+
+case class YamlOptions(enableKotlinWarnings: Boolean)
 
 class YamlGenerator(spec: Spec) extends Generator(spec) {
 
@@ -37,7 +37,7 @@ class YamlGenerator(spec: Spec) extends Generator(spec) {
   val wasmMarshal = new WasmGenerator(spec)
   val tsMarshal = new TsGenerator(spec)
 
-  case class QuotedString(str: String) // For anything that migt require escaping
+  case class QuotedString(str: String) // For anything that might require escaping
 
   private def writeYamlFile(name: String, origin: String, f: IndentWriter => Unit): Unit = {
     createFile(spec.yamlOutFolder.get, name, out => new IndentWriter(out, "  "), w => {
@@ -237,7 +237,7 @@ class YamlGenerator(spec: Spec) extends Generator(spec) {
 }
 
 object YamlGenerator {
-  def metaFromYaml(td: ExternTypeDecl) = MExtern(
+  def metaFromYaml(td: ExternTypeDecl, yamlOptions: YamlOptions) = MExtern(
     td.ident.name.stripPrefix(td.properties("prefix").toString), // Make sure the generator uses this type with its original name for all intents and purposes
     td.params.size,
     defType(td),
@@ -246,15 +246,15 @@ object YamlGenerator {
       nested(td, "cpp")("typename").toString,
       nested(td, "cpp")("header").toString,
       nested(td, "cpp")("byValue").asInstanceOf[Boolean],
-      getOptionalField(td, "cpp", "moveOnly", false)),
+      getOptionalFieldWithDefault(td, "cpp", "moveOnly", false)),
     MExtern.Objc(
       nested(td, "objc")("typename").toString,
       nested(td, "objc")("header").toString,
       nested(td, "objc")("boxed").toString,
       nested(td, "objc")("pointer").asInstanceOf[Boolean],
-      getOptionalField(td, "objc", "generic", false),
+      getOptionalFieldWithDefault(td, "objc", "generic", false),
       nested(td, "objc")("hash").toString,
-      getOptionalField(td, "objc", "protocol", false)),
+      getOptionalFieldWithDefault(td, "objc", "protocol", false)),
     MExtern.Objcpp(
       nested(td, "objcpp")("translator").toString,
       nested(td, "objcpp")("header").toString),
@@ -264,16 +264,16 @@ object YamlGenerator {
       nested(td, "java")("reference").asInstanceOf[Boolean],
       nested(td, "java")("generic").asInstanceOf[Boolean],
       nested(td, "java")("hash").toString,
-      getOptionalField(td, "java", "writeToParcel", "%s.writeToParcel(out, flags)"),
-      getOptionalField(td, "java", "readFromParcel", "new %s(in)")),
+      getOptionalFieldWithDefault(td, "java", "writeToParcel", "%s.writeToParcel(out, flags)"),
+      getOptionalFieldWithDefault(td, "java", "readFromParcel", "new %s(in)")),
     MExtern.Jni(
       nested(td, "jni")("translator").toString,
       nested(td, "jni")("header").toString,
       nested(td, "jni")("typename").toString,
       nested(td, "jni")("typeSignature").toString),
     MExtern.Kotlin(
-      getOptionalField(td, "kotlin", "typename"),
-      getOptionalField(td, "kotlin", "isProtobufMessage", false)),
+      getOptionalField(td, "kotlin", "typename", warnIfMissing = yamlOptions.enableKotlinWarnings),
+      getOptionalFieldWithDefault(td, "kotlin", "isProtobufMessage", false, warnIfMissing = yamlOptions.enableKotlinWarnings)),
     MExtern.Wasm(
       getOptionalField(td, "wasm", "typename"),
       getOptionalField(td, "wasm", "translator"),
@@ -281,24 +281,30 @@ object YamlGenerator {
     MExtern.Ts(
       getOptionalField(td, "ts", "typename"),
       getOptionalField(td, "ts", "module"),
-      getOptionalField(td, "ts", "generic", false))
+      getOptionalFieldWithDefault(td, "ts", "generic", false))
   )
 
   private def nested(td: ExternTypeDecl, key: String) = {
     td.properties.get(key).collect { case m: JMap[_, _] => m.collect { case (k: String, v: Any) => (k, v) } } getOrElse(Map[String, Any]())
   }
 
-  private def getOptionalField[T](td: ExternTypeDecl, key: String, subKey: String, defVal: T) = {
+  private def getOptionalFieldWithDefault[T](td: ExternTypeDecl, key: String, subKey: String, defVal: T, warnIfMissing: Boolean = false) = {
     if (nested(td, key) contains subKey)
       nested(td, key)(subKey).asInstanceOf[T]
-    else defVal
+    else {
+      if(warnIfMissing) println(s"Warning: ${td.ident.name}: $key: $subKey is unspecified")
+      defVal
+    }
   }
 
-  private def getOptionalField(td: ExternTypeDecl, key: String, subKey: String) = {
+  private def getOptionalField(td: ExternTypeDecl, key: String, subKey: String, warnIfMissing: Boolean = false) = {
     try {
       nested(td, key)(subKey).toString
     } catch {
-      case e: java.util.NoSuchElementException => "[unspecified]"
+      case e: java.util.NoSuchElementException =>
+        if(warnIfMissing) println(s"Warning: ${td.ident.name}: $key: $subKey is unspecified")
+
+        "[unspecified]"
     }
   }
 
