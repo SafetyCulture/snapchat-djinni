@@ -171,9 +171,9 @@ JNIEnv * jniGetThreadEnv() {
     jint get_res = g_cachedJVM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
     if (get_res == JNI_EDETACHED) {
 #if defined(ANDROID) || defined(__ANDROID__)
-        get_res = g_cachedJVM->AttachCurrentThread(&env, nullptr);
+        get_res = g_cachedJVM->AttachCurrentThreadAsDaemon(&env, nullptr);
 #else
-        get_res = g_cachedJVM->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
+        get_res = g_cachedJVM->AttachCurrentThreadAsDaemon(reinterpret_cast<void**>(&env), nullptr);
 #endif
         pthread_setspecific(threadExitCallbackKey, env);
     }

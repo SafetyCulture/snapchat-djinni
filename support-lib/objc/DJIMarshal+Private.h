@@ -122,9 +122,16 @@ struct String {
 
     static ObjcType fromCpp(const CppType& string) {
         assert(string.size() <= std::numeric_limits<NSUInteger>::max());
-        return [[NSString alloc] initWithBytes:string.data()
-                                        length:static_cast<NSUInteger>(string.size())
-                                      encoding:NSUTF8StringEncoding];
+        ObjcType result = [[NSString alloc] initWithBytes:string.data()
+                                                   length:static_cast<NSUInteger>(string.size())
+                                                 encoding:NSUTF8StringEncoding];
+        // In order to prevent it from crashing, when value is used
+        // in NSDictionary we return an empty string instead of nil.
+        if (!result) {
+            return @"";
+        }
+
+        return result;
     }
 };
 

@@ -1,0 +1,10 @@
+steps:
+  - label: ":test_tube: Run Tests"
+    command: "./ci/generate.sh"
+    plugins:
+      - docker#v5.3.0:
+          image: "safetyculture/android:crux-36-ndk-r27b-jdk17-cmake-4.1.2"
+          workdir: /app
+          user: "994:992"
+          propagate-environment: true
+          mount-buildkite-agent: true

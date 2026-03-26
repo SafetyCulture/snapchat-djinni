@@ -10,7 +10,7 @@ namespace djinni_generated {
 auto ClientReturnedRecord::toCpp(ObjcType obj) -> CppType
 {
     assert(obj);
-    return {::djinni::I64::toCpp(obj.recordId),
+    return {::djinni::I64::toCpp(obj.recordID),
             ::djinni::String::toCpp(obj.content),
             ::djinni::Optional<std::experimental::optional, ::djinni::String>::toCpp(obj.misc)};
 }

@@ -6,23 +6,23 @@
 
 @implementation DBMapDateRecord
 
-- (nonnull instancetype)initWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesById
+- (nonnull instancetype)initWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesByID
 {
     if (self = [super init]) {
-        _datesById = [datesById copy];
+        _datesByID = [datesByID copy];
     }
     return self;
 }
 
-+ (nonnull instancetype)mapDateRecordWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesById
++ (nonnull instancetype)mapDateRecordWithDatesById:(nonnull NSDictionary<NSString *, NSDate *> *)datesByID
 {
-    return [[self alloc] initWithDatesById:datesById];
+    return [[self alloc] initWithDatesById:datesByID];
 }
 
 #ifndef DJINNI_DISABLE_DESCRIPTION_METHODS
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@ %p datesById:%@>", self.class, (void *)self, self.datesById];
+    return [NSString stringWithFormat:@"<%@ %p datesByID:%@>", self.class, (void *)self, self.datesByID];
 }
 
 #endif

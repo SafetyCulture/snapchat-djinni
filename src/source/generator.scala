@@ -42,6 +42,11 @@ package object generatorTools {
                    javaImplementAndroidOsParcelable: Boolean,
                    javaUseFinalForRecord: Boolean,
                    javaGenInterface: Boolean,
+                   kotlinOutFolder: Option[File],
+                   kotlinPackage: Option[String],
+                   kotlinSupportPackage: Option[String],
+                   kotlinCInteropPackage: Option[String],
+                   kotlinIdentStyle: KotlinIdentStyle,
                    cppOutFolder: Option[File],
                    cppHeaderOutFolder: Option[File],
                    cppIncludePrefix: String,
@@ -113,8 +118,14 @@ package object generatorTools {
     if (s.isEmpty) s else ", " + s
   }
   def q(s: String) = '"' + s + '"'
-  def firstUpper(token: String) = if (token.isEmpty()) token else token.charAt(0).toUpper + token.substring(1)
+  def firstUpper(token: String) = if (token.isEmpty) token else token.charAt(0).toUpper + token.substring(1)
 
+  def firstUpperOrID(token: String) = token match {
+    case "id" => "ID"
+    case "ids" => "IDs"
+    case _ => firstUpper(token)
+  }
+  
   def leadingUpperStrict(token: String) = {
     if (token.isEmpty()) {
       token
@@ -138,6 +149,10 @@ package object generatorTools {
                            enum: IdentConverter, const: IdentConverter)
 
   case class JavaIdentStyle(ty: IdentConverter, typeParam: IdentConverter,
+                            method: IdentConverter, field: IdentConverter, local: IdentConverter,
+                            enum: IdentConverter, const: IdentConverter)
+
+  case class KotlinIdentStyle(ty: IdentConverter, typeParam: IdentConverter,
                             method: IdentConverter, field: IdentConverter, local: IdentConverter,
                             enum: IdentConverter, const: IdentConverter)
 
@@ -165,14 +180,20 @@ package object generatorTools {
       val parts = s.split('_')
       parts.head + parts.tail.map(firstUpper).mkString
     }
+    val camelUpperID = (s: String) => s.split("[-_]").map(firstUpperOrID).mkString
+    val camelLowerID = (s: String) => {
+      val parts = s.split('_')
+      parts.head + parts.tail.map(firstUpperOrID).mkString
+    }
     val underLower = (s: String) => s
     val underUpper = (s: String) => s.split('_').map(firstUpper).mkString("_")
     val underCaps = (s: String) => s.toUpperCase
     val prefix = (prefix: String, suffix: IdentConverter) => (s: String) => prefix + suffix(s)
 
     val javaDefault = JavaIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
+    val kotlinDefault = KotlinIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
     val cppDefault = CppIdentStyle(camelUpper, camelUpper, camelUpper, underLower, underLower, underLower, underCaps, underCaps)
-    val objcDefault = ObjcIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, camelUpper, camelUpper)
+    val objcDefault = ObjcIdentStyle(camelUpperID, camelUpperID, camelLowerID, camelLowerID, camelLowerID, camelUpperID, camelUpperID)
     val jsDefault = JsIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
 
     val styles = Map(
@@ -185,7 +206,9 @@ package object generatorTools {
       "fooBar!" -> camelLowerStrict,
       "foo_bar!" -> underLowerStrict,
       "Foo_Bar!" -> underUpperStrict,
-      "FOO_BAR!" -> underCaps
+      "FOO_BAR!" -> underCaps,
+      "FooBarID" -> camelUpperID,
+      "fooBarID" -> camelLowerID
     )
     
     def infer(input: String): Option[IdentConverter] = {
@@ -284,6 +307,14 @@ package object generatorTools {
         SwiftBridgingHeaderGenerator.writeBridgingVars(spec.objcSwiftBridgingHeaderName.get, spec.objcSwiftBridgingHeaderWriter.get)
         new SwiftBridgingHeaderGenerator(spec).generate(idl)
       }
+      if (spec.kotlinOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Kotlin", spec.kotlinOutFolder.get)
+        }
+        new KMPCommonGenerator(spec).generate(idl)
+        new KMPAndroidGenerator(spec).generate(idl)
+        new KMPIOSGenerator(spec).generate(idl)
+      }
       if (spec.wasmOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("WASM", spec.wasmOutFolder.get)
@@ -354,6 +385,7 @@ abstract class Generator(spec: Spec)
   implicit def identToString(ident: Ident): String = ident.name
   val idCpp = spec.cppIdentStyle
   val idJava = spec.javaIdentStyle
+  val idKotlin = spec.kotlinIdentStyle
   val idObjc = spec.objcIdentStyle
   val idJs = spec.jsIdentStyle
 
