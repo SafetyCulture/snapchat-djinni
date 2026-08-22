@@ -1,10 +1,40 @@
+# One pipeline (snapchat-djinni) for both lanes: branch builds run the generated-code
+# check; tag builds package the generator and publish it for consumers, so they run a
+# prebuilt binary (JVM only) instead of building the generator with Bazel per checkout.
+#
+# The release lane fires on X.Y.Z tags (build_tags is set in buildkite-terraform, where
+# the pipeline is defined). The tag is the artifact key — the same string consumers
+# commit in deps/snapchat-djinni.pin. To backfill a tag whose push predates tag builds,
+# create a build on its commit with RELEASE_TAG=<tag> in the environment.
+#
+# Publishing runs on general-ci-us-east-1, whose agent role can write
+# s3://sc-mobile-packages — the same queue mitti-mobile's mirror step uses.
+
+x-djinni-docker: &djinni_docker
+  image: "safetyculture/android:crux-36-ndk-r27b-jdk17-cmake-4.1.2"
+  workdir: /app
+  user: "994:992"
+  propagate-environment: true
+  mount-buildkite-agent: true
+
 steps:
   - label: ":test_tube: Run Tests"
+    if: build.tag == null && build.env("RELEASE_TAG") == null
     command: "./ci/generate.sh"
     plugins:
-      - docker#v5.3.0:
-          image: "safetyculture/android:crux-36-ndk-r27b-jdk17-cmake-4.1.2"
-          workdir: /app
-          user: "994:992"
-          propagate-environment: true
-          mount-buildkite-agent: true
+      - docker#v5.3.0: *djinni_docker
+
+  - label: ":package: Build generator"
+    key: build-generator
+    if: (build.tag != null && build.tag =~ /^[0-9]+\.[0-9]+\.[0-9]+$/) || build.env("RELEASE_TAG") != null
+    command: ".buildkite/release.sh package"
+    artifact_paths: "dist/djinni-generator.tar.gz*"
+    plugins:
+      - docker#v5.3.0: *djinni_docker
+
+  - label: ":s3: Publish generator"
+    if: (build.tag != null && build.tag =~ /^[0-9]+\.[0-9]+\.[0-9]+$/) || build.env("RELEASE_TAG") != null
+    depends_on: build-generator
+    command: ".buildkite/release.sh publish"
+    agents:
+      queue: general-ci-us-east-1
