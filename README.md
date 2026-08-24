@@ -10,6 +10,18 @@ developing it here.
 This file only covers the parts that have been changed.  Please see the
 [original dropbox readme](README.dropbox.md) for the full Djinni documentation.
 
+## Releases (SafetyCulture fork)
+
+Consumers (crux and mitti-mobile) do not build the generator with Bazel; they download a
+prebuilt one. Tagging a commit (`X.Y.Z`) runs the release lane of the repo's
+`snapchat-djinni` Buildkite pipeline, which builds the self-contained generator (a
+shell stub over a deploy jar, so one file runs on macOS and Linux with just a JVM),
+packages it with `support-lib/` as `djinni-generator.tar.gz`, and publishes it to
+`s3://sc-mobile-packages/mitti/djinni-generator/v1/<tag>.tar.gz` with a `.sha256`
+sidecar. Consumers pin the tag (`deps/snapchat-djinni.pin` in crux) and fetch that key.
+To backfill a tag whose push predates tag builds, create a Buildkite build on its commit
+with `RELEASE_TAG=<tag>` in the environment.
+
 ## Building
 
 ![Bazel Build](https://github.com/Snapchat/djinni/workflows/Build%20and%20Test/badge.svg)
