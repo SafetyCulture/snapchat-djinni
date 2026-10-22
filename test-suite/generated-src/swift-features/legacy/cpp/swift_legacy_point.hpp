@@ -8,7 +8,7 @@
 
 namespace testsuite {
 
-/** A record that is generated with --swift-legacy-records. */
+/** Records that are generated with --swift-legacy-records. */
 struct SwiftLegacyPoint final {
     int32_t x;
     int32_t y;

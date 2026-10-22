@@ -1,4 +1,8 @@
 @extern "../../support-lib/dataref.yaml"
+@extern "../../support-lib/dataview.yaml"
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+@extern "vendor/third-party/date.yaml"
 
 # Records and the Sendable conformance that Swift 6 needs.
 
@@ -10,6 +14,14 @@ swift_sendable_kind = enum {
 swift_sendable_flags = flags {
   alpha;
   beta;
+}
+
+swift_sendable_error = record {
+  message: string;
+} deriving(eq, error)
+
+swift_sendable_service = interface +c +sw {
+  ping();
 }
 
 # All fields are Sendable, so Swift checks the conformance.
@@ -38,3 +50,48 @@ swift_sendable_with_data = record {
 swift_sendable_outer = record {
   inner: swift_sendable_with_data;
 }
+
+# A trusted type inside a container.
+swift_sendable_with_optional_data = record {
+  data: optional<DataRef>;
+}
+
+swift_sendable_with_view_list = record {
+  views: list<DataView>;
+}
+
+swift_sendable_with_data_map = record {
+  by_id: map<string, DataRef>;
+}
+
+# An interface is only allowed inside a container.
+swift_sendable_with_optional_service = record {
+  service: optional<swift_sendable_service>;
+}
+
+swift_sendable_with_service_list = record {
+  services: list<swift_sendable_service>;
+}
+
+# An outcome is Sendable when its arguments are.
+swift_sendable_with_outcome = record {
+  result: outcome<i32, swift_sendable_error>;
+}
+
+swift_sendable_with_outcome_data = record {
+  result: outcome<DataRef, swift_sendable_error>;
+}
+
+swift_sendable_with_future = record {
+  value: future<i32>;
+}
+
+# An extern type from yaml that is not protobuf has no known mapping.
+swift_sendable_with_extern = record {
+  created_at: extern_date;
+}
+
+# deriving(sendable) adds nothing to Swift.
+swift_sendable_derived = record {
+  count: i32;
+} deriving(sendable)

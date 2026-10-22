@@ -351,16 +351,20 @@ Swift 6 defaults:
 
 - A record is a `public struct` with `public let` fields and a public memberwise
   `init`.
-- Every record is `Sendable`. The conformance is checked when every field is
-  `Sendable`: primitives, `String`, `Data`, `Date`, enums, records, and protobuf
-  types. It is `@unchecked Sendable` when a field is an interface, `DataRef`,
-  `DataView`, or an extern type without a known `Sendable` mapping.
+- Every record is `Sendable`. Swift checks the conformance when every field is
+  `Sendable`: primitives, `String`, `Data`, `Date`, enums, records, protobuf
+  types, `DJFuture`, and `Result` with `Sendable` arguments. The conformance is
+  `@unchecked Sendable` when a field is an interface, `DataRef`, `DataView`, or
+  an extern type without a known `Sendable` mapping. This also applies inside
+  `optional<>`, `list<>`, `set<>` and `map<>`.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
   Every generated class and every class of `DjinniSupport` is `@unchecked Sendable`.
-- `deriving(sendable)` has no effect, because every record is `Sendable`.
+- A host class that implements a `+sw` interface must be `Sendable`. Make it a
+  `final` class with immutable state, or mark it `@unchecked Sendable`.
+- `deriving(sendable)` adds no Swift conformance. The resolver still requires it
+  on field records.
 
 IDL changes:
-
 
 - `+sw` marks a type or a method as implemented in Swift. An interface with no
   language marks has all languages, `+sw` included. An interface can have

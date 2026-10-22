@@ -1,5 +1,12 @@
-# A record that is generated with --swift-legacy-records.
+@extern "../../support-lib/dataref.yaml"
+
+# Records that are generated with --swift-legacy-records.
 swift_legacy_point = record {
   x: i32;
   y: i32;
+}
+
+# The conformance rules do not change with the flag.
+swift_legacy_with_data = record {
+  data: DataRef;
 }

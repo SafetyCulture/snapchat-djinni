@@ -3,7 +3,7 @@
 
 import Foundation
 
-/** A record that is generated with --swift-legacy-records. */
+/** Records that are generated with --swift-legacy-records. */
 public struct SwiftLegacyPoint: Sendable {
     public var x: Int32
     public var y: Int32
