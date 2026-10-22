@@ -47,6 +47,8 @@ struct CppFutureHolder: AbstractCppFutureHolder {
                 result = e;
             } catch (const std::exception& e) {
                 result = ErrorValue{e.what(), std::current_exception()};
+            } catch (...) {
+                result = ErrorValue{"unknown C++ exception", std::current_exception()};
             }
             cb(ctx, &result);
         });
