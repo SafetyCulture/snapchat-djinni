@@ -36,8 +36,8 @@ object SwiftIdent {
     else if (keywords.contains(ident)) "`" + ident + "`"
     else ident
 
-  // An argument label at a call site does not need backticks.
-  def label(ident: String): String = ident.replace("`", "")
+  // An argument label at a call site does not need backticks, except for inout.
+  def label(ident: String): String = if (ident == "`inout`") ident else ident.replace("`", "")
 
   // The name without escaping, for identifiers that are part of a longer name.
   def plain(ident: String): String = IdentStyle.camelLower(ident)
@@ -121,7 +121,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
     case _ => throw new AssertionError("unknown primitive type: " + p._idlName)
   }
 
-  def helperClass(name: String) = idSwift.ty(name) + "Marshaller" // TODO: make naming configurable
+  def helperClass(name: String) = idSwift.ty(name) + "Marshaller" // TODO: [MOB-6413] make the marshaller name configurable
   private def helperClass(tm: MExpr): String = helperName(tm) + helperTemplates(tm)
   def helperName(tm: MExpr): String = tm.base match {
     case d: MDef => helperClass(d.name)

@@ -230,7 +230,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   }
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
     if (i.ext.objc && !i.ext.swift) {
-      System.err.println(s"Warning: interface ${ident.name} can be implemented in Objective-C (+o) but not in Swift (+sw). No Swift host implementation support is generated for it.")
+      System.err.println(s"Warning: interface ${ident.name} has +o but not +sw. The generator makes no Swift proxy for it.")
     }
     val refs = new SwiftRefs(ident.name)
     i.methods.foreach(m => {

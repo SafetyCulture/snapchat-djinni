@@ -13,6 +13,7 @@ type = record {
   in: bool;
   protocol: optional<string>;
   self: i32;
+  inout: i32;
   kind: swift_kind;
 }
 

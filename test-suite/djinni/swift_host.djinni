@@ -3,7 +3,7 @@
 # The host implements this one in Objective-C, Java and Swift.
 swift_host_listener = interface +o +j +sw {
   on_value(value: i32);
-  on_text(text: string, internal: bool): string;
+  on_text(text: string, internal: bool, inout: i32): string;
 }
 
 # The host implements this one in Objective-C and Java only. With --swift-out the generator
