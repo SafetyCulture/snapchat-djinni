@@ -46,7 +46,7 @@ else
 fi
 
 # SwiftProtobuf, built once per compiler.
-spb_mod="$cache/spb-$protobuf_tag-$(swiftc --version | md5 -q 2>/dev/null || swiftc --version | md5sum | cut -d' ' -f1)"
+spb_mod="$cache/spb-$protobuf_tag-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/SwiftProtobuf.swiftmodule" ]; then
   mkdir -p "$cache"
   [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch "$protobuf_tag" https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
