@@ -32,6 +32,12 @@ object SwiftErrorType {
     case _ => None
   }
 
+  // An extern type without a Swift name is shown with its IDL name.
+  private def found(marshal: SwiftMarshal, tm: MExpr): String = tm.base match {
+    case e: MExtern if e.swift.typename.isEmpty || e.swift.typename == "[unspecified]" => s"${e.name} (it has no Swift name)"
+    case _ => marshal.typename(tm)
+  }
+
   private def methodProblem(marshal: SwiftMarshal, interface: String, m: Interface.Method, name: String): Option[String] = {
     val where = s"interface $interface, method ${m.ident.name}"
     val outcome = m.ret.map(_.resolved).flatMap { tm =>
@@ -45,7 +51,7 @@ object SwiftErrorType {
       case Some(tm) if marshal.hasErrorName(tm.args(1), name) =>
         Some(s"$where: the error type $name is not a record")
       case Some(tm) =>
-        Some(s"$where: the error type of the outcome is ${marshal.typename(tm.args(1))}, but --swift-error-type is $name")
+        Some(s"$where: the error type of the outcome is ${found(marshal, tm.args(1))}, but --swift-error-type is $name")
     }
   }
 }
