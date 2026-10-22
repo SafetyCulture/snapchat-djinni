@@ -538,6 +538,19 @@ expect_failure error-enum "$swift_error_enum_relative" CruxError \
     --idl-include-path "djinni/vendor" \
 )
 
+# Kotlin suspend functions for the interfaces that C++ implements.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-suspend" \
+    --kotlin-suspend-wrap \
+    --java-package $java_package \
+    --java-nullable-annotation "javax.annotation.CheckForNull" \
+    --java-nonnull-annotation "javax.annotation.Nonnull" \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_suspend.djinni" \
+)
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
@@ -558,6 +571,7 @@ mirror "wasm" "$temp_out/wasm" "$wasm_out"
 mirror "ts" "$temp_out/ts" "$ts_out"
 mirror "swift-features" "$temp_out/swift-features" "$base_dir/generated-src/swift-features"
 mirror "kotlin-jni" "$temp_out/kotlin-jni" "$base_dir/generated-src/kotlin-jni"
+mirror "kotlin-jni-suspend" "$temp_out/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-suspend"
 
 date > "$gen_stamp"
 

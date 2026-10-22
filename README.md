@@ -498,6 +498,31 @@ different from `--kotlin-out`, which writes Kotlin Multiplatform code.
   becomes `@Throws`.
 - `--java-out` is not changed. You can use both flags.
 
+### Kotlin coroutines
+
+`--kotlin-suspend-wrap` makes the instance methods of an interface `suspend`
+functions. It needs `--kotlin-jni-out` and kotlinx-coroutines in the consumer
+module. The classes are tested with kotlinx-coroutines 1.10.
+
+- It applies to an interface with `+c` and without `+j`. The JNI code calls only
+  the native methods of such an interface. It calls the methods of an interface
+  that Kotlin implements (`+j`) by their JVM signature, and a `suspend` function
+  has another signature. So an interface with `+j` keeps its normal methods.
+- The generated class `CppProxy` runs the native call in `withContext(dispatcher)`.
+  The dispatcher is `Dispatchers.IO.limitedParallelism(1)`. Each `CppProxy` has
+  its own dispatcher, and one C++ object has one `CppProxy`. So the calls to one
+  C++ object run one after another, and the calls to different objects run in
+  parallel. This is the same as the queue of the Swift async wrapper.
+- A method that returns `future<T>` is `suspend fun m(): T`. It uses
+  `suspendCancellableCoroutine` over `com.snapchat.djinni.Future.then`. A
+  cancelled coroutine stops waiting and throws `CancellationException`. A result
+  that comes later is dropped. **The C++ future is not cancelled.** The Java
+  `Future` and the C++ `Future` have no cancel path.
+- A method that returns `outcome<T, E>` is not unwrapped. It returns
+  `com.snapchat.djinni.Outcome<T, E>`. A C++ exception is thrown as the Java
+  exception of `--java-cpp-exception` (`RuntimeException` by default).
+- A static method stays a normal method.
+
 `ci/kotlin-jni-check.sh` generates Java, JNI and Kotlin for the Crux assets IDL
 and for the test-suite IDL. It compiles both on the JVM, with `javac` and
 `kotlinc` and its Parcelize plugin. Then `ci/kotlin_jni_compare.py` compares
@@ -509,12 +534,16 @@ records.
 
 `ci/kotlin-jni-runtime-test.sh` runs the classes. It builds the generated JNI C++
 and a C++ implementation into a library, and runs Kotlin against it on the JVM
-with `-Xcheck:jni`. The test calls C++ from Kotlin, calls a Kotlin object from
+with `-Xcheck:jni`. It runs a second program against the suspend functions of
+`--kotlin-suspend-wrap`: suspend calls, a `future<>` with cancellation while it
+waits and before it waits, a late result, a timeout, the serialisation of the
+calls to one object, and 1000 concurrent coroutines. The test calls C++ from Kotlin, calls a Kotlin object from
 C++, and checks records, enums, outcomes, futures, C++ exceptions, the proxy of a
 C++ object that goes back to C++, an interface that C++ and Kotlin implement, the
 release of collected proxies, and many threads. The script skips with exit code
 77 and a message when `javac`, `java`, `kotlinc`, `clang++`, `jni.h` or
-`kotlin-stdlib.jar` is missing, or the system is not macOS or Linux. With `CI` or
+`kotlin-stdlib.jar` or `kotlinx-coroutines-core-jvm.jar` is missing, or the system is
+not macOS or Linux. With `CI` or
 `KOTLIN_JNI_RUNTIME_REQUIRED` set, a missing part is an error.
 
 ## Async interface support

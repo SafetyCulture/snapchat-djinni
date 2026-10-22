@@ -10,6 +10,7 @@
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
 #   KOTLIN_LIB         directory of kotlinc with parcelize-compiler.jar (default: derived from kotlinc)
+#   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for --kotlin-suspend-wrap (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
 #   KEEP_OUT           set to 1 to keep the work directory
@@ -28,6 +29,11 @@ if [ -z "$kotlin_lib" ]; then
   done
 fi
 [ -f "$kotlin_lib/parcelize-compiler.jar" ] || { echo "parcelize-compiler.jar not found, set KOTLIN_LIB" >&2; exit 2; }
+coroutines="${KOTLINX_COROUTINES_JAR:-}"
+if [ -z "$coroutines" ]; then
+  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | sort -V | tail -1)"
+fi
+[ -n "$coroutines" ] && [ -f "$coroutines" ] || { echo "kotlinx-coroutines-core-jvm.jar not found, set KOTLINX_COROUTINES_JAR" >&2; exit 2; }
 for d in "$domain_dir" "$extern_src"; do
   [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
 done
@@ -57,7 +63,7 @@ compile_and_compare() {
   javac -nowarn -d "$dir/java-classes" $(find "$dir/stubs" "$dir/java" "$repo_root/ci/kotlin-jni/stubs" "$repo_root/support-lib/java" -name '*.java')
   echo "== $name: kotlinc ($(find "$dir/kotlin" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
   kotlinc -Werror -d "$dir/kotlin-classes" -Xplugin="$kotlin_lib/parcelize-compiler.jar" \
-    -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar" "$dir/kotlin"
+    -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar:$coroutines" "$dir/kotlin"
   echo "== $name: javap"
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package"
 }
@@ -99,4 +105,16 @@ for mode in suite:false suite-onload:true; do
     --idl djinni/kotlin_jni.djinni --idl-include-path djinni/vendor)
   compile_and_compare "$name" "$package" ""
 done
+
+# 3. Suspend functions. The natives, the lookups and the fields must not change.
+name=suspend
+mkdir -p "$work/$name"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --java-out "$work/$name/java" --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" --kotlin-suspend-wrap \
+  --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
+  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+  --cpp-out "$work/$name/cpp" --cpp-namespace testsuite \
+  --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+  --idl djinni/kotlin_suspend.djinni)
+compile_and_compare "$name" "$package" ""
 echo "KOTLIN JNI CHECK OK"
