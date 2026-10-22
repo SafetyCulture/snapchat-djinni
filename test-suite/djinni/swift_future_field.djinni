@@ -1,0 +1,6 @@
+@extern "../../support-lib/future.yaml"
+
+# A future field is Sendable. The C++ glue of a record cannot copy a future, so this case has no glue.
+swift_future_field = record {
+  value: future<i32>;
+}

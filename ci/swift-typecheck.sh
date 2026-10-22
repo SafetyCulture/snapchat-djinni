@@ -73,7 +73,7 @@ python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swif
 # Test-suite cases: the host interface triple, the keyword identifiers, the built-in types and the
 # Sendable cases. The generated files are the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
-case_names=(host idents types sendable legacy)
+case_names=(host idents types sendable legacy future-field)
 tsmods="$work/ts-mods"
 mkdir -p "$tsmods"
 swiftxx_dirs=()
@@ -129,6 +129,7 @@ echo "C++ GLUE SYNTAX OK"
 
 for c in "${case_names[@]}"; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
+    [ -e "$f" ] || continue
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done

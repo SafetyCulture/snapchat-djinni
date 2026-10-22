@@ -300,6 +300,7 @@ swift_idents_relative="djinni/swift_idents.djinni"
 swift_types_relative="djinni/swift_types.djinni"
 swift_sendable_relative="djinni/swift_sendable.djinni"
 swift_legacy_relative="djinni/swift_legacy.djinni"
+swift_future_field_relative="djinni/swift_future_field.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -372,7 +373,16 @@ swift_legacy_relative="djinni/swift_legacy.djinni"
     --swiftxx-out "$temp_out_relative/swift-features/legacy/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_legacy_relative" \
+    --idl "$swift_legacy_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/future-field/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/future-field/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    \
+    --idl "$swift_future_field_relative" \
 )
 
 # A protobuf message without a swift block must fail the run before any file is written.
