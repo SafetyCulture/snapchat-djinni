@@ -289,6 +289,9 @@ package object generatorTools {
 
   def generate(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     try {
+      if (spec.swiftOutFolder.isDefined || spec.swiftxxOutFolder.isDefined) {
+        SwiftProtobuf.check(idl).foreach(message => throw GenerateException(message))
+      }
       if (spec.cppOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("C++", spec.cppOutFolder.get)

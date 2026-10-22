@@ -77,7 +77,7 @@ class SwiftxxMarshal(spec: Spec) extends Marshal(spec) {
       case MMap => "Map"
       case p: MProtobuf => p.body.swift match {
         case Some(o) => "Protobuf" + "<" + withNs(Some(p.body.cpp.ns), p.name) + ">"
-        case None => s"[invalid protobuf: ${p.name}]"
+        case None => throw GenerateException(SwiftProtobuf.message(p.name))
       }
       case MArray => "Array"
       case d: MDef => throw new AssertionError("unreachable")

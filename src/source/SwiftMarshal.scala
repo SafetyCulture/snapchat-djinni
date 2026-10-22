@@ -85,7 +85,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
         case e: MExtern => Array(e.swift.module, e.swift.typename).filter(s => !s.isEmpty).mkString(".") + (if (e.swift.generic) args(tm) else "")
         case p: MProtobuf => p.body.swift match {
           case Some(o) => o.prefix + p.name
-          case None => p.name
+          case None => throw GenerateException(SwiftProtobuf.message(p.name))
         }
         case o =>
           val base = o match {
@@ -145,7 +145,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
       case MMap => "MapMarshaller"
       case p: MProtobuf => p.body.swift match {
         case Some(o) => "ProtobufMarshaller<" + o.prefix + p.name + ">"
-        case None => s"[invalid protobuf: ${p.name}]"
+        case None => throw GenerateException(SwiftProtobuf.message(p.name))
       }
       case MArray => "ArrayMarshaller"
       case d: MDef => throw new AssertionError("unreachable")
