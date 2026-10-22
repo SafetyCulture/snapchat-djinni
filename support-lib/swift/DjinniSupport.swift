@@ -242,20 +242,20 @@ public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws 
     }
 }
 
-/// The error type of `--swift-error-type` must conform to this protocol when an async wrapper calls C++.
-/// The wrapper uses the initialiser for a C++ exception, because the exception is not a value of the error type.
+/// The error type of `--swift-error-type` conforms to this protocol. A wrapper method that returns `outcome<T, E>` uses
+/// the initialiser when C++ throws. The `DjinniError` keeps the message and the C++ exception.
 public protocol CppExceptionConvertible: Error {
-    init(cppException message: String)
+    init(cppException error: DjinniError)
 }
 
-// Gives a C++ exception of the call the typed error of the wrapper.
+// Changes a C++ exception of the call into the error type of --swift-error-type.
 public func cppOutcome<T, E: CppExceptionConvertible>(_ call: () throws -> Result<T, E>) -> Result<T, E> {
     do {
         return try call()
     } catch let error as DjinniError {
-        return .failure(E(cppException: error.errorMessage))
+        return .failure(E(cppException: error))
     } catch {
-        return .failure(E(cppException: String(describing: error)))
+        return .failure(E(cppException: DjinniError(String(describing: error))))
     }
 }
 

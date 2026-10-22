@@ -322,7 +322,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  // The methods of the proxy throw DjinniError when C++ throws. The wrapper turns that into its own error.
+  // The methods of the proxy throw DjinniError when C++ throws. The wrapper gives it to the caller, or changes it into the --swift-error-type value.
   private def writeWrappedCppProxy(w: IndentWriter, ident: Ident, i: Interface) {
     val name = marshal.typename(ident, i)
     w.w(s"final class ${name}CppProxy: DjinniSupport.CppProxy, @unchecked Sendable").braced {

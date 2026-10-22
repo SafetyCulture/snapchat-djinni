@@ -240,8 +240,8 @@ func runAsyncTests() async throws {
 
 // The error type of --swift-error-type holds the C++ exception as a message.
 extension CruxError: CppExceptionConvertible {
-    public init(cppException message: String) {
-        self.init(message: message, code: -1)
+    public init(cppException error: DjinniError) {
+        self.init(message: error.errorMessage, code: -1)
     }
 }
 

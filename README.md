@@ -379,8 +379,9 @@ Async wrappers (`--swift-async-wrap`):
   the wrapper method gives it to the caller. `DjinniError.errorMessage` is the
   message of the exception. The shim catches `std::exception` and every other
   exception type (the message of the latter is `unknown C++ exception`).
-- A method that returns `outcome<T, E>` is `async throws -> T`. It throws `E`
-  when C++ returns an error, and `DjinniError` when C++ throws.
+- Without `--swift-error-type`, a method that returns `outcome<T, E>` is
+  `async throws -> T`. It throws `E` when C++ returns an error, and
+  `DjinniError` when C++ throws.
 - A method that returns `future<T>` is `async throws -> T`. It awaits
   `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
   The C++ future is not cancelled. A C++ exception that is thrown before the
@@ -406,22 +407,27 @@ Error type (`--swift-error-type <name>`):
 - With `--swift-async-wrap`, a method that returns `outcome<T, E>` is
   `async throws(<name>) -> T`. A C++ exception of this method becomes a
   `<name>` value. The error record must conform to
-  `DjinniSupport.CppExceptionConvertible`. The application declares the
-  conformance, because the generator cannot know a meaningful value for every
-  field:
+  `DjinniSupport.CppExceptionConvertible`. The generator cannot know a
+  meaningful value for every field, so you declare the conformance:
 
   ```swift
   extension CruxError: CppExceptionConvertible {
-      public init(cppException message: String) {
-          self.init(message: message, code: -1)
+      public init(cppException error: DjinniError) {
+          self.init(message: error.errorMessage, code: -1)
       }
   }
   ```
 
-  The wrapper calls `init(cppException:)` with `DjinniError.errorMessage`. If the
-  conformance is missing, the Swift build of the generated wrapper fails. A
-  method that returns `future<outcome<T, E>>` throws `DjinniError`, as with the
-  flag off.
+  The wrapper calls `init(cppException:)` with the `DjinniError` of the call.
+  `DjinniError.errorMessage` is the message of the exception.
+- Declare the conformance in a source file of the module that compiles the
+  generated Swift (the module of `--swift-module`). The wrapper needs
+  `--swift-private-in-same-module`, so a declaration in another module does not
+  help. If the conformance is missing, `swiftc` stops in the generated wrapper
+  with the message `global function 'cppOutcome' requires that '<name>' conform
+  to 'CppExceptionConvertible'`.
+- A method that returns `future<outcome<T, E>>` throws `DjinniError`, as with
+  the flag off.
 - A static method is exempt, for example a factory. A host interface without
   `+c` is exempt.
 - An interface with `+c +sw` is checked, although `--swift-async-wrap` does not
