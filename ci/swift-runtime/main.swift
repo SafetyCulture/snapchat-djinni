@@ -104,6 +104,66 @@ func runTests() throws {
     withExtendedLifetime(service) {}
 }
 
+func runAsyncTests() async throws {
+    let service = try RuntimeAsync_statics.create()
+    check(await service.add(2, b: 3) == 5, "async add")
+
+    // An outcome is a typed error.
+    check(try await service.divide(10, b: 2) == 5, "async divide")
+    do throws(RuntimeError) {
+        _ = try await service.divide(1, b: 0)
+        check(false, "divide by zero must fail")
+    } catch {
+        check(error.code == 1 && error.message == "division by zero", "typed error of an outcome")
+    }
+
+    // A future maps to async.
+    check(try await service.delayed(7, millis: 50) == 7, "async future")
+
+    // Many tasks use one wrapper.
+    let sum = try await withThrowingTaskGroup(of: Int32.self) { group in
+        for i in 0..<500 {
+            group.addTask { await service.add(Int32(i), b: 1) }
+            group.addTask { try await service.delayed(Int32(i), millis: 1) }
+        }
+        var total: Int32 = 0
+        for try await value in group { total += value }
+        return total
+    }
+    check(sum == (0..<500).reduce(Int32(0)) { $0 + $1 + 1 + $1 }, "task group sum: \(sum)")
+
+    // A cancelled task stops waiting for a future that does not complete.
+    let waiting = Task { try await service.pending() }
+    try await Task.sleep(nanoseconds: 100_000_000)
+    waiting.cancel()
+    do {
+        _ = try await waiting.value
+        check(false, "a cancelled task must throw")
+    } catch is CancellationError {
+    } catch {
+        check(false, "a cancelled task must throw CancellationError, not \(error)")
+    }
+    await service.completePending(1)
+
+    // A task that is cancelled before it waits throws at once.
+    let early = Task {
+        while !Task.isCancelled { await Task.yield() }
+        return try await service.pending()
+    }
+    early.cancel()
+    do {
+        _ = try await early.value
+        check(false, "an early cancelled task must throw")
+    } catch is CancellationError {
+    } catch {
+        check(false, "an early cancelled task must throw CancellationError, not \(error)")
+    }
+    await service.completePending(2)
+
+    // The future of a completed call still delivers its value after another task was cancelled.
+    check(try await service.delayed(9, millis: 10) == 9, "future after cancellation")
+}
+
 // A deadlock fails the test.
 DispatchQueue.global().asyncAfter(deadline: .now() + 180) {
     print("FAIL: watchdog timeout, the runtime may be deadlocked")
@@ -111,4 +171,14 @@ DispatchQueue.global().asyncAfter(deadline: .now() + 180) {
 }
 
 try runTests()
-print("SWIFT RUNTIME OK")
+Task {
+    do {
+        try await runAsyncTests()
+    } catch {
+        print("FAIL: async tests threw \(error)")
+        exit(1)
+    }
+    print("SWIFT RUNTIME OK")
+    exit(0)
+}
+dispatchMain()
