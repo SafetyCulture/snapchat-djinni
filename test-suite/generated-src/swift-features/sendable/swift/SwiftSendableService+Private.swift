@@ -27,6 +27,6 @@ public enum SwiftSendableServiceMarshaller: DjinniSupport.Marshaller {
         return cppInterfaceToSwift(c, { SwiftSendableServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftSendableServiceSwiftProxy.make(ctxPtr(s, swiftSendableServiceMethods), dispatcherProtocalCall)})
+        return swiftInterfaceToCpp(s, { djinni_generated.SwiftSendableServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftSendableServiceMethods), dispatcherProtocalCall)})
     }
 }
