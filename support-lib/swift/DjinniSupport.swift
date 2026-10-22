@@ -24,8 +24,8 @@ protocol GenericProtocolWrapperContext: AnyObject, Sendable {
 // - The object instance (that conforms to our protocol)
 // - The dispatch table for each callable method in the protocol
 final class ProtocolWrapperContext<T>: GenericProtocolWrapperContext, @unchecked Sendable {
-    var inst: T
-    var vtbl: Vtbl<T>
+    let inst: T
+    let vtbl: Vtbl<T>
     init(inst: T, vtbl: Vtbl<T>) {
         self.inst = inst
         self.vtbl = vtbl
@@ -66,7 +66,8 @@ public func dispatcherProtocalCall(
         // If the index is negative, release and destroy the context.  We do
         // this when the C++ side proxy (ProtocolWrapper) is destroyed.
         let key = Unmanaged.passUnretained(ctx.getInst()).toOpaque()
-        SwiftProxyCache.shared.remove(key)
+        SwiftProxyCache.shared.removeIfExpired(key)
+        Unmanaged<AnyObject>.fromOpaque(pctx).release()
     }
 }
 
@@ -75,7 +76,7 @@ open class CppProxy: @unchecked Sendable {
     // Stores a C++ interface. A C++ interface value is a double pointer:
     // 1. A shared_ptr<> that keeps the C++ implementation object alive
     // 2. A shared_ptr<> to a ProtocolWrapper that facilitates dispatching
-    public var inst: djinni.swift.AnyValue
+    public let inst: djinni.swift.AnyValue
     public init(inst: djinni.swift.AnyValue) {
         self.inst = inst
     }
@@ -83,9 +84,14 @@ open class CppProxy: @unchecked Sendable {
         // Remove the C++ proxy pointer from the proxy cache
         withUnsafePointer(to: inst) { p in
             let info = djinni.swift.getInterfaceInfo(p)
-            CppProxyCache.shared.remove(info.cppPointer)
+            CppProxyCache.shared.removeIfExpired(info.cppPointer)
         }
     }
+}
+
+final class WeakBox {
+    weak var value: AnyObject?
+    init(_ value: AnyObject) { self.value = value }
 }
 
 final class CppProxyCache: @unchecked Sendable {
@@ -93,23 +99,32 @@ final class CppProxyCache: @unchecked Sendable {
     private let lock = NSLock()
     // C++ objects in swift.
     // Key:   raw C++ implementation object pointer
-    // Value: Swift callable proxy converted to an *Unretained* (weak) opaque pointer
-    private var mapPtrToProxy: [UnsafeRawPointer: UnsafeMutableRawPointer] = [:]
+    // Value: weak reference to the Swift callable proxy
+    private var mapPtrToProxy: [UnsafeRawPointer: WeakBox] = [:]
 
-    func get(_ key: UnsafeRawPointer) -> UnsafeMutableRawPointer? {
+    func get(_ key: UnsafeRawPointer) -> AnyObject? {
         lock.lock()
         defer { lock.unlock() }
-        return mapPtrToProxy[key]
+        return mapPtrToProxy[key]?.value
     }
-    func set(_ key: UnsafeRawPointer, _ value: UnsafeMutableRawPointer) {
+    // Returns the live proxy of a C++ object, or creates and stores a new one.
+    func getOrCreate(_ key: UnsafeRawPointer, _ create: () -> AnyObject) -> AnyObject {
         lock.lock()
         defer { lock.unlock() }
-        mapPtrToProxy[key] = value
+        if let existing = mapPtrToProxy[key]?.value {
+            return existing
+        }
+        let proxy = create()
+        mapPtrToProxy[key] = WeakBox(proxy)
+        return proxy
     }
-    func remove(_ key: UnsafeRawPointer) {
+    // A newer proxy of the same C++ object keeps its entry.
+    func removeIfExpired(_ key: UnsafeRawPointer) {
         lock.lock()
         defer { lock.unlock() }
-        mapPtrToProxy.removeValue(forKey: key)
+        if let box = mapPtrToProxy[key], box.value == nil {
+            mapPtrToProxy.removeValue(forKey: key)
+        }
     }
 }
 
@@ -121,20 +136,31 @@ final class SwiftProxyCache: @unchecked Sendable {
     // Value : Weak proxy, no ownership, but can be converted to a C++ callable strong proxy
     private var mapPtrToProxy: [UnsafeMutableRawPointer: djinni.swift.WeakSwiftProxy] = [:]
 
-    func get(_ key: UnsafeMutableRawPointer) -> djinni.swift.WeakSwiftProxy? {
+    // Returns the live C++ proxy of a Swift object, or creates and stores a new one.
+    func getOrCreate(_ key: UnsafeMutableRawPointer, _ create: () -> djinni.swift.AnyValue) -> djinni.swift.AnyValue {
         lock.lock()
         defer { lock.unlock() }
-        return mapPtrToProxy[key]
+        if let weakProxy = mapPtrToProxy[key] {
+            let strong = djinni.swift.strongify(weakProxy)
+            if !isNullInterface(strong) {
+                return strong
+            }
+        }
+        let proxy = create()
+        mapPtrToProxy[key] = djinni.swift.weakify(proxy)
+        return proxy
     }
-    func set(_ key: UnsafeMutableRawPointer, _ value: djinni.swift.WeakSwiftProxy) {
+    // A newer proxy of the same Swift object keeps its entry.
+    func removeIfExpired(_ key: UnsafeMutableRawPointer) {
         lock.lock()
         defer { lock.unlock() }
-        mapPtrToProxy[key] = value
+        if let weakProxy = mapPtrToProxy[key], djinni.swift.isExpired(weakProxy) {
+            mapPtrToProxy.removeValue(forKey: key)
+        }
     }
-    func remove(_ key: UnsafeMutableRawPointer) {
-        lock.lock()
-        defer { lock.unlock() }
-        mapPtrToProxy.removeValue(forKey: key)
+
+    private func isNullInterface(_ v: djinni.swift.AnyValue) -> Bool {
+        return withUnsafePointer(to: v) { p in djinni.swift.getInterfaceInfo(p).cppPointer == nil }
     }
 }
 
@@ -147,17 +173,15 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
         let info = djinni.swift.getInterfaceInfo(p)
         // 1. Check the CppProxyCache
         if let s = CppProxyCache.shared.get(info.cppPointer) {
-            return Unmanaged<AnyObject>.fromOpaque(s).takeUnretainedValue() as! I
+            return s as! I
         }
         // 2. Check if c++ ptr exists in SwiftProxyCache
         if let pctx = info.ctxPointer {
             let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as! GenericProtocolWrapperContext
             return ctx.getInst() as! I
         }
-        // 3. Create new proxy and store unretained (weak) pointer in CppProxyCache
-        let newProxy = newProxyFunc()
-        CppProxyCache.shared.set(info.cppPointer, Unmanaged.passUnretained(newProxy as AnyObject).toOpaque())
-        return newProxy
+        // 3. Create new proxy and store a weak reference in CppProxyCache
+        return CppProxyCache.shared.getOrCreate(info.cppPointer) { newProxyFunc() as AnyObject } as! I
     }
 }
 
@@ -170,15 +194,9 @@ public func swiftInterfaceToCpp<I>(_ s: I,
     if let cppproxy = s as? CppProxy {
         return cppproxy.inst
     }
-    // 2. Check swift proxy cache
+    // 2. Reuse the live swift proxy, or 3. create new proxy and store a weak reference
     let key = Unmanaged.passUnretained(s as AnyObject).toOpaque()
-    if let weakProxy = SwiftProxyCache.shared.get(key) {
-        return djinni.swift.strongify(weakProxy)
-    }
-    // 3. Create new proxy and store weak reference in SwiftProxyCache
-    let newProxy = newProxyFunc()
-    SwiftProxyCache.shared.set(key, djinni.swift.weakify(newProxy))
-    return newProxy
+    return SwiftProxyCache.shared.getOrCreate(key, newProxyFunc)
 }
 
 // Shortcut function to create a Swift protocol wrapper context and return its
@@ -192,7 +210,7 @@ public func ctxPtr<I> (_ s: I, _ vtbl: Vtbl<I>) -> UnsafeMutableRawPointer {
 
 // Wraps C++ ErrorValue as a Swift throwable Error
 public final class DjinniError: Error, @unchecked Sendable {
-    var wrapped: djinni.swift.ErrorValue
+    let wrapped: djinni.swift.ErrorValue
     init(_ wrapped: djinni.swift.ErrorValue) {
         self.wrapped = wrapped
     }

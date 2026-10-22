@@ -67,6 +67,10 @@ AnyValue strongify(const WeakSwiftProxy& v) {
     return {v.lock()};
 }
 
+bool isExpired(const WeakSwiftProxy& v) {
+    return v.expired();
+}
+
 InterfaceInfo getInterfaceInfo(const AnyValue* v) {
     auto i = std::get<InterfaceValue>(*v);
     return {i.ptr.get(), i.sptr ? i.sptr->ctx() : nullptr };

@@ -31,7 +31,7 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
 
     // The token only needs to be unique within the scope of the Future object
     typealias Token = Int64
-    var nextTokenValue: Token = 0
+    private var nextTokenValue: Token = 0
     private func generateToken() -> Token {
         lock.lock()
         defer { lock.unlock() }
@@ -101,14 +101,14 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
 
     private func subscribe(token: Token, subscription: @escaping Promise) {
         self.lock.lock()
-        defer { self.lock.unlock() }
-
         if let result = self.storedResult {
+            self.lock.unlock()
             subscription(result)
             return
         }
 
         self.subscriptions[token] = subscription
+        self.lock.unlock()
     }
 
     private func cancel(token: Token) {
@@ -128,7 +128,7 @@ protocol AbstractPromiseHolder: AnyObject {
 }
 // The Swift Future wrapper object that can be fulfilled by a C++ call
 final class PromiseHolder<T: Marshaller>: AbstractPromiseHolder, @unchecked Sendable {
-    var promise: DJFuture<T.SwiftType>.Promise
+    let promise: DJFuture<T.SwiftType>.Promise
     init(marshaller: T.Type, promise: @escaping DJFuture<T.SwiftType>.Promise) {
         self.promise = promise
     }

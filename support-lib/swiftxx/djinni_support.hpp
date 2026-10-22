@@ -118,6 +118,7 @@ InterfaceInfo getInterfaceInfo(const AnyValue* v);
 using WeakSwiftProxy = std::weak_ptr<ProtocolWrapper>;
 WeakSwiftProxy weakify(const AnyValue& v);
 AnyValue strongify(const WeakSwiftProxy& v);
+bool isExpired(const WeakSwiftProxy& v);
 
 // -------- Swift protocol trampoline
 typedef void (*DispatchFunc)(void* ctx, int idx /* -1 for cleanup*/, const ParameterList* params, AnyValue* ret);
