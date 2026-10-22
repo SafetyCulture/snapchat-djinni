@@ -20,6 +20,29 @@ import djinni.ast._
 import djinni.generatorTools._
 import djinni.meta._
 
+object SwiftIdent {
+  // Swift cannot escape these with backticks in member position, so they get a trailing underscore.
+  val unescapable = Set("Type", "Protocol", "self", "Self", "init", "deinit", "subscript")
+
+  val keywords = Set(
+    "associatedtype", "class", "enum", "extension", "fileprivate", "func", "import", "inout", "internal", "let",
+    "open", "operator", "private", "precedencegroup", "protocol", "public", "rethrows", "static", "struct",
+    "typealias", "var", "break", "case", "catch", "continue", "default", "defer", "do", "else", "fallthrough",
+    "for", "guard", "if", "in", "repeat", "return", "throw", "switch", "where", "while", "as", "await", "false",
+    "is", "nil", "super", "throws", "true", "try")
+
+  def escape(ident: String): String =
+    if (unescapable.contains(ident)) ident + "_"
+    else if (keywords.contains(ident)) "`" + ident + "`"
+    else ident
+
+  // An argument label at a call site does not need backticks.
+  def label(ident: String): String = ident.replace("`", "")
+
+  // The name without escaping, for identifiers that are part of a longer name.
+  def plain(ident: String): String = IdentStyle.camelLower(ident)
+}
+
 class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   override def typename(tm: MExpr): String = toSwiftType(tm, None)
   def typename(name: String, ty: TypeDef): String = idSwift.ty(name)

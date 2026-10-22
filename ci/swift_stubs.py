@@ -5,7 +5,7 @@ s12protos <extern dir> <out.swift>
     One SwiftProtobuf message stub for every `swift: typename` in the extern yaml files.
 cxx-stubs <extern dir> <out dir>
     Headers that stand in for the protobuf C++ headers and the generated message translators.
-cxx-header <swiftxx dir> <out.hpp>
+cxx-header <out.hpp> <swiftxx dir>...
     The declarations the generated Swift calls into, taken from the generated Swift/C++ headers.
 """
 import glob
@@ -48,9 +48,9 @@ def s12protos(extern_dir, out):
         f.write("import SwiftProtobuf\n\n" + "\n".join(emit(tree, 0)) + "\n")
 
 
-def cxx_header(swiftxx_dir, out):
+def cxx_header(out, *swiftxx_dirs):
     decls = []
-    for path in sorted(glob.glob(os.path.join(swiftxx_dir, "*.h"))):
+    for path in sorted(p for d in swiftxx_dirs for p in glob.glob(os.path.join(d, "*.h*"))):
         text = open(path).read()
         for name in re.findall(r"^djinni::swift::AnyValue (\w+)\(const djinni::swift::ParameterList\* params\);", text, re.M):
             decls.append(f"djinni::swift::AnyValue {name}(const djinni::swift::ParameterList* params);")

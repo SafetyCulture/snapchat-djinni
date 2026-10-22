@@ -294,6 +294,48 @@ cp "$base_dir/djinni/yaml-test.djinni" "$temp_out/yaml"
     --idl "$temp_out_relative/yaml/yaml-test.djinni" \
 )
 
+# Swift cases. They have their own output tree because the other test targets compile the main trees.
+swift_host_relative="djinni/swift_host.djinni"
+swift_idents_relative="djinni/swift_idents.djinni"
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --java-out "$temp_out_relative/swift-features/host/java" \
+    --java-package $java_package \
+    --ident-java-field mFooBar \
+    \
+    --cpp-out "$temp_out_relative/swift-features/host/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --jni-out "$temp_out_relative/swift-features/host/jni" \
+    --ident-jni-class NativeFooBar \
+    --ident-jni-file NativeFooBar \
+    \
+    --objc-out "$temp_out_relative/swift-features/host/objc" \
+    --objcpp-out "$temp_out_relative/swift-features/host/objc" \
+    --objc-type-prefix DB \
+    \
+    --swift-out "$temp_out_relative/swift-features/host/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/host/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_host_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/idents/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/idents/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/idents/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_idents_relative" \
+)
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
@@ -312,6 +354,7 @@ mirror "objc" "$temp_out/objc" "$objc_out"
 mirror "kotlin" "$temp_out/kotlin" "$kotlin_out"
 mirror "wasm" "$temp_out/wasm" "$wasm_out"
 mirror "ts" "$temp_out/ts" "$ts_out"
+mirror "swift-features" "$temp_out/swift-features" "$base_dir/generated-src/swift-features"
 
 date > "$gen_stamp"
 

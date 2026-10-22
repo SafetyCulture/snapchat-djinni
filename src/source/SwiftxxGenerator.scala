@@ -111,7 +111,7 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
       if (i.ext.cpp) {
         w.wl
         i.methods.filter(m => !m.static || (m.static && m.lang.swift)).foreach(m => {
-          w.wl(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${idSwift.method(m.ident)}(const djinni::swift::ParameterList* params);")
+          w.wl(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${SwiftIdent.plain(m.ident)}(const djinni::swift::ParameterList* params);")
         })
       }
       if (i.ext.swift) {
@@ -134,7 +134,7 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
     writeSwiftCppFile(ident, origin, refs.swiftCpp, w => {
       if (i.ext.cpp) {
         i.methods.filter(m => !m.static || (m.static && m.lang.swift)).foreach(m => {
-          w.w(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${idSwift.method(m.ident)}(const djinni::swift::ParameterList* params) try").braced {
+          w.w(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${SwiftIdent.plain(m.ident)}(const djinni::swift::ParameterList* params) try").braced {
             // get self
             if (!m.static) {
               w.wl(s"auto inst = ${marshal.helperClass(ident)}::toCpp(params->getValue(0));")

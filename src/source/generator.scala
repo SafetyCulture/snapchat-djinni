@@ -191,20 +191,6 @@ package object generatorTools {
     private val underLowerStrict = (s: String) => s.toLowerCase
     private val underUpperStrict = (s: String) => s.split('_').map(leadingUpperStrict).mkString("_")
 
-    private val avoidKeywords = (keywords: List[String], converter: IdentConverter) => (s: String) => {
-      val ident = converter(s)
-      if (keywords.contains(ident))
-        ident + "_"
-      else
-        ident
-    }
-    private val swiftKeywords = List(
-      "associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func", "import", "init", "inout",
-      "internal", "let", "open", "operator", "private", "precedencegroup", "protocol", "public", "rethrows", "static",
-      "struct", "subscript", "typealias", "var", "break", "case", "catch", "continue", "default", "defer", "do",
-      "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "throw", "switch", "where", "while",
-      "as", "await", "false", "is", "nil", "self", "super", "throws", "true", "try")
-
     val camelUpper = (s: String) => s.split("[-_]").map(firstUpper).mkString
     val camelLower = (s: String) => {
       val parts = s.split('_')
@@ -225,8 +211,9 @@ package object generatorTools {
     val cppDefault = CppIdentStyle(camelUpper, camelUpper, camelUpper, underLower, underLower, underLower, underCaps, underCaps)
     val objcDefault = ObjcIdentStyle(camelUpperID, camelUpperID, camelLowerID, camelLowerID, camelLowerID, camelUpperID, camelUpperID)
     val jsDefault = JsIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
-    private val swiftLower = avoidKeywords(swiftKeywords, camelLower)
-    val swiftDefault = SwiftIdentStyle(camelUpper, camelUpper, swiftLower, swiftLower, swiftLower, swiftLower, swiftLower)
+    private val swiftUpper = (s: String) => SwiftIdent.escape(camelUpper(s))
+    private val swiftLower = (s: String) => SwiftIdent.escape(camelLower(s))
+    val swiftDefault = SwiftIdentStyle(swiftUpper, swiftUpper, swiftLower, swiftLower, swiftLower, swiftLower, swiftLower)
 
     val styles = Map(
       "FooBar" -> camelUpper,

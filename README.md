@@ -349,9 +349,17 @@ Command line switches:
 IDL changes:
 
 - `+sw` marks a type or a method as implemented in Swift. An interface with no
-  language marks has all languages, `+sw` included.
+  language marks has all languages, `+sw` included. An interface can have
+  `+o +j +sw`. Then the host implements it in Objective-C, Java and Swift, and
+  the generator makes the three host proxies.
+- If an interface has `+o` but not `+sw`, the generator prints one warning for
+  it with `--swift-out`. It makes no Swift host implementation support for that
+  interface.
 - `deriving(hashable, sendable, codable, error)` adds the matching Swift conformances.
-- A Swift identifier that is a Swift keyword gets a trailing `_`.
+- A Swift identifier that is a Swift keyword gets backticks, for example
+  `` `internal` ``. These names get a trailing `_` because Swift cannot escape
+  them in member position: `Type`, `Protocol`, `self`, `Self`, `init`, `deinit`,
+  `subscript`. The list is `SwiftIdent` in `SwiftMarshal.scala`.
 
 Extern yaml files have two new blocks. A type without them cannot be used in Swift.
 
@@ -373,7 +381,8 @@ The built-in types `future<>`, `outcome<>`, `data_ref` and `data_view` map to
 
 Two scripts check the Swift support. `ci/swift-typecheck.sh` generates Swift for
 the Crux assets IDL, runs `swiftc -typecheck` on it and compiles the C++ glue
-with `-fsyntax-only`. `ci/check-byte-identity.sh` proves that a change does not
+with `-fsyntax-only`. It does the same for the Swift cases of the test suite
+(`test-suite/djinni/swift_host.djinni`, `swift_idents.djinni`). `ci/check-byte-identity.sh` proves that a change does not
 alter the output of the other generators. Both read the Crux IDL from
 `MITTI_MOBILE_ROOT`.
 

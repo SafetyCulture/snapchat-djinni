@@ -114,16 +114,6 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  private def swiftMethodName(ident: String) = {
-    val reservedNames = Array("init", "deinit")
-    val name = idSwift.method(ident)
-    if (reservedNames.contains(name)) {
-      "_" + name
-    } else {
-      name
-    }
-  }
-
   class SwiftRefs(name: String) {
     var swiftImports = mutable.TreeSet[String]()
     var privateImports = mutable.TreeSet[String]("DjinniSupport", "Foundation", spec.swiftxxBaseLibModule, spec.swiftModule + "Cxx")
@@ -163,7 +153,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         val skipFirst = SkipFirst()
         for (f <- record.fields) {
           skipFirst {w.wl(",")}
-          w.w(idSwift.field(f.ident) + ":")
+          w.w(SwiftIdent.label(idSwift.field(f.ident)) + ":")
           writeSwiftConst(w, f.ty, vMap.apply(f.ident.name))
         }
         w.w(")")
@@ -218,7 +208,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
               val swiftExp = s"djinni.swift.getMember(p, $i)"
               w.wl(s"let ${idSwift.field(f.ident)} = ${marshal.fromCpp(f.ty, swiftExp)}")
             }
-            val members = r.fields.map(f => s"${idSwift.field(f.ident)}: ${idSwift.field(f.ident)}").mkString(", ")
+            val members = r.fields.map(f => s"${SwiftIdent.label(idSwift.field(f.ident))}: ${idSwift.field(f.ident)}").mkString(", ")
             w.wl(s"return SwiftType(${members})")
           }
           w.wl("}")
@@ -239,6 +229,9 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     })
   }
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
+    if (i.ext.objc && !i.ext.swift) {
+      System.err.println(s"Warning: interface ${ident.name} can be implemented in Objective-C (+o) but not in Swift (+sw). No Swift host implementation support is generated for it.")
+    }
     val refs = new SwiftRefs(ident.name)
     i.methods.foreach(m => {
       m.params.foreach(p => refs.find(p.ty))
@@ -252,7 +245,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"public protocol ${marshal.typename(ident, i)}: AnyObject").braced {
         for (m <- i.methods.filter(!_.static)) {
           writeMethodDoc(w, m, idSwift.local)
-          w.w(s"func ${swiftMethodName(m.ident)}(")
+          w.w(s"func ${idSwift.method(m.ident)}(")
           // skip label for the first parameter
           if (m.params.nonEmpty) { w.w("_ ") }
           w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
@@ -267,7 +260,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"final class ${marshal.typename(ident, i)}CppProxy: DjinniSupport.CppProxy, ${marshal.fqTypename(ident, i)}").braced {
           w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
           for (m <- i.methods.filter(!_.static)) {
-            w.w(s"func ${swiftMethodName(m.ident)}(")
+            w.w(s"func ${idSwift.method(m.ident)}(")
             if (m.params.nonEmpty) { w.w("_ ") }
             w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
             w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
@@ -276,7 +269,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
               for (p <- m.params) {
                 w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
               }
-              w.wl(s"var ret = ${spec.swiftxxNamespace}.${marshal.typename(ident, i)}_${idSwift.method(m.ident)}(&_params)")
+              w.wl(s"var ret = ${spec.swiftxxNamespace}.${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
               w.wl("try handleCppErrors(&ret)")
               if (!m.ret.isEmpty) {
                 w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
@@ -287,20 +280,20 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       }
       // Define the vtbl for protocol wrapper if interface is implemented in Swift
       val swiftProxyClassName = s"${marshal.typename(ident, i)}SwiftProxy"
-      val swiftProxyVtbl = s"${idSwift.local(ident)}Methods"
+      val swiftProxyVtbl = s"${SwiftIdent.plain(ident)}Methods"
       if (i.ext.swift) {
         w.wl(s"let $swiftProxyVtbl: Vtbl<${marshal.typename(ident, i)}> = [").nested {
           for (m <- i.methods.filter(!_.static)) {
             w.wl("{ inst, params, ret in").nested {
               for ((p, i) <- m.params.view.zipWithIndex) {
                 val pi = s"djinni.swift.getMember(params, $i)"
-                w.wl(s"let _${idSwift.local(p.ident)} = ${marshal.fromCpp(p.ty, pi)}")
+                w.wl(s"let _${SwiftIdent.plain(p.ident)} = ${marshal.fromCpp(p.ty, pi)}")
               }
               val args = m.params.view.zipWithIndex.map{case (p, i) =>
-                val label = if (i==0) "" else s"${idSwift.local(p.ident)}: "
-                label + s"_${idSwift.local(p.ident)}"
+                val label = if (i==0) "" else s"${SwiftIdent.label(idSwift.local(p.ident))}: "
+                label + s"_${SwiftIdent.plain(p.ident)}"
               }.mkString(", ")
-              val call = s"inst.${swiftMethodName(m.ident)}(${args})"
+              val call = s"inst.${idSwift.method(m.ident)}(${args})"
               if (m.ret.isEmpty) {
                 w.wl("try " + call)
               } else {
@@ -330,7 +323,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       if (!staticMethods.isEmpty) {
         w.w(s"public class ${marshal.typename(ident, i)}_statics").braced {
           for (m <- staticMethods) {
-            w.w(s"public static func ${swiftMethodName(m.ident)}(")
+            w.w(s"public static func ${idSwift.method(m.ident)}(")
             if (m.params.nonEmpty) { w.w("_ ") }
             w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
             w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
@@ -338,7 +331,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
               for (p <- m.params) {
                 w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
               }
-              w.wl(s"var ret = ${spec.swiftxxNamespace}.${marshal.typename(ident, i)}_${idSwift.method(m.ident)}(&_params)")
+              w.wl(s"var ret = ${spec.swiftxxNamespace}.${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
               w.wl("try handleCppErrors(&ret)")
               if (!m.ret.isEmpty) {
                 w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")

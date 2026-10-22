@@ -69,7 +69,7 @@ out="$work/out"
 mods="$work/mods"; build="$work/build"
 mkdir -p "$mods" "$build"
 python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12Protos.swift"
-python3 "$repo_root/ci/swift_stubs.py" cxx-header "$out/swiftxx" "$mods/CruxCxx.hpp"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
 cat >"$mods/module.modulemap" <<EOF
 module DjinniSupportCxx {
   header "$repo_root/support-lib/swiftxx/djinni_support.hpp"
@@ -102,3 +102,37 @@ python3 "$repo_root/ci/swift_stubs.py" cxx-stubs "$work/fx/extern" "$work/cxxstu
 ls "$out"/swiftxx/*.cc | xargs -P 4 -I{} "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
   -I "$out/cpp" -I "$out/cpp/generated" -I "$work/cxxstubs" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" {}
 echo "C++ GLUE SYNTAX OK"
+
+# Test-suite cases: the host interface triple and the keyword identifiers. The generated
+# files are the checked-in expected outputs of test-suite/run_djinni.sh.
+cases="$repo_root/test-suite/generated-src/swift-features"
+tsmods="$work/ts-mods"
+mkdir -p "$tsmods"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$tsmods/TestSuiteCxx.hpp" "$cases/host/swiftxx" "$cases/idents/swiftxx"
+cat >"$tsmods/module.modulemap" <<EOF
+module DjinniSupportCxx {
+  header "$repo_root/support-lib/swiftxx/djinni_support.hpp"
+  header "$repo_root/support-lib/swiftxx/Future_swift.hpp"
+  header "$repo_root/support-lib/swiftxx/Data_swift.hpp"
+  header "$repo_root/support-lib/swiftxx/Outcome_swift.hpp"
+  requires cplusplus
+  export *
+}
+module TestSuiteCxx {
+  header "$tsmods/TestSuiteCxx.hpp"
+  requires cplusplus
+  export *
+}
+EOF
+tscxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$tsmods" -I "$build" -I "$spb_mod")
+echo "== TestSuite (checked-in Swift cases): swiftc -typecheck $swift_flags"
+# shellcheck disable=SC2086
+swiftc -typecheck -module-name TestSuite $swift_flags "${tscxx[@]}" "$cases"/host/swift/*.swift "$cases"/idents/swift/*.swift
+echo "TEST-SUITE SWIFT TYPECHECK OK"
+for c in host idents; do
+  for f in "$cases/$c"/swiftxx/*.cpp; do
+    "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
+      -I "$cases/$c/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
+  done
+done
+echo "TEST-SUITE C++ GLUE SYNTAX OK"
