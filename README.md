@@ -401,7 +401,13 @@ Error type (`--swift-error-type <name>`):
 - The error record conforms to `Error`. It does not need `deriving(error)`.
 - A static method is exempt, for example a factory. A host interface without
   `+c` is exempt.
-- The flag does not depend on `--swift-async-wrap`. Crux uses both flags.
+- An interface with `+c +sw` is checked, although `--swift-async-wrap` does not
+  wrap it.
+- An extern record with the Swift name `<name>` is accepted. It must conform to
+  `Error` itself.
+- The generator also stops when no record has the Swift name `<name>`.
+- The check runs only with `--swift-out`. The flag does not depend on
+  `--swift-async-wrap`.
 
 IDL changes:
 
