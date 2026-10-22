@@ -95,8 +95,9 @@ public enum BinaryMarshaller: Marshaller {
         }
     }
     static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+        // withUnsafeBytes can give a nil baseAddress for an empty Data, and makeBinaryValue accepts nil
         return s.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-            return djinni.swift.makeBinaryValue(UnsafeMutableRawPointer(mutating: ptr.baseAddress!),
+            return djinni.swift.makeBinaryValue(UnsafeMutableRawPointer(mutating: ptr.baseAddress),
                                                 ptr.count)
         }
     }
