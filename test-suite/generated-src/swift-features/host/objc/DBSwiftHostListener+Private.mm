@@ -24,11 +24,12 @@ public:
             [djinni_private_get_proxied_objc_object() onValue:(::djinni::I32::fromCpp(c_value))];
         }
     }
-    std::string on_text(const std::string & c_text, bool c_internal) override
+    std::string on_text(const std::string & c_text, bool c_internal, int32_t c_inout) override
     {
         @autoreleasepool {
             auto objcpp_result_ = [djinni_private_get_proxied_objc_object() onText:(::djinni::String::fromCpp(c_text))
-                                                                          internal:(::djinni::Bool::fromCpp(c_internal))];
+                                                                          internal:(::djinni::Bool::fromCpp(c_internal))
+                                                                             inout:(::djinni::I32::fromCpp(c_inout))];
             return ::djinni::String::toCpp(objcpp_result_);
         }
     }

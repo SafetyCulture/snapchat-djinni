@@ -10,5 +10,5 @@ package com.dropbox.djinni.test;
 public abstract class SwiftHostListener {
     public abstract void onValue(int value);
 
-    public abstract String onText(String text, boolean internal);
+    public abstract String onText(String text, boolean internal, int inout);
 }

@@ -34,7 +34,7 @@ private:
         ~JavaProxy();
 
         void on_value(int32_t value) override;
-        std::string on_text(const std::string & text, bool internal) override;
+        std::string on_text(const std::string & text, bool internal, int32_t inout) override;
 
     private:
         friend ::djinni::JniInterface<::testsuite::SwiftHostListener, ::djinni_generated::NativeSwiftHostListener>;
@@ -42,7 +42,7 @@ private:
 
     const ::djinni::GlobalRef<jclass> clazz { ::djinni::jniFindClass("com/dropbox/djinni/test/SwiftHostListener") };
     const jmethodID method_onValue { ::djinni::jniGetMethodID(clazz.get(), "onValue", "(I)V") };
-    const jmethodID method_onText { ::djinni::jniGetMethodID(clazz.get(), "onText", "(Ljava/lang/String;Z)Ljava/lang/String;") };
+    const jmethodID method_onText { ::djinni::jniGetMethodID(clazz.get(), "onText", "(Ljava/lang/String;ZI)Ljava/lang/String;") };
 };
 
 } // namespace djinni_generated

@@ -22,13 +22,14 @@ void NativeSwiftHostListener::JavaProxy::on_value(int32_t c_value) {
                            ::djinni::get(::djinni::I32::fromCpp(jniEnv, c_value)));
     ::djinni::jniExceptionCheck(jniEnv);
 }
-std::string NativeSwiftHostListener::JavaProxy::on_text(const std::string & c_text, bool c_internal) {
+std::string NativeSwiftHostListener::JavaProxy::on_text(const std::string & c_text, bool c_internal, int32_t c_inout) {
     auto jniEnv = ::djinni::jniGetThreadEnv();
     ::djinni::JniLocalScope jscope(jniEnv, 10);
     const auto& data = ::djinni::JniClass<::djinni_generated::NativeSwiftHostListener>::get();
     auto jret = (jstring)jniEnv->CallObjectMethod(Handle::get().get(), data.method_onText,
                                                   ::djinni::get(::djinni::String::fromCpp(jniEnv, c_text)),
-                                                  ::djinni::get(::djinni::Bool::fromCpp(jniEnv, c_internal)));
+                                                  ::djinni::get(::djinni::Bool::fromCpp(jniEnv, c_internal)),
+                                                  ::djinni::get(::djinni::I32::fromCpp(jniEnv, c_inout)));
     ::djinni::jniExceptionCheck(jniEnv);
     return ::djinni::String::toCpp(jniEnv, jret);
 }

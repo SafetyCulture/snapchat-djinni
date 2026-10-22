@@ -15,7 +15,7 @@ public:
     SwiftHostListenerSwiftProxy(void* instance, djinni::swift::DispatchFunc dispatcher): ProtocolWrapper(instance, dispatcher) {}
     static djinni::swift::AnyValue make(void* instance, djinni::swift::DispatchFunc dispatcher);
     void on_value(int32_t value) override;
-    std::string on_text(const std::string & text, bool internal) override;
+    std::string on_text(const std::string & text, bool internal, int32_t inout) override;
 };
 
 } // namespace djinni_generated

@@ -1,0 +1,29 @@
+@extern "../../support-lib/dataref.yaml"
+@extern "../../support-lib/dataview.yaml"
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Built-in types that need a Swift marshaller.
+
+# The error type of an outcome. Swift needs the Error conformance for Result.
+swift_error = record {
+  message: string;
+  code: i32;
+} deriving(eq, error)
+
+swift_payload = record {
+  data: DataRef;
+  bytes: binary;
+  when: date;
+  note: optional<string>;
+  tags: list<string>;
+}
+
+swift_types_service = interface +c +sw {
+  compute(value: i32): outcome<i32, swift_error>;
+  load(id: string): future<swift_payload>;
+  reset(): future<void>;
+  get_payload(): swift_payload;
+  send_view(view: DataView): binary;
+  static create(): swift_types_service;
+}

@@ -9,14 +9,16 @@ public struct Type_ {
     public var `in`: Bool
     public var `protocol`: Optional<String>
     public var self_: Int32
+    public var `inout`: Int32
     public var kind: TestSuite.SwiftKind
 
-    public init(type: String, `in`: Bool, `protocol`: Optional<String>, self_: Int32, kind: TestSuite.SwiftKind)
+    public init(type: String, `in`: Bool, `protocol`: Optional<String>, self_: Int32, `inout`: Int32, kind: TestSuite.SwiftKind)
     {
         self.type = type
         self.`in` = `in`
         self.`protocol` = `protocol`
         self.self_ = self_
+        self.`inout` = `inout`
         self.kind = kind
     }
 }

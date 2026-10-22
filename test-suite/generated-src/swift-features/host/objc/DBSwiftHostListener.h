@@ -13,6 +13,7 @@
 - (void)onValue:(int32_t)value;
 
 - (nonnull NSString *)onText:(nonnull NSString *)text
-                    internal:(BOOL)internal;
+                    internal:(BOOL)internal
+                       inout:(int32_t)inout;
 
 @end

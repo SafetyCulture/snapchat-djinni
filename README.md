@@ -353,8 +353,8 @@ IDL changes:
   `+o +j +sw`. Then the host implements it in Objective-C, Java and Swift, and
   the generator makes the three host proxies.
 - If an interface has `+o` but not `+sw`, the generator prints one warning for
-  it with `--swift-out`. It makes no Swift host implementation support for that
-  interface.
+  it with `--swift-out`: `Warning: interface X has +o but not +sw. The generator
+  makes no Swift proxy for it.`
 - `deriving(hashable, sendable, codable, error)` adds the matching Swift conformances.
 - A Swift identifier that is a Swift keyword gets backticks, for example
   `` `internal` ``. These names get a trailing `_` because Swift cannot escape
@@ -376,7 +376,7 @@ swiftxx:
 ```
 
 Extra keys in the `swift:` block, such as `prefix`, are ignored.
-The built-in types `future<>`, `outcome<>`, `data_ref` and `data_view` map to
+The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
 `DJFuture`, `Result`, and `NSData` (both data types).
 
 Two scripts check the Swift support. `ci/swift-typecheck.sh` generates Swift for

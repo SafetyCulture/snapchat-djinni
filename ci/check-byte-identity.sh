@@ -50,8 +50,6 @@ else
   build_jar "$base_tree" "$work/base.jar"
 fi
 
-# main.djinni imports every other file, as in crux/tools/generate_code.sh. The check below
-# fails if a domain file is not part of that import closure.
 # One generator run. Flags mirror run_djinni in crux/tools/generate_code.sh.
 run_one() { # <jar> <idl> <out dir> <cpp ns> <objc prefix> <java pkg> <objc dir> <kotlin pkg> <kotlin support pkg> <kotlin cinterop pkg> <pass>
   local jar=$1 idl=$2 out=$3 cpp_ns=$4 prefix=$5 jpkg=$6 objc_dir=$7 kpkg=$8 ksup=$9 kcin=${10} pass=${11}
@@ -105,6 +103,7 @@ xargs -P "$jobs" -L 1 bash -c '
 ' <"$jobs_file"
 
 status=0
+# main.djinni imports every other file, as in crux/tools/generate_code.sh. Fail if a file is missing.
 for f in "$domain_dir"/*.djinni; do
   grep -qx "$f" "$work/head-out/exact/domain/main/.in-files" || {
     echo "not covered by main.djinni: $f" >&2; status=1; }

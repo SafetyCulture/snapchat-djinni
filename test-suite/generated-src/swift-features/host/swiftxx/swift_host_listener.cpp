@@ -13,10 +13,11 @@ void SwiftHostListenerSwiftProxy::on_value(int32_t value) {
     params.addValue(::djinni::swift::I32::fromCpp(value));
     callProtocol(0, &params);
 }
-std::string SwiftHostListenerSwiftProxy::on_text(const std::string & text, bool internal) {
+std::string SwiftHostListenerSwiftProxy::on_text(const std::string & text, bool internal, int32_t inout) {
     djinni::swift::ParameterList params;
     params.addValue(::djinni::swift::String::fromCpp(text));
     params.addValue(::djinni::swift::Bool::fromCpp(internal));
+    params.addValue(::djinni::swift::I32::fromCpp(inout));
     return ::djinni::swift::String::toCpp(callProtocol(1, &params));
 }
 

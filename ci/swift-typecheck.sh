@@ -91,7 +91,7 @@ swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-nam
   -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12Protos.swift"
 echo "== DjinniSupport (support-lib/swift)"
 swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-  -parse-as-library -swift-version 5 -suppress-warnings "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift
+  -parse-as-library -swift-version 5 "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift
 echo "== Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files): swiftc -typecheck $swift_flags"
 # shellcheck disable=SC2086
 swiftc -typecheck -module-name Crux $swift_flags "${cxx[@]}" "$out"/swift/*.swift
@@ -108,7 +108,7 @@ echo "C++ GLUE SYNTAX OK"
 cases="$repo_root/test-suite/generated-src/swift-features"
 tsmods="$work/ts-mods"
 mkdir -p "$tsmods"
-python3 "$repo_root/ci/swift_stubs.py" cxx-header "$tsmods/TestSuiteCxx.hpp" "$cases/host/swiftxx" "$cases/idents/swiftxx"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$tsmods/TestSuiteCxx.hpp" "$cases/host/swiftxx" "$cases/idents/swiftxx" "$cases/types/swiftxx"
 cat >"$tsmods/module.modulemap" <<EOF
 module DjinniSupportCxx {
   header "$repo_root/support-lib/swiftxx/djinni_support.hpp"
@@ -127,12 +127,19 @@ EOF
 tscxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$tsmods" -I "$build" -I "$spb_mod")
 echo "== TestSuite (checked-in Swift cases): swiftc -typecheck $swift_flags"
 # shellcheck disable=SC2086
-swiftc -typecheck -module-name TestSuite $swift_flags "${tscxx[@]}" "$cases"/host/swift/*.swift "$cases"/idents/swift/*.swift
+swiftc -typecheck -module-name TestSuite $swift_flags "${tscxx[@]}" "$cases"/host/swift/*.swift "$cases"/idents/swift/*.swift "$cases"/types/swift/*.swift
 echo "TEST-SUITE SWIFT TYPECHECK OK"
-for c in host idents; do
+for c in host idents types; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
-      -I "$cases/$c/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
+      -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
 echo "TEST-SUITE C++ GLUE SYNTAX OK"
+
+echo "== Runtime C++ (support-lib/swiftxx, objc/DataRef_objc.cpp): clang++ -fsyntax-only"
+for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp"; do
+  "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations -DDATAREF_OBJC=1 \
+    -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
+done
+echo "RUNTIME C++ SYNTAX OK"

@@ -12,12 +12,13 @@ djinni::swift::AnyValue Type::fromCpp(const ::testsuite::Type& c) {
     ret->addValue(::djinni::swift::Bool::fromCpp(c.in));
     ret->addValue(::djinni::swift::Optional<std::optional, ::djinni::swift::String>::fromCpp(c.protocol));
     ret->addValue(::djinni::swift::I32::fromCpp(c.self));
+    ret->addValue(::djinni::swift::I32::fromCpp(c.inout));
     ret->addValue(::djinni_generated::SwiftKind::fromCpp(c.kind));
     return {ret};
 }
 ::testsuite::Type Type::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::Type(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni::swift::Bool::toCpp(p->getValue(1)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(2)), ::djinni::swift::I32::toCpp(p->getValue(3)), ::djinni_generated::SwiftKind::toCpp(p->getValue(4)));
+    return ::testsuite::Type(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni::swift::Bool::toCpp(p->getValue(1)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(2)), ::djinni::swift::I32::toCpp(p->getValue(3)), ::djinni::swift::I32::toCpp(p->getValue(4)), ::djinni_generated::SwiftKind::toCpp(p->getValue(5)));
 }
 
 } // namespace djinni_generated

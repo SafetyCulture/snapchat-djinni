@@ -18,7 +18,7 @@ public:
 
     virtual void on_value(int32_t value) = 0;
 
-    virtual std::string on_text(const std::string & text, bool internal) = 0;
+    virtual std::string on_text(const std::string & text, bool internal, int32_t inout) = 0;
 };
 
 } // namespace testsuite

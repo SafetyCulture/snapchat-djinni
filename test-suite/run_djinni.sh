@@ -297,6 +297,7 @@ cp "$base_dir/djinni/yaml-test.djinni" "$temp_out/yaml"
 # Swift cases. They have their own output tree because the other test targets compile the main trees.
 swift_host_relative="djinni/swift_host.djinni"
 swift_idents_relative="djinni/swift_idents.djinni"
+swift_types_relative="djinni/swift_types.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -333,7 +334,19 @@ swift_idents_relative="djinni/swift_idents.djinni"
     --swiftxx-out "$temp_out_relative/swift-features/idents/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_idents_relative" \
+    --idl "$swift_idents_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/types/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/types/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/types/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_types_relative" \
 )
 
 # Copy changes from "$temp_out" to final dir.

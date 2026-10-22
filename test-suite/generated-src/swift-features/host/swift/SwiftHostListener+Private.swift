@@ -18,7 +18,8 @@ let swiftHostListenerMethods: Vtbl<SwiftHostListener> = [
     { inst, params, ret in
         let _text = StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
         let _internal = BoolMarshaller.fromCpp(djinni.swift.getMember(params, 1))
-        djinni.swift.setReturnValue(ret, try StringMarshaller.toCpp(inst.onText(_text, internal: _internal)))
+        let _inout = I32Marshaller.fromCpp(djinni.swift.getMember(params, 2))
+        djinni.swift.setReturnValue(ret, try StringMarshaller.toCpp(inst.onText(_text, internal: _internal, `inout`: _inout)))
     },
 ]
 

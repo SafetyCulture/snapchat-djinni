@@ -9,5 +9,5 @@ import Foundation
  */
 public protocol SwiftHostListener: AnyObject {
     func onValue(_ value: Int32) throws -> Void
-    func onText(_ text: String, `internal`: Bool) throws -> String
+    func onText(_ text: String, `internal`: Bool, `inout`: Int32) throws -> String
 }

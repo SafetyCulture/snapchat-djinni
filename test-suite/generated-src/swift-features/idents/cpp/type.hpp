@@ -17,17 +17,20 @@ struct Type final {
     bool in;
     std::optional<std::string> protocol;
     int32_t self;
+    int32_t inout;
     swift_kind kind;
 
     Type(std::string type_,
          bool in_,
          std::optional<std::string> protocol_,
          int32_t self_,
+         int32_t inout_,
          swift_kind kind_)
     : type(std::move(type_))
     , in(std::move(in_))
     , protocol(std::move(protocol_))
     , self(std::move(self_))
+    , inout(std::move(inout_))
     , kind(std::move(kind_))
     {}
 };
