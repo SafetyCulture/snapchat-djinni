@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Proves that Kotlin classes bind to the JNI code that was generated for the Java classes.
 
-Usage: kotlin_jni_compare.py <java classes dir> <kotlin classes dir> <jni source dir> <package>
+Usage: kotlin_jni_compare.py <java classes dir> <kotlin classes dir> <jni source dir> <package> [<extra package>] [<java signature>=<kotlin signature>]...
+
+An extra package holds classes that only the Kotlin tree has, such as the Kotlin class of an extern type. The JNI
+lookups of these classes are checked. A signature pair replaces a class in the descriptors of the Java classes, so a
+record with an extern type that has Kotlin keys has the same descriptors in both trees.
 
 The script runs `javap -p -s` on both class trees and checks:
   1. every Java class of the package exists in the Kotlin tree;
@@ -36,7 +40,7 @@ def class_names(root: str, package: str) -> list[str]:
     return sorted(names)
 
 
-def javap(root: str, names: list[str]) -> dict[str, dict]:
+def javap(root: str, names: list[str], substitutions=()) -> dict[str, dict]:
     """Returns {class: {"fields": set, "methods": set}}, where a member is (name, descriptor, flags)."""
     out = subprocess.run(["javap", "-p", "-s", "-cp", root] + names, capture_output=True, text=True, check=True).stdout
     classes, current, pending = {}, None, None
@@ -52,6 +56,9 @@ def javap(root: str, names: list[str]) -> dict[str, dict]:
             continue
         desc = re.match(r"^    descriptor: (.*)$", line)
         if desc and pending and current:
+            descriptor = desc.group(1)
+            for java_sig, kotlin_sig in substitutions:
+                descriptor = descriptor.replace(java_sig, kotlin_sig)
             text = pending
             flags = set(w for w in text.split("(")[0].split() if w in ("static", "native", "abstract", "private", "final"))
             if "(" in text:
@@ -59,10 +66,10 @@ def javap(root: str, names: list[str]) -> dict[str, dict]:
                 short = current.split(".")[-1]
                 name = "<init>" if head in (current, short) else head
                 if name != "static":
-                    classes[current]["methods"].add((name, desc.group(1), tuple(sorted(flags))))
+                    classes[current]["methods"].add((name, descriptor, tuple(sorted(flags))))
             else:
                 name = text.split()[-1]
-                classes[current]["fields"].add((name, desc.group(1), tuple(sorted(flags))))
+                classes[current]["fields"].add((name, descriptor, tuple(sorted(flags))))
             pending = None
     return classes
 
@@ -119,10 +126,12 @@ def native_tables(jni_dir: str) -> tuple[dict[str, set[tuple[str, str]]], list[s
 
 def main() -> None:
     java_dir, kotlin_dir, jni_dir, package = sys.argv[1:5]
+    extra_packages = [a for a in sys.argv[5:] if "=" not in a]
+    substitutions = [tuple(a.split("=", 1)) for a in sys.argv[5:] if "=" in a]
     java_names = class_names(java_dir, package)
     kotlin_names = class_names(kotlin_dir, package)
-    java = javap(java_dir, java_names)
-    kotlin = javap(kotlin_dir, kotlin_names)
+    java = javap(java_dir, java_names, substitutions)
+    kotlin = javap(kotlin_dir, kotlin_names + [n for p in extra_packages for n in class_names(kotlin_dir, p)])
     failures = []
 
     missing = [n for n in java_names if n not in kotlin]
@@ -161,7 +170,7 @@ def main() -> None:
 
     bad, skipped = [], 0
     for cls, kind, name, desc in sorted(lookups):
-        if cls not in java:
+        if cls not in java and cls not in kotlin:
             skipped += 1
             continue
         info = kotlin.get(cls)

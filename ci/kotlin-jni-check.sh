@@ -58,9 +58,13 @@ else
   jar="$repo_root/bazel-bin/src/djinni_deploy.jar"
 fi
 
-# compile_and_compare <name> <package> <extern dir or ""> : the generated trees are in $work/<name>/{java,jni,kotlin}
+# compile_and_compare <name> <package> <extern dir or ""> [<extra Kotlin dir> [<arguments of kotlin_jni_compare.py>...]]
+# The generated trees are in $work/<name>/{java,jni,kotlin}.
 compile_and_compare() {
   local name=$1 package=$2 extern=$3 dir="$work/$1"
+  shift 3
+  local extra_kotlin="${1:-}"
+  [ $# -eq 0 ] || shift
   mkdir -p "$dir/stubs" "$dir/java-classes" "$dir/kotlin-classes"
   [ -z "$extern" ] || python3 "$repo_root/ci/kotlin_jni_stubs.py" "$extern" "$dir/stubs"
   # The test suite uses javax.annotation annotations.
@@ -72,9 +76,9 @@ compile_and_compare() {
   javac -nowarn -d "$dir/java-classes" $(find "$dir/stubs" "$dir/java" "$repo_root/ci/kotlin-jni/stubs" "$repo_root/support-lib/java" -name '*.java')
   echo "== $name: kotlinc ($(find "$dir/kotlin" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
   kotlinc -Werror -d "$dir/kotlin-classes" -Xplugin="$kotlin_lib/parcelize-compiler.jar" \
-    -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar:$coroutines" "$dir/kotlin"
+    -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar:$coroutines" "$dir/kotlin" ${extra_kotlin:+"$extra_kotlin"}
   echo "== $name: javap"
-  python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package"
+  python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package" "$@"
 }
 
 # 1. Crux assets IDL, with the flags of crux/tools/generate_code.sh. The names of the fields are the Java names (mFooBar).
@@ -130,4 +134,30 @@ for mode in suspend:false suspend-onload:true; do
     --idl djinni/kotlin_suspend.djinni)
   compile_and_compare "$name" "$package" ""
 done
+
+# 4. Extern records with the Kotlin keys. The JNI code binds one class for each extern type, so Java and Kotlin
+# are generated apart. The Java classes are the reference: the Kotlin class of the extern type replaces its
+# Java class in their descriptors. The header of the translator is a copy of the form that the Crux plugin writes.
+name=extern
+mkdir -p "$work/$name/yaml"
+cp "$repo_root/test-suite/djinni/vendor/third-party/kotlin_extern.yaml" "$work/$name/yaml/"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --java-out "$work/$name/java" --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
+  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+  --idl djinni/kotlin_extern.djinni --idl-include-path djinni/vendor)
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" \
+  --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
+  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+  --cpp-out "$work/$name/cpp" --cpp-namespace testsuite \
+  --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+  --idl djinni/kotlin_extern.djinni --idl-include-path djinni/vendor)
+cp "$repo_root/ci/kotlin-jni/extern/kotlin_extern.djinni.kotlin.jni.h" "$work/$name/jni/"
+if ! grep -q "com.dropbox.djinni.testextern.ExternKotlinMessage" "$work/$name/kotlin/KotlinExternRecord.kt" ||
+   ! grep -q 'jniGetFieldID(clazz.get(), "mKeyed", "Lcom/dropbox/djinni/testextern/ExternKotlinMessage;")' "$work/$name/jni/NativeKotlinExternRecord.hpp"; then
+  echo "FAIL: the Kotlin class and the JNI code of an extern record do not use the Kotlin class of the extern type" >&2
+  exit 1
+fi
+compile_and_compare "$name" "$package" "$work/$name/yaml" "$repo_root/ci/kotlin-jni/extern" com.dropbox.djinni.testextern \
+  "Lcom/dropbox/djinni/testextern/ExternJavaMessage;=Lcom/dropbox/djinni/testextern/ExternKotlinMessage;"
 echo "KOTLIN JNI CHECK OK"

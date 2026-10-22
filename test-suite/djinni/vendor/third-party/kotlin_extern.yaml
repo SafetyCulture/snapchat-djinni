@@ -1,0 +1,71 @@
+# Two extern records for the Kotlin JNI classes. The first has no Kotlin keys: the Kotlin classes and the JNI
+# code use its Java class. The second has the Kotlin keys: the Kotlin classes and the JNI code use the Kotlin class.
+---
+name: extern_plain_message
+typedef: 'record deriving(eq)'
+params: []
+prefix: ''
+cpp:
+  typename: 'kotlin_extern::PlainMessage'
+  header: '"kotlin_extern.pb.h"'
+  byValue: false
+objc:
+  typename: 'KEPlainMessage'
+  header: '"KEPlainMessage.pbobjc.h"'
+  boxed: 'KEPlainMessage'
+  pointer: true
+  hash: '%s.hash()'
+objcpp:
+  translator: 'djinni::kotlin_extern::PlainMessage::Translator'
+  header: '"kotlin_extern.djinni.objc.h"'
+java:
+  typename: 'com.dropbox.djinni.testextern.ExternPlainMessage'
+  boxed: 'com.dropbox.djinni.testextern.ExternPlainMessage'
+  reference: true
+  generic: false
+  hash: '%s.hashCode()'
+jni:
+  translator: 'djinni::kotlin_extern::PlainMessage::Translator'
+  header: '"kotlin_extern.djinni.jni.h"'
+  typename: jobject
+  typeSignature: 'Lcom/dropbox/djinni/testextern/ExternPlainMessage;'
+kotlin:
+  typename: 'com.dropbox.djinni.testextern.wire.ExternPlainMessage'
+  isProtobufMessage: true
+
+---
+name: extern_kotlin_message
+typedef: 'record deriving(eq)'
+params: []
+prefix: ''
+cpp:
+  typename: 'kotlin_extern::KotlinMessage'
+  header: '"kotlin_extern.pb.h"'
+  byValue: false
+objc:
+  typename: 'KEKotlinMessage'
+  header: '"KEKotlinMessage.pbobjc.h"'
+  boxed: 'KEKotlinMessage'
+  pointer: true
+  hash: '%s.hash()'
+objcpp:
+  translator: 'djinni::kotlin_extern::KotlinMessage::Translator'
+  header: '"kotlin_extern.djinni.objc.h"'
+java:
+  typename: 'com.dropbox.djinni.testextern.ExternJavaMessage'
+  boxed: 'com.dropbox.djinni.testextern.ExternJavaMessage'
+  reference: true
+  generic: false
+  hash: '%s.hashCode()'
+jni:
+  translator: 'djinni::kotlin_extern::KotlinMessage::Translator'
+  header: '"kotlin_extern.djinni.jni.h"'
+  typename: jobject
+  typeSignature: 'Lcom/dropbox/djinni/testextern/ExternJavaMessage;'
+  kotlinTranslator: 'djinni::kotlin::kotlin_extern::KotlinMessage::Translator'
+  kotlinHeader: '"kotlin_extern.djinni.kotlin.jni.h"'
+  kotlinTypeSignature: 'Lcom/dropbox/djinni/testextern/ExternKotlinMessage;'
+kotlin:
+  typename: 'com.dropbox.djinni.testextern.wire.ExternKotlinMessage'
+  isProtobufMessage: true
+  jniTypename: 'com.dropbox.djinni.testextern.ExternKotlinMessage'

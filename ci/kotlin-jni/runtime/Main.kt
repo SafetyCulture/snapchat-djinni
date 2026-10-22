@@ -1,5 +1,6 @@
 package rt.kj
 
+import com.dropbox.djinni.testextern.ExternKotlinMessage
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -38,6 +39,13 @@ fun main(args: Array<String>) {
     val echoed = service.echoBlob(blob)
     check(echoed == blob && echoed.hashCode() == blob.hashCode(), "content equality of arrays")
     check(echoed != KjBlob(byteArrayOf(1, 2, 3), intArrayOf(4, 6)), "different arrays")
+
+    // An extern type with Kotlin keys goes between its pure Kotlin class and C++ as bytes.
+    val message = ExternKotlinMessage(byteArrayOf(9, 8, 7))
+    check(service.echoMessage(message) == message, "echo of an extern message")
+    val box = KjMessageBox(message, arrayListOf(message, ExternKotlinMessage(byteArrayOf())), null)
+    check(service.echoMessageBox(box) == box, "echo of a record with extern messages")
+    check(service.echoMessageBox(KjMessageBox(message, arrayListOf(), message)).mMaybe == message, "optional extern message")
 
     val ok = service.divide(10, 2)
     check(ok.resultOr(-1) == 5, "outcome value")

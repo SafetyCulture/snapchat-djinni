@@ -649,6 +649,50 @@ if grep -L "^package com.dropbox.djinni.test.kt$" "$temp_out"/kotlin-jni-package
     exit 1
 fi
 
+# An extern record with the Kotlin keys: the Kotlin classes and the JNI code use its Kotlin class.
+# The second run has no --kotlin-jni-out: the JNI code uses the Java class.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern/jni" \
+    --java-package $java_package \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_extern.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern/jni-java" \
+    --java-package $java_package \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_extern.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+
+# The JNI code binds one class for an extern record, so it cannot serve --java-out and --kotlin-jni-out.
+extern_log="$temp_out/kotlin-jni-extern-both.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --java-out "$temp_out_relative/kotlin-jni-extern-both/java" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-both/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern-both/jni" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_extern.djinni" \
+    --idl-include-path "djinni/vendor") >"$extern_log" 2>&1; then
+    echo "The generator accepted --java-out and --kotlin-jni-out with an extern record that has Kotlin keys." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "bind one class for each extern type" "$extern_log"; then
+    echo "Missing error message for --java-out and --kotlin-jni-out with Kotlin keys." 1>&2
+    cat "$extern_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-both" ]; then
+    echo "The generator wrote files for a rejected flag combination." 1>&2
+    exit 1
+fi
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
@@ -671,6 +715,7 @@ mirror "swift-features" "$temp_out/swift-features" "$base_dir/generated-src/swif
 mirror "kotlin-jni" "$temp_out/kotlin-jni" "$base_dir/generated-src/kotlin-jni"
 mirror "kotlin-jni-suspend" "$temp_out/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-suspend"
 mirror "kotlin-jni-package" "$temp_out/kotlin-jni-package" "$base_dir/generated-src/kotlin-jni-package"
+mirror "kotlin-jni-extern" "$temp_out/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-extern"
 
 date > "$gen_stamp"
 

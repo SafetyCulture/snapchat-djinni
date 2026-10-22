@@ -84,7 +84,8 @@ generate "$out/kotlin"
 echo "== ${CXX:-clang++} ($(ls "$out"/jni/*.cpp | wc -l | tr -d ' ') generated JNI files)"
 mkdir -p "$work/objs"
 cxxflags=(-std=c++17 -fPIC -Wno-deprecated-declarations -DDATAREF_JNI=1 -I "$jni_include" -I "$jni_platform"
-  -I "$out/cpp" -I "$out/jni" -I "$repo_root/support-lib/jni" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib")
+  -I "$out/cpp" -I "$out/jni" -I "$repo_root/support-lib/jni" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib"
+  -I "$repo_root/ci/kotlin-jni/extern")
 for f in "$repo_root"/support-lib/jni/*.cpp "$out"/jni/*.cpp "$src/kj_service_impl.cpp"; do
   # shellcheck disable=SC2086
   "${CXX:-clang++}" "${cxxflags[@]}" ${CXXFLAGS:-} -c "$f" -o "$work/objs/$(basename "$f").o"
@@ -102,7 +103,8 @@ run_mode() {
   local name=$1 kotlin_dir=$2 main=$3 libs=$4
   mkdir -p "$work/classes-$name"
   echo "== kotlinc and run: $name"
-  kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main"
+  kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main" \
+    "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt"
   java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib"
 }
 stdlib="$kotlin_lib/kotlin-stdlib.jar"

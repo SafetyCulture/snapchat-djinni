@@ -4,6 +4,7 @@
 #include "kj_color.hpp"
 #include "kj_item.hpp"
 #include "kj_listener.hpp"
+#include "kj_message_box.hpp"
 #include "kj_service.hpp"
 
 #include <atomic>
@@ -27,6 +28,10 @@ public:
     kj::KjItem echo(const kj::KjItem& item) override { return item; }
 
     kj::KjBlob echo_blob(const kj::KjBlob& blob) override { return blob; }
+
+    kotlin_extern::KotlinMessage echo_message(const kotlin_extern::KotlinMessage& message) override { return message; }
+
+    kj::KjMessageBox echo_message_box(const kj::KjMessageBox& box) override { return box; }
 
     djinni::expected<int32_t, kj::KjError> divide(int32_t a, int32_t b) override {
         if (b == 0) {

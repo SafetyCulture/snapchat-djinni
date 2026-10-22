@@ -1,5 +1,6 @@
 @extern "../../../support-lib/future.yaml"
 @extern "../../../support-lib/outcome.yaml"
+@extern "../../../test-suite/djinni/vendor/third-party/kotlin_extern.yaml"
 
 # Types for the Kotlin JNI runtime test. C++ implements the service, and Kotlin implements the listener.
 
@@ -26,6 +27,13 @@ kj_item = record {
   note: optional<string>;
 } deriving(eq)
 
+# The extern type has the Kotlin keys, so the JNI code binds its pure Kotlin class.
+kj_message_box = record {
+  message: extern_kotlin_message;
+  more: list<extern_kotlin_message>;
+  maybe: optional<extern_kotlin_message>;
+} deriving(eq)
+
 kj_listener = interface +j {
   on_value(value: i32): i32;
 }
@@ -42,6 +50,8 @@ kj_service = interface +c {
   add(a: i32, b: i32): i32;
   echo(item: kj_item): kj_item;
   echo_blob(blob: kj_blob): kj_blob;
+  echo_message(message: extern_kotlin_message): extern_kotlin_message;
+  echo_message_box(box: kj_message_box): kj_message_box;
   divide(a: i32, b: i32): outcome<i32, kj_error>;
   call_listener(listener: kj_listener, value: i32): i32;
   delayed(value: i32, millis: i32): future<i32>;
