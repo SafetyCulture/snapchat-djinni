@@ -127,6 +127,7 @@ package object generatorTools {
                    swiftErrorType: Option[String],
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],
+                   kotlinSuspendWrap: Boolean,
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol

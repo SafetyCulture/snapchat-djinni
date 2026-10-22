@@ -48,6 +48,14 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
     case _ => List()
   }
 
+  // The Kotlin type of the value of a future<T>, if the type is a future.
+  def futureValueType(ty: TypeRef): Option[String] = ty.resolved.base match {
+    case e: MExtern if e.name == "future" && ty.resolved.args.size == 1 =>
+      val arg = ty.resolved.args.head
+      Some(if (arg.base == MVoid) "Unit" else valueType(arg, None))
+    case _ => None
+  }
+
   private def isInterface(tm: MExpr): Boolean = tm.base match {
     case d: MDef => d.defType == DInterface
     case e: MExtern => e.defType == DInterface
