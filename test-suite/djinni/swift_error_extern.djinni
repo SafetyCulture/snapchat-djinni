@@ -1,0 +1,7 @@
+@extern "../../support-lib/outcome.yaml"
+@extern "vendor/third-party/swift_error_extern.yaml"
+
+# The error type is an extern record with the Swift name CruxError.
+swift_error_extern_service = interface +c {
+  f(): outcome<i32, extern_crux_error>;
+}

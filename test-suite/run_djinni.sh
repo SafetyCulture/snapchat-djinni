@@ -304,6 +304,8 @@ swift_future_field_relative="djinni/swift_future_field.djinni"
 swift_async_relative="djinni/swift_async.djinni"
 swift_error_relative="djinni/swift_error.djinni"
 swift_error_negative_relative="djinni/swift_error_negative.djinni"
+swift_error_enum_relative="djinni/swift_error_enum.djinni"
+swift_error_extern_relative="djinni/swift_error_extern.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -474,6 +476,51 @@ if [ -e "$base_dir/$negative_out" ]; then
     echo "The generator wrote files for a rejected IDL." 1>&2
     exit 1
 fi
+
+# The name of the flag must match a record, and the record must be a record.
+expect_failure() { # <log name> <idl> <flag value> <expected message>...
+    local log="$temp_out/$1.log" idl="$2" name="$3" expected
+    shift 3
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --swift-out "$temp_out_relative/swift-features/$1/swift" \
+        --swift-module TestSuite \
+        --swift-private-in-same-module \
+        --swift-error-type "$name" \
+        --idl-include-path "djinni/vendor" \
+        --idl "$idl") >"$log" 2>&1; then
+        echo "The generator accepted $idl with --swift-error-type $name." 1>&2
+        exit 1
+    fi
+    for expected in "$@"; do
+        if ! grep -qF -- "$expected" "$log"; then
+            echo "Missing error message: $expected" 1>&2
+            cat "$log" 1>&2
+            exit 1
+        fi
+    done
+    if [ -e "$base_dir/$temp_out_relative/swift-features/$1" ]; then
+        echo "The generator wrote files for a rejected IDL." 1>&2
+        exit 1
+    fi
+}
+expect_failure error-renamed "$swift_error_relative" Renamed \
+    "--swift-error-type Renamed: no record has this Swift name" \
+    "interface swift_error_service, method fetch: the error type of the outcome is CruxError, but --swift-error-type is Renamed"
+expect_failure error-enum "$swift_error_enum_relative" CruxError \
+    "interface swift_error_enum_service, method f: the error type CruxError is not a record"
+
+# An extern record with the Swift name is accepted.
+(cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/error-extern/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-error-type CruxError \
+    --idl-include-path "djinni/vendor" \
+    --idl "$swift_error_extern_relative") >"$temp_out/error-extern.log" 2>&1 || {
+    echo "The generator rejected an extern error record." 1>&2
+    cat "$temp_out/error-extern.log" 1>&2
+    exit 1
+}
 
 # Copy changes from "$temp_out" to final dir.
 

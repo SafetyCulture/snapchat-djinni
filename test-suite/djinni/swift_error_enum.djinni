@@ -1,0 +1,10 @@
+@extern "../../support-lib/outcome.yaml"
+
+# The error type has the right Swift name, but it is an enum.
+crux_error = enum {
+  failed;
+}
+
+swift_error_enum_service = interface +c {
+  f(): outcome<i32, crux_error>;
+}
