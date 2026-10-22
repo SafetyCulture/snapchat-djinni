@@ -37,5 +37,6 @@ runtime_async = interface +c {
   static shared(): runtime_async;
   same(): runtime_async;
   busy(millis: i32);
+  fail_future(): future<i32>;
   max_concurrent(): i32;
 }

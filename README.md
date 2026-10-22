@@ -377,7 +377,8 @@ Async wrappers (`--swift-async-wrap`):
 - A method that returns `outcome<T, E>` is `async throws(E) -> T`.
 - A method that returns `future<T>` is `async throws -> T`. It awaits
   `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
-  The C++ future is not cancelled.
+  The C++ future is not cancelled. A C++ exception that is thrown before the
+  future exists is thrown as `DjinniError`.
 - Any other method is `async -> T`. A C++ exception stops the program for these
   methods and for the methods that return `outcome<T, E>`, because the proxy of a
   wrapped interface does not throw. With `--swift-async-wrap`, every method
@@ -436,8 +437,9 @@ Three scripts check the Swift support. They read the Crux IDL from
   the same for the Swift cases of the test suite (`test-suite/djinni/swift_*.djinni`).
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces, and runs it in both Swift modes. The program checks
-  calls in both directions, the identity of proxies, the release of host objects,
-  the async wrappers with typed errors and task cancellation, and many threads. A watchdog fails the run when it deadlocks.
+  calls in both directions, the identity of proxies and the release of host
+  objects. It also checks the async wrappers, typed errors, task cancellation
+  and many threads. A watchdog fails the run when it deadlocks.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 

@@ -1,4 +1,5 @@
 import Dispatch
+import DjinniSupport
 import Foundation
 
 final class Counter: @unchecked Sendable {
@@ -128,6 +129,16 @@ func runAsyncTests() async throws {
         }
     }
     check(await first.maxConcurrent() == 1, "calls to one C++ object interleave: \(await first.maxConcurrent())")
+
+    // A C++ exception before a future exists is a DjinniError.
+    do {
+        _ = try await service.failFuture()
+        check(false, "failFuture must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("boom"), "DjinniError message: \(error.errorMessage)")
+    } catch {
+        check(false, "failFuture must throw DjinniError, not \(error)")
+    }
 
     // A future maps to async.
     check(try await service.delayed(7, millis: 50) == 7, "async future")

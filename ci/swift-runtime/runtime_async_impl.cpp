@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <mutex>
 #include <thread>
 
@@ -28,6 +29,10 @@ public:
             promise.setValue(value);
         }).detach();
         return future;
+    }
+
+    djinni::Future<int32_t> fail_future() override {
+        throw std::runtime_error("boom");
     }
 
     djinni::Future<int32_t> pending() override {
