@@ -79,6 +79,10 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
                         self.subscribe(token: token) { result in
                             waiter.fulfill(result)
                         }
+                        // onCancel can run before the subscription exists.
+                        if waiter.isCancelled {
+                            self.cancel(token: token)
+                        }
                     }
                 }
             } onCancel: {
@@ -123,6 +127,12 @@ private final class Waiter<Output, Failure: Error>: @unchecked Sendable {
     private var continuation: CheckedContinuation<Output, Error>?
     private var cancelled = false
     private var done = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
 
     // Returns false when the task was cancelled before, and the continuation is resumed.
     func install(_ continuation: CheckedContinuation<Output, Error>) -> Bool {
