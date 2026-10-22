@@ -522,6 +522,21 @@ expect_failure error-enum "$swift_error_enum_relative" CruxError \
     exit 1
 }
 
+# The flag for suspend functions needs the Kotlin JNI output.
+suspend_log="$temp_out/suspend-without-out.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-suspend-wrap \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni") >"$suspend_log" 2>&1; then
+    echo "The generator accepted --kotlin-suspend-wrap without --kotlin-jni-out." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --kotlin-suspend-wrap needs --kotlin-jni-out." "$suspend_log"; then
+    echo "Missing error message for --kotlin-suspend-wrap." 1>&2
+    cat "$suspend_log" 1>&2
+    exit 1
+fi
+
 # Kotlin classes for the JNI code. The Kotlin JNI check compiles them with the Java classes of the same IDL.
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \

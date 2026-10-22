@@ -31,9 +31,10 @@ fi
 [ -f "$kotlin_lib/parcelize-compiler.jar" ] || { echo "parcelize-compiler.jar not found, set KOTLIN_LIB" >&2; exit 2; }
 coroutines="${KOTLINX_COROUTINES_JAR:-}"
 if [ -z "$coroutines" ]; then
-  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | sort -V | tail -1)"
+  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
 fi
 [ -n "$coroutines" ] && [ -f "$coroutines" ] || { echo "kotlinx-coroutines-core-jvm.jar not found, set KOTLINX_COROUTINES_JAR" >&2; exit 2; }
+echo "== coroutines: $coroutines"
 for d in "$domain_dir" "$extern_src"; do
   [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
 done

@@ -109,8 +109,9 @@ run_mode sync "$out/kotlin" Main.kt "$stdlib"
 # The suspend functions need kotlinx-coroutines.
 coroutines="${KOTLINX_COROUTINES_JAR:-}"
 if [ -z "$coroutines" ]; then
-  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | sort -V | tail -1)"
+  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
 fi
 [ -n "$coroutines" ] && [ -f "$coroutines" ] || skip "kotlinx-coroutines-core-jvm.jar is not found (set KOTLINX_COROUTINES_JAR)"
+echo "== coroutines: $coroutines"
 generate "$out/kotlin-suspend" --kotlin-suspend-wrap
 run_mode suspend "$out/kotlin-suspend" MainSuspend.kt "$stdlib:$coroutines"

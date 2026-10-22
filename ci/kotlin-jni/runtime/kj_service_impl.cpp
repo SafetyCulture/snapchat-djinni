@@ -55,6 +55,17 @@ public:
         return _pending->getFuture();
     }
 
+    djinni::Future<int32_t> failing_future() override {
+        return djinni::Promise<int32_t>::reject(std::make_exception_ptr(std::runtime_error("failed future")));
+    }
+
+    djinni::Future<void> done() override {
+        djinni::Promise<void> promise;
+        auto future = promise.getFuture();
+        promise.setValue();
+        return future;
+    }
+
     void complete_pending(int32_t value) override {
         std::unique_ptr<djinni::Promise<int32_t>> promise;
         {

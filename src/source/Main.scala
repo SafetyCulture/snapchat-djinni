@@ -301,7 +301,7 @@ object Main {
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
         .text("The package of the Kotlin JNI classes (default: the value of --java-package). It must equal --java-package when the JNI code binds the classes.")
       opt[Unit]("kotlin-suspend-wrap").foreach(_ => kotlinSuspendWrap = true)
-        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. Each C++ object has a dispatcher with one thread.")
+        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. Each C++ object runs one call at a time.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -375,6 +375,10 @@ object Main {
       cppIdentStyle = cppIdentStyle.copy(enumType = cppTypeEnumIdentStyle)
     }
 
+    if (kotlinSuspendWrap && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-suspend-wrap needs --kotlin-jni-out.")
+      System.exit(1); return
+    }
     val swiftxxClassIdentStyle = swiftxxClassIdentStyleOptional.getOrElse(cppIdentStyle.ty)
     val swiftxxFileIdentStyle = swiftxxFileIdentStyleOptional.getOrElse(cppFileIdentStyle)
 

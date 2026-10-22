@@ -3,14 +3,9 @@
 
 package com.dropbox.djinni.test
 
-import com.snapchat.djinni.Future
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
 abstract class KotlinSuspendChild {

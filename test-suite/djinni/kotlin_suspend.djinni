@@ -2,8 +2,6 @@
 @extern "../../support-lib/future.yaml"
 @extern "../../support-lib/outcome.yaml"
 
-# Interfaces for --kotlin-suspend-wrap.
-
 kotlin_suspend_error = record {
   message: string;
 }

@@ -7,8 +7,7 @@ import com.snapchat.djinni.Future
 import com.snapchat.djinni.NativeObjectManager
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -82,12 +81,17 @@ abstract class KotlinSuspendService {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
             val future = withContext(dispatcher) { native_load(nativeRef, id) }
             return suspendCancellableCoroutine<KotlinSuspendItem> { continuation ->
+                val target = AtomicReference(continuation)
+                continuation.invokeOnCancellation { target.set(null) }
                 future.then(Future.FutureHandler<KotlinSuspendItem> { result ->
-                    try {
-                        continuation.resume(result.get())
+                    val waiting = target.getAndSet(null) ?: return@FutureHandler
+                    waiting.resumeWith(try {
+                        Result.success(result.get())
                     } catch (e: ExecutionException) {
-                        continuation.resumeWithException(e.cause ?: e)
-                    }
+                        Result.failure(e.cause ?: e)
+                    } catch (e: Throwable) {
+                        Result.failure(e)
+                    })
                 })
             }
         }
@@ -97,13 +101,18 @@ abstract class KotlinSuspendService {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
             val future = withContext(dispatcher) { native_flush(nativeRef) }
             return suspendCancellableCoroutine<Unit> { continuation ->
+                val target = AtomicReference(continuation)
+                continuation.invokeOnCancellation { target.set(null) }
                 future.then(Future.FutureHandler<Void> { result ->
-                    try {
+                    val waiting = target.getAndSet(null) ?: return@FutureHandler
+                    waiting.resumeWith(try {
                         result.get()
-                        continuation.resume(Unit)
+                        Result.success(Unit)
                     } catch (e: ExecutionException) {
-                        continuation.resumeWithException(e.cause ?: e)
-                    }
+                        Result.failure(e.cause ?: e)
+                    } catch (e: Throwable) {
+                        Result.failure(e)
+                    })
                 })
             }
         }

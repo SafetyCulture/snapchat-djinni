@@ -3,7 +3,6 @@
 
 package com.dropbox.djinni.test
 
-/** Interfaces for --kotlin-suspend-wrap. */
 data class KotlinSuspendError(
     val mMessage: String
 )

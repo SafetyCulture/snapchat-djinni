@@ -1,6 +1,7 @@
 package rt.kj
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -11,6 +12,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.lang.ref.WeakReference
 import kotlin.coroutines.coroutineContext
 
 class Doubler : KjListener() {
@@ -75,14 +77,42 @@ fun main(args: Array<String>) {
         service.completePending(1)
         delay(100)
 
-        // A coroutine that is cancelled before it waits throws at once.
+        // A cancelled coroutine does not call C++.
         val early = launch(Dispatchers.Default) {
             coroutineContext.job.cancel()
             service.pending()
         }
         early.join()
         check(early.isCancelled, "an early cancelled coroutine is cancelled")
+
+        // A cancelled coroutine is released before the C++ future completes.
+        val published = CompletableDeferred<WeakReference<ByteArray>>()
+        val big = launch(Dispatchers.Default) {
+            val data = ByteArray(32 shl 20)
+            published.complete(WeakReference(data))
+            service.pending()
+            check(data.isNotEmpty(), "the frame is live")
+        }
+        val frame = published.await()
+        delay(200)
+        big.cancel()
+        big.join()
+        var attempts = 0
+        while (frame.get() != null && attempts++ < 100) {
+            System.gc()
+            delay(50)
+        }
+        check(frame.get() == null, "a cancelled coroutine stays in memory while the future waits")
         service.completePending(2)
+
+        // A failed future throws the exception of C++. A future of void returns.
+        try {
+            service.failingFuture()
+            check(false, "a failed future must throw")
+        } catch (e: RuntimeException) {
+            check(e.message == "failed future", "message of a failed future: ${e.message}")
+        }
+        service.done()
 
         // A late result is dropped.
         val late = launch(Dispatchers.Default) { service.delayed(3, 300) }
@@ -100,7 +130,7 @@ fun main(args: Array<String>) {
         }
         service.completePending(3)
 
-        // One C++ object has one dispatcher with one thread. Its calls never run at the same time.
+        // One C++ object runs one call at a time.
         coroutineScope {
             (0 until 40).map { async(Dispatchers.Default) { service.busy(5) } }.awaitAll()
         }

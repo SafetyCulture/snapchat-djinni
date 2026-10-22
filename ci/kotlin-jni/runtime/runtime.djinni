@@ -46,6 +46,8 @@ kj_service = interface +c {
   call_listener(listener: kj_listener, value: i32): i32;
   delayed(value: i32, millis: i32): future<i32>;
   pending(): future<i32>;
+  failing_future(): future<i32>;
+  done(): future<void>;
   complete_pending(value: i32);
   fail(): i32;
   busy(millis: i32);

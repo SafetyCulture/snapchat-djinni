@@ -180,10 +180,14 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     }
     // JNI calls only the natives of an interface that C++ implements. It calls the methods of one that Kotlin implements.
     val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
-    if (suspendWrap) {
-      refs.imports ++= Seq("com.snapchat.djinni.Future", "java.util.concurrent.ExecutionException", "kotlin.coroutines.resume",
-        "kotlin.coroutines.resumeWithException", "kotlinx.coroutines.Dispatchers", "kotlinx.coroutines.suspendCancellableCoroutine",
-        "kotlinx.coroutines.withContext")
+    val suspendInstance = suspendWrap && i.methods.exists(m => !m.static)
+    val suspendFuture = suspendWrap && i.methods.exists(m => !m.static && m.ret.exists(r => marshal.futureValueType(r).isDefined))
+    if (suspendInstance) {
+      refs.imports ++= Seq("kotlinx.coroutines.Dispatchers", "kotlinx.coroutines.withContext")
+    }
+    if (suspendFuture) {
+      refs.imports ++= Seq("com.snapchat.djinni.Future", "java.util.concurrent.ExecutionException",
+        "java.util.concurrent.atomic.AtomicReference", "kotlinx.coroutines.suspendCancellableCoroutine")
     }
 
     val self = marshal.typename(ident, i)
@@ -230,7 +234,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           annotationHeader.foreach(w.wl)
           w.w(s"class CppProxy$typeParamList private constructor(private val nativeRef: Long) : $self$typeParamList()").braced {
             w.wl("private val destroyed = AtomicBoolean(false)")
-            if (suspendWrap) {
+            if (suspendInstance) {
               w.wl("private val dispatcher = Dispatchers.IO.limitedParallelism(1)")
             }
             w.wl
@@ -252,19 +256,25 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                     case Some((ret, value)) =>
                       w.wl(s"val future = withContext(dispatcher) { $call }")
                       w.wl(s"return suspendCancellableCoroutine<$value> { continuation ->").nested {
+                        w.wl("val target = AtomicReference(continuation)")
+                        w.wl("continuation.invokeOnCancellation { target.set(null) }")
                         w.wl(s"future.then(Future.FutureHandler<${futureArg(ret)}> { result ->").nested {
-                          w.wl("try {").nested {
+                          w.wl("val waiting = target.getAndSet(null) ?: return@FutureHandler")
+                          w.wl("waiting.resumeWith(try {").nested {
                             if (value == "Unit") {
                               w.wl("result.get()")
-                              w.wl("continuation.resume(Unit)")
+                              w.wl("Result.success(Unit)")
                             } else {
-                              w.wl("continuation.resume(result.get())")
+                              w.wl("Result.success(result.get())")
                             }
                           }
                           w.wl("} catch (e: ExecutionException) {").nested {
-                            w.wl("continuation.resumeWithException(e.cause ?: e)")
+                            w.wl("Result.failure(e.cause ?: e)")
                           }
-                          w.wl("}")
+                          w.wl("} catch (e: Throwable) {").nested {
+                            w.wl("Result.failure(e)")
+                          }
+                          w.wl("})")
                         }
                         w.wl("})")
                       }
