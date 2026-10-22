@@ -39,7 +39,7 @@ cc_library(
 
 objc_library(
     name = "djinni-support-objc",
-    srcs = glob(["objc/*.mm", "objc/*.cpp"]),
+    srcs = glob(["objc/*.mm", "objc/*.cpp"], exclude = ["objc/DataRef_objc.cpp"]),
     hdrs = glob(["objc/*.h", "objc/*.hpp"]),
     copts = [
         "-ObjC++",
@@ -47,7 +47,10 @@ objc_library(
     includes = ["objc"],
     defines = ["DATAREF_OBJC=1"],
     visibility = ["//visibility:public"],
-    deps = ["//support-lib:djinni-support-common"],
+    deps = [
+        "//support-lib:djinni-support-common",
+        "//support-lib:djinni-support-dataref-apple",
+    ],
 )
 
 java_library(
@@ -89,9 +92,19 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+# The DataRef constructors for Apple platforms, shared by the ObjC and the Swift runtime.
+cc_library(
+    name = "djinni-support-dataref-apple",
+    srcs = ["objc/DataRef_objc.cpp"],
+    defines = ["DATAREF_OBJC=1"],
+    visibility = ["//visibility:public"],
+    deps = [":djinni-support-common"],
+    alwayslink = 1,
+)
+
 cc_library(
     name = "djinni-support-swiftxx-core",
-    srcs = glob(["swiftxx/*.cpp"]) + ["objc/DataRef_objc.cpp"],
+    srcs = glob(["swiftxx/*.cpp"]),
     hdrs = glob(["swiftxx/*.hpp"]),
     copts = ["-std=c++20", "-Wno-deprecated-declarations"],
     defines = ["DATAREF_OBJC=1"],
@@ -100,5 +113,8 @@ cc_library(
         "swiftxx",
     ],
     visibility = ["//visibility:public"],
-    deps = [":djinni-support-common"],
+    deps = [
+        ":djinni-support-common",
+        ":djinni-support-dataref-apple",
+    ],
 )
