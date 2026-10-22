@@ -488,8 +488,8 @@ Three scripts check the Swift support. They read the Crux IDL from
   of generated interfaces, and runs it in both Swift modes. The program checks
   calls in both directions, the identity of proxies and the release of host
   objects. It also checks the async wrappers, typed errors, C++ exceptions of
-  wrapped methods, task cancellation and many threads. A watchdog fails the run
-  when it deadlocks.
+  wrapped methods, Swift errors that C++ catches, task cancellation and many
+  threads. A watchdog fails the run when it deadlocks.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 

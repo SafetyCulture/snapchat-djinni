@@ -18,6 +18,11 @@ final class Doubler: RuntimeListener {
     deinit { State.liveListeners.add(-1) }
     func onValue(_ value: Int32) throws -> Int32 { value * 2 }
     func makeData() throws -> NSData { Data((0..<256).map { UInt8($0) }) as NSData }
+    func onFail() throws -> Int32 { throw HostFailure.boom }
+}
+
+enum HostFailure: Error {
+    case boom
 }
 
 func check(_ condition: Bool, _ message: String) {
@@ -159,6 +164,10 @@ func runAsyncTests() async throws {
         check(error.code == -1 && error.message.contains("boom"), "CruxError of a C++ exception: \(error.message)")
     }
     check(try await errors.divide(9, b: 3) == 3, "the typed wrapper works after a C++ exception")
+
+    // A Swift listener throws, C++ catches the exception and returns its message.
+    let hostMessage = try await service.describeListenerFailure(Doubler())
+    check(hostMessage.contains("boom"), "C++ message of a Swift error: \(hostMessage)")
 
     // A legacy record (--swift-legacy-records) crosses the C++ boundary in both directions.
     let legacy = try LegacyService_statics.create()
