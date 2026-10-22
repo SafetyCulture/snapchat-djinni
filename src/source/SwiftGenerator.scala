@@ -310,11 +310,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"public enum ${marshal.typename(ident, i)}Marshaller: DjinniSupport.Marshaller").braced {
         w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
         w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {
-          val newProxyBlock = if (i.ext.cpp) {s"{ ${marshal.typename(ident, i)}CppProxy(c) as SwiftType }"} else {"{ fatalError(\"n/a\") }"}
+          val newProxyBlock = if (i.ext.cpp) {s"{ ${marshal.typename(ident, i)}CppProxy(c) as SwiftType }"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no C++ implementation: add +c to the interface") }"""}
           w.wl(s"return cppInterfaceToSwift(c, ${newProxyBlock})")
         }
         w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
-          val newProxyBlock = if (i.ext.swift) {s"{ ${spec.swiftxxNamespace}.$swiftProxyClassName.make(ctxPtr(s, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {"{ fatalError(\"n/a\") }"}
+          val newProxyBlock = if (i.ext.swift) {s"{ ${spec.swiftxxNamespace}.$swiftProxyClassName.make(ctxPtr(s, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
           w.wl(s"return swiftInterfaceToCpp(s, ${newProxyBlock})")
         }
       }

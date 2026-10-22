@@ -25,7 +25,7 @@ let swiftHostListenerMethods: Vtbl<SwiftHostListener> = [
 public enum SwiftHostListenerMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftHostListener
     public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { fatalError("n/a") })
+        return cppInterfaceToSwift(c, { fatalError("SwiftHostListener has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
         return swiftInterfaceToCpp(s, { djinni_generated.SwiftHostListenerSwiftProxy.make(ctxPtr(s, swiftHostListenerMethods), dispatcherProtocalCall)})

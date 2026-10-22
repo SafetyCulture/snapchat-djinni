@@ -30,7 +30,7 @@ public enum SwiftIdentServiceMarshaller: DjinniSupport.Marshaller {
         return cppInterfaceToSwift(c, { SwiftIdentServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { fatalError("n/a") })
+        return swiftInterfaceToCpp(s, { fatalError("SwiftIdentService has no Swift host implementation: add +sw to the interface") })
     }
 }
 public class SwiftIdentService_statics {
