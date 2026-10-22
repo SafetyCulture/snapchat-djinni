@@ -4,7 +4,7 @@
 import Foundation
 
 /** Interfaces for --swift-error-type CruxError. The record needs no deriving(error). */
-public struct CruxError: Error, Sendable {
+public struct CruxError: Swift.Error, Sendable {
     public let message: String
     public let code: Int32
 

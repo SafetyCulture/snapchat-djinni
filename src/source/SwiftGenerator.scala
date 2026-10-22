@@ -173,7 +173,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     val eq = if (deriving.contains(DerivingType.Eq)) "Equatable" else ""
     val hashable = if (deriving.contains(DerivingType.Hashable)) "Hashable" else ""
     val codable = if (deriving.contains(DerivingType.Codable)) "Codable" else ""
-    val error = if (deriving.contains(DerivingType.Error)) "Error" else ""
+    // Qualified so a record named Error does not shadow the protocol
+    val error = if (deriving.contains(DerivingType.Error)) "Swift.Error" else ""
     val conformance = Array(eq, hashable, codable, error, sendable).filter(_ != "")
     if (conformance.nonEmpty) prefix + conformance.mkString(", ") else ""
   }
