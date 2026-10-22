@@ -37,6 +37,8 @@ kj_both = interface +c +j {
 
 kj_service = interface +c {
   static create(): kj_service;
+  # The number of C++ services that are alive.
+  static live_count(): i32;
   add(a: i32, b: i32): i32;
   echo(item: kj_item): kj_item;
   echo_blob(blob: kj_blob): kj_blob;

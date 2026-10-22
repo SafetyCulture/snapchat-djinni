@@ -94,20 +94,27 @@ def jni_lookups(jni_dir):
 
 
 def native_tables(jni_dir):
-    """Returns {class: {(name, descriptor)}} from the JNINativeMethod tables of the generated C++."""
-    tables, registrations = {}, {}
+    """Returns ({class: {(name, descriptor)}}, problems) from the JNINativeMethod tables of the generated C++.
+
+    The tables are in the files of the types. The registrations are in the module file. So the function
+    reads all tables first and the registrations second."""
     entry = re.compile(r'const_cast<char\*>\("([^"]+)"\),\s*const_cast<char\*>\("([^"]+)"\)')
-    for path in sorted(glob.glob(os.path.join(jni_dir, "*"))):
-        if not path.endswith((".cc", ".cpp", ".h", ".hpp")):
-            continue
-        text = open(path).read()
+    texts = [open(path).read() for path in sorted(glob.glob(os.path.join(jni_dir, "*")))
+             if path.endswith((".cc", ".cpp", ".h", ".hpp"))]
+    tables = {}
+    for text in texts:
         for name, body in re.findall(r"const JNINativeMethod (\w+)\[[^\]]*\]\s*=\s*\{(.*?)\};", text, re.S):
             tables[name] = set(entry.findall(body))
-        for cls, table in re.findall(r'jniRegisterNatives\(env, "([^"]+)", (\w+)\)', text):
-            registrations.setdefault(cls.replace("/", "."), set()).update(tables.get(table, set()))
-        for cls, table in re.findall(r'JNIMethodLoadAutoRegister\w* \w+\("([^"]+)", (\w+)\)', text):
-            registrations.setdefault(cls.replace("/", "."), set()).update(tables.get(table, set()))
-    return registrations
+    registrations, problems = {}, []
+    for text in texts:
+        found = re.findall(r'jniRegisterNatives\(env, "([^"]+)", (\w+)\)', text)
+        found += re.findall(r'JNIMethodLoadAutoRegister\w* \w+\("([^"]+)", (\w+)\)', text)
+        for cls, table in found:
+            if not tables.get(table):
+                problems.append(f"the table {table} of {cls} is unknown or empty")
+                continue
+            registrations.setdefault(cls.replace("/", "."), set()).update(tables[table])
+    return registrations, problems
 
 
 def main():
@@ -140,7 +147,8 @@ def main():
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")
 
     exported, lookups = jni_lookups(jni_dir)
-    registrations = native_tables(jni_dir)
+    registrations, table_problems = native_tables(jni_dir)
+    failures.extend(table_problems)
     derived = {jni_name(n, m) for n in kotlin for (m, _, _) in natives(kotlin[n])}
     # A native method that is only registered in a table, such as the module guard, has no exported function.
     registered_only = {jni_name(c, n) for c, listed in registrations.items() for (n, _) in listed} - exported

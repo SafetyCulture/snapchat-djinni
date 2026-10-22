@@ -76,8 +76,15 @@ fun main(args: Array<String>) {
 
     // Proxies that are collected release their C++ objects.
     repeat(2000) { KjService.create() }
-    System.gc()
-    Thread.sleep(200)
+    var live = KjService.liveCount()
+    check(live > 1000, "live services before GC: $live")
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
+    while (live > 10 && System.nanoTime() < deadline) {
+        System.gc()
+        Thread.sleep(100)
+        live = KjService.liveCount()
+    }
+    check(live <= 10, "live services after GC: $live")
     check(service.add(1, 1) == 2, "service after GC")
 
     println("KOTLIN JNI RUNTIME OK")

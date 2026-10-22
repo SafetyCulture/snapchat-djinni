@@ -6,6 +6,7 @@
 #include "kj_listener.hpp"
 #include "kj_service.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <stdexcept>
@@ -13,8 +14,13 @@
 
 namespace {
 
+std::atomic<int32_t> liveServices{0};
+
 class KjServiceImpl : public kj::KjService {
 public:
+    KjServiceImpl() { ++liveServices; }
+    ~KjServiceImpl() override { --liveServices; }
+
     int32_t add(int32_t a, int32_t b) override { return a + b; }
 
     kj::KjItem echo(const kj::KjItem& item) override { return item; }
@@ -63,6 +69,10 @@ public:
 std::shared_ptr<kj::KjBoth> KjServiceImpl::make_both() { return std::make_shared<KjBothImpl>(); }
 
 } // namespace
+
+int32_t kj::KjService::live_count() {
+    return liveServices.load();
+}
 
 std::shared_ptr<kj::KjService> kj::KjService::create() {
     return std::make_shared<KjServiceImpl>();
