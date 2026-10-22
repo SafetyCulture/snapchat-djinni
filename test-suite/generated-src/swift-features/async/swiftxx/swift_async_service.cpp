@@ -106,6 +106,19 @@ djinni::swift::AnyValue SwiftAsyncService_child(const djinni::swift::ParameterLi
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+djinni::swift::AnyValue SwiftAsyncService_names(const djinni::swift::ParameterList* params) try {
+    auto inst = SwiftAsyncService::toCpp(params->getValue(0));
+    auto _proxy = ::djinni::swift::I32::toCpp(params->getValue(1));
+    auto _queue = ::djinni::swift::I32::toCpp(params->getValue(2));
+    auto _continuation = ::djinni::swift::I32::toCpp(params->getValue(3));
+    auto _result = ::djinni::swift::I32::toCpp(params->getValue(4));
+    auto _future = ::djinni::swift::I32::toCpp(params->getValue(5));
+    inst->names(std::move(_proxy), std::move(_queue), std::move(_continuation), std::move(_result), std::move(_future));
+    return djinni::swift::makeVoidValue();
+}
+catch (const std::exception& e) {
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_attach(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto _child = ::djinni_generated::SwiftAsyncChild::toCpp(params->getValue(1));

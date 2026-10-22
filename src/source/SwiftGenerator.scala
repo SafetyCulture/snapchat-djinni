@@ -255,7 +255,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       for (m <- i.methods.filter(!_.static)) {
         w.wl
         writeMethodDoc(w, m, idSwift.local)
-        val call = s"proxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
+        val call = s"_proxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
         w.w(s"public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
         val ret = m.ret.map(_.resolved)
         if (ret.exists(marshal.isOutcome)) {
@@ -270,36 +270,36 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
           }
           if (ret.exists(marshal.isOutcome)) {
-            w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { continuation in").nested {
-              w.wl("queue.async { [proxy] in").nested {
-                w.wl(s"continuation.resume(returning: $call)")
+            w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { _continuation in").nested {
+              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
+                w.wl(s"_continuation.resume(returning: $call)")
               }
               w.wl("}")
             }
             w.wl("}")
             w.wl("return try result.get()")
           } else if (ret.exists(marshal.isFuture)) {
-            w.wl(s"let future: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { continuation in").nested {
-              w.wl("queue.async { [proxy] in").nested {
-                w.wl(s"continuation.resume(returning: $call)")
+            w.wl(s"let future: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { _continuation in").nested {
+              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
+                w.wl(s"_continuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
             w.wl("}")
             w.wl("return try await future.value")
           } else if (m.ret.isEmpty) {
-            w.wl("await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in").nested {
-              w.wl("queue.async { [proxy] in").nested {
+            w.wl("await withCheckedContinuation { (_continuation: CheckedContinuation<Void, Never>) in").nested {
+              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
                 w.wl(call)
-                w.wl("continuation.resume()")
+                w.wl("_continuation.resume()")
               }
               w.wl("}")
             }
             w.wl("}")
           } else {
-            w.wl("return await withCheckedContinuation { continuation in").nested {
-              w.wl("queue.async { [proxy] in").nested {
-                w.wl(s"continuation.resume(returning: $call)")
+            w.wl("return await withCheckedContinuation { _continuation in").nested {
+              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
+                w.wl(s"_continuation.resume(returning: $call)")
               }
               w.wl("}")
             }
@@ -316,14 +316,20 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     w.w(s"final class ${name}CppProxy: DjinniSupport.CppProxy, @unchecked Sendable").braced {
       w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
       for (m <- i.methods.filter(!_.static)) {
-        w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) -> ${marshal.fqReturnType(m.ret)}").braced {
+        // A C++ exception before a future exists is thrown. Other exceptions stop the program.
+        val throwing = m.ret.exists(r => marshal.isFuture(r.resolved))
+        w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)})${if (throwing) " throws" else ""} -> ${marshal.fqReturnType(m.ret)}").braced {
           w.wl("var _params = djinni.swift.ParameterList()")
           w.wl("_params.addValue(inst)")
           for (p <- m.params) {
             w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
           }
           w.wl(s"var ret = ${spec.swiftxxNamespace}.${name}_${SwiftIdent.plain(m.ident)}(&_params)")
-          w.wl(s"""handleCppErrorsAsFatal(&ret, "$name.${SwiftIdent.plain(m.ident)}")""")
+          if (throwing) {
+            w.wl("try handleCppErrors(&ret)")
+          } else {
+            w.wl(s"""handleCppErrorsAsFatal(&ret, "$name.${SwiftIdent.plain(m.ident)}")""")
+          }
           if (!m.ret.isEmpty) {
             w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
           }
@@ -432,16 +438,17 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl("return s.proxy.inst")
           }
         }
-      } else
-      w.w(s"public enum ${marshal.typename(ident, i)}Marshaller: DjinniSupport.Marshaller").braced {
-        w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
-        w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {
-          val newProxyBlock = if (i.ext.cpp) {s"{ ${marshal.typename(ident, i)}CppProxy(c) as SwiftType }"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no C++ implementation: add +c to the interface") }"""}
-          w.wl(s"return cppInterfaceToSwift(c, ${newProxyBlock})")
-        }
-        w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
-          val newProxyBlock = if (i.ext.swift) {s"{ ${spec.swiftxxNamespace}.$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
-          w.wl(s"return swiftInterfaceToCpp(s, ${newProxyBlock})")
+      } else {
+        w.w(s"public enum ${marshal.typename(ident, i)}Marshaller: DjinniSupport.Marshaller").braced {
+          w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
+          w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {
+            val newProxyBlock = if (i.ext.cpp) {s"{ ${marshal.typename(ident, i)}CppProxy(c) as SwiftType }"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no C++ implementation: add +c to the interface") }"""}
+            w.wl(s"return cppInterfaceToSwift(c, ${newProxyBlock})")
+          }
+          w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
+            val newProxyBlock = if (i.ext.swift) {s"{ ${spec.swiftxxNamespace}.$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
+            w.wl(s"return swiftInterfaceToCpp(s, ${newProxyBlock})")
+          }
         }
       }
       // Define static method stubs
