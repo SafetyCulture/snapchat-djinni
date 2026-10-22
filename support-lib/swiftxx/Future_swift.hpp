@@ -31,6 +31,7 @@ struct CppFutureHolder: AbstractCppFutureHolder {
     template<typename T>
     static AnyValue getFutureResult(Future<T>& f) {
         if constexpr (std::is_void_v<T>) {
+            f.get();
             return makeVoidValue();
         } else {
             return RESULT::fromCpp(f.get());
@@ -39,13 +40,15 @@ struct CppFutureHolder: AbstractCppFutureHolder {
 
     void setFutureCb(FutureCb cb, void* ctx) override {
         future.then([cb, ctx] (Future<CppResType> f) {
+            AnyValue result = makeVoidValue();
             try {
-                auto v = getFutureResult(f);
-                cb(ctx, &v);
-            } catch (ErrorValue& e) {
-                AnyValue errorValue = e;
-                cb(ctx, &errorValue);
+                result = getFutureResult(f);
+            } catch (const ErrorValue& e) {
+                result = e;
+            } catch (const std::exception& e) {
+                result = ErrorValue{e.what(), std::current_exception()};
             }
+            cb(ctx, &result);
         });
     }
 };
