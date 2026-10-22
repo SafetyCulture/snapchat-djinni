@@ -7,7 +7,7 @@ import Foundation
  * Interfaces that a host language can implement.
  * The host implements this one in Objective-C, Java and Swift.
  */
-public protocol SwiftHostListener: AnyObject {
+public protocol SwiftHostListener: AnyObject, Sendable {
     func onValue(_ value: Int32) throws -> Void
     func onText(_ text: String, `internal`: Bool, `inout`: Int32) throws -> String
 }

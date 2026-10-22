@@ -1,0 +1,5 @@
+# A record that is generated with --swift-legacy-records.
+swift_legacy_point = record {
+  x: i32;
+  y: i32;
+}

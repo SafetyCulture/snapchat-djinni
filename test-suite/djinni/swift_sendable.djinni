@@ -1,0 +1,40 @@
+@extern "../../support-lib/dataref.yaml"
+
+# Records and the Sendable conformance that Swift 6 needs.
+
+swift_sendable_kind = enum {
+  first;
+  second;
+}
+
+swift_sendable_flags = flags {
+  alpha;
+  beta;
+}
+
+# All fields are Sendable, so Swift checks the conformance.
+swift_sendable_plain = record {
+  count: i32;
+  name: optional<string>;
+  tags: list<string>;
+  scores: map<string, f64>;
+  when: date;
+  bytes: binary;
+  kind: swift_sendable_kind;
+  flags: swift_sendable_flags;
+}
+
+swift_sendable_nested = record {
+  plain: swift_sendable_plain;
+  items: list<swift_sendable_plain>;
+}
+
+# A DataRef field: the generator trusts the conformance.
+swift_sendable_with_data = record {
+  data: DataRef;
+}
+
+# A record that holds a trusted record is Sendable, because that record conforms.
+swift_sendable_outer = record {
+  inner: swift_sendable_with_data;
+}

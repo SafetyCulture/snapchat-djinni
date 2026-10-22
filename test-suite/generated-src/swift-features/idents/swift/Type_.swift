@@ -4,13 +4,13 @@
 import Foundation
 
 /** A record named like a Swift metatype member, with fields that are keywords. */
-public struct Type_ {
-    public var type: String
-    public var `in`: Bool
-    public var `protocol`: Optional<String>
-    public var self_: Int32
-    public var `inout`: Int32
-    public var kind: TestSuite.SwiftKind
+public struct Type_: Sendable {
+    public let type: String
+    public let `in`: Bool
+    public let `protocol`: Optional<String>
+    public let self_: Int32
+    public let `inout`: Int32
+    public let kind: TestSuite.SwiftKind
 
     public init(type: String, `in`: Bool, `protocol`: Optional<String>, self_: Int32, `inout`: Int32, kind: TestSuite.SwiftKind)
     {

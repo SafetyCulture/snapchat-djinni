@@ -7,6 +7,6 @@ import Foundation
  * The host implements this one in Objective-C and Java only. With --swift-out the generator
  * prints a warning and generates no Swift host proxy.
  */
-public protocol ObjcHostListener: AnyObject {
+public protocol ObjcHostListener: AnyObject, Sendable {
     func onValue(_ value: Int32) throws -> Void
 }

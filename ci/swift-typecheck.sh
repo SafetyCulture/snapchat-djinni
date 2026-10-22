@@ -2,8 +2,9 @@
 # Typechecks the generated Swift for the Crux assets IDL against support-lib/swift and
 # syntax-checks the generated Swift/C++ glue.
 #
-# The script generates Swift and Swift/C++ glue with the built generator, runs
-# `swiftc -typecheck` over the generated Swift, then compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
+# The script generates Swift and Swift/C++ glue with the built generator. It runs
+# `swiftc -typecheck` over the generated Swift in Swift 5 mode and in Swift 6 mode with complete
+# strict concurrency checking. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
 # generated protobuf types (module S12Protos) and the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
 # because they come from other build steps.
@@ -12,7 +13,6 @@
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
 #   IDL_FILES          comma separated files of crux/djinni/domain to import
 #                      (default: common.djinni,media.djinni,assets.djinni)
-#   SWIFT_FLAGS        swiftc flags for the generated module (default: -swift-version 5)
 #   DJINNI_FLAGS       extra generator flags
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
@@ -25,7 +25,6 @@ mitti_root="${MITTI_MOBILE_ROOT:-$HOME/Desktop/safetyculture/mitti-mobile}"
 domain_dir="$mitti_root/crux/djinni/domain"
 extern_src="$mitti_root/crux/deps/APISchema/_generated/crux/cpp"
 idl_files="${IDL_FILES:-common.djinni,media.djinni,assets.djinni}"
-swift_flags="${SWIFT_FLAGS:--swift-version 5}"
 cache="${SWIFT_CACHE:-$HOME/.cache/djinni-swift}"
 protobuf_tag=1.28.2
 
@@ -66,11 +65,23 @@ out="$work/out"
   --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 
 # Stub modules
-mods="$work/mods"; build="$work/build"
-mkdir -p "$mods" "$build"
+mods="$work/mods"
+mkdir -p "$mods"
 python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12Protos.swift"
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
-cat >"$mods/module.modulemap" <<EOF
+
+# Test-suite cases: the host interface triple, the keyword identifiers, the built-in types and the
+# Sendable cases. The generated files are the checked-in expected outputs of test-suite/run_djinni.sh.
+cases="$repo_root/test-suite/generated-src/swift-features"
+case_names=(host idents types sendable legacy)
+tsmods="$work/ts-mods"
+mkdir -p "$tsmods"
+swiftxx_dirs=()
+for c in "${case_names[@]}"; do swiftxx_dirs+=("$cases/$c/swiftxx"); done
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$tsmods/TestSuiteCxx.hpp" "${swiftxx_dirs[@]}"
+
+support_module() {
+  cat <<EOF
 module DjinniSupportCxx {
   header "$repo_root/support-lib/swiftxx/djinni_support.hpp"
   header "$repo_root/support-lib/swiftxx/Future_swift.hpp"
@@ -79,23 +90,36 @@ module DjinniSupportCxx {
   requires cplusplus
   export *
 }
-module CruxCxx {
-  header "$mods/CruxCxx.hpp"
-  requires cplusplus
-  export *
-}
 EOF
+}
+{ support_module; printf 'module CruxCxx {\n  header "%s/CruxCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$mods"; } >"$mods/module.modulemap"
+{ support_module; printf 'module TestSuiteCxx {\n  header "%s/TestSuiteCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$tsmods"; } >"$tsmods/module.modulemap"
 
-cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
-swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-name S12Protos \
-  -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12Protos.swift"
-echo "== DjinniSupport (support-lib/swift)"
-swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-  -parse-as-library -swift-version 5 "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift
-echo "== Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files): swiftc -typecheck $swift_flags"
-# shellcheck disable=SC2086
-swiftc -typecheck -module-name Crux $swift_flags "${cxx[@]}" "$out"/swift/*.swift
-echo "SWIFT TYPECHECK OK"
+# One pass compiles DjinniSupport and typechecks the generated Swift with the given swiftc flags.
+swift_pass() { # <swiftc flags>
+  local flags=$1 build
+  build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
+  mkdir -p "$build"
+  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build" -I "$spb_mod")
+  swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-name S12Protos \
+    -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12Protos.swift"
+  echo "== [$flags] DjinniSupport (support-lib/swift)"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
+    -parse-as-library $flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift
+  echo "== [$flags] Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
+  echo "SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite (checked-in Swift cases)"
+  local files=()
+  for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
+  echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
+}
+swift_pass "-swift-version 5"
+swift_pass "-swift-version 6 -strict-concurrency=complete"
 
 echo "== C++ glue ($(ls "$out"/swiftxx/*.cc | wc -l | tr -d ' ') files): ${CXX:-clang++} -std=c++20 -fsyntax-only"
 python3 "$repo_root/ci/swift_stubs.py" cxx-stubs "$work/fx/extern" "$work/cxxstubs"
@@ -103,33 +127,7 @@ ls "$out"/swiftxx/*.cc | xargs -P 4 -I{} "${CXX:-clang++}" -std=c++20 -fsyntax-o
   -I "$out/cpp" -I "$out/cpp/generated" -I "$work/cxxstubs" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" {}
 echo "C++ GLUE SYNTAX OK"
 
-# Test-suite cases: the host interface triple and the keyword identifiers. The generated
-# files are the checked-in expected outputs of test-suite/run_djinni.sh.
-cases="$repo_root/test-suite/generated-src/swift-features"
-tsmods="$work/ts-mods"
-mkdir -p "$tsmods"
-python3 "$repo_root/ci/swift_stubs.py" cxx-header "$tsmods/TestSuiteCxx.hpp" "$cases/host/swiftxx" "$cases/idents/swiftxx" "$cases/types/swiftxx"
-cat >"$tsmods/module.modulemap" <<EOF
-module DjinniSupportCxx {
-  header "$repo_root/support-lib/swiftxx/djinni_support.hpp"
-  header "$repo_root/support-lib/swiftxx/Future_swift.hpp"
-  header "$repo_root/support-lib/swiftxx/Data_swift.hpp"
-  header "$repo_root/support-lib/swiftxx/Outcome_swift.hpp"
-  requires cplusplus
-  export *
-}
-module TestSuiteCxx {
-  header "$tsmods/TestSuiteCxx.hpp"
-  requires cplusplus
-  export *
-}
-EOF
-tscxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$tsmods" -I "$build" -I "$spb_mod")
-echo "== TestSuite (checked-in Swift cases): swiftc -typecheck $swift_flags"
-# shellcheck disable=SC2086
-swiftc -typecheck -module-name TestSuite $swift_flags "${tscxx[@]}" "$cases"/host/swift/*.swift "$cases"/idents/swift/*.swift "$cases"/types/swift/*.swift
-echo "TEST-SUITE SWIFT TYPECHECK OK"
-for c in host idents types; do
+for c in "${case_names[@]}"; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"

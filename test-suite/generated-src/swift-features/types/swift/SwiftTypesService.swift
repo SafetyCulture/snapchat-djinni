@@ -4,7 +4,7 @@
 import DjinniSupport
 import Foundation
 
-public protocol SwiftTypesService: AnyObject {
+public protocol SwiftTypesService: AnyObject, Sendable {
     func compute(_ value: Int32) throws -> Result<Int32, TestSuite.SwiftError>
     func load(_ id: String) throws -> DjinniSupport.DJFuture<TestSuite.SwiftPayload>
     func reset() throws -> DjinniSupport.DJFuture<Void>
