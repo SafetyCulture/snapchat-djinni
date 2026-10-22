@@ -302,6 +302,8 @@ swift_sendable_relative="djinni/swift_sendable.djinni"
 swift_legacy_relative="djinni/swift_legacy.djinni"
 swift_future_field_relative="djinni/swift_future_field.djinni"
 swift_async_relative="djinni/swift_async.djinni"
+swift_error_relative="djinni/swift_error.djinni"
+swift_error_negative_relative="djinni/swift_error_negative.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -396,33 +398,81 @@ swift_async_relative="djinni/swift_async.djinni"
     --swiftxx-out "$temp_out_relative/swift-features/async/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_async_relative" \
+    --idl "$swift_async_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/error/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/error/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/error/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_error_relative" \
 )
 
 # A protobuf message without a swift block must fail the run before any file is written.
 swift_protobuf_negative_relative="djinni/swift_protobuf_negative.djinni"
 for swift_flag in --swift-out --swiftxx-out; do
-    negative_out="$temp_out/swift-protobuf-negative-${swift_flag#--}"
-    rm -rf "$negative_out"
+    protobuf_negative_out="$temp_out/swift-protobuf-negative-${swift_flag#--}"
+    rm -rf "$protobuf_negative_out"
     set +e
     (cd "$base_dir" && \
     "$base_dir/../src/run-assume-built" \
-        --cpp-out "$negative_out/cpp" \
+        --cpp-out "$protobuf_negative_out/cpp" \
         --cpp-namespace testsuite \
-        "$swift_flag" "$negative_out/swift" \
+        "$swift_flag" "$protobuf_negative_out/swift" \
         --swift-module TestSuite \
-        --idl "$swift_protobuf_negative_relative") > "$negative_out.log" 2>&1
+        --idl "$swift_protobuf_negative_relative") > "$protobuf_negative_out.log" 2>&1
     negative_status=$?
     set -e
     if [ "$negative_status" -ne 1 ] || \
-       ! grep -q "Protobuf message Person has no 'swift' block in its manifest, but Swift output is enabled." "$negative_out.log" || \
-       [ -e "$negative_out" ]; then
+       ! grep -q "Protobuf message Person has no 'swift' block in its manifest, but Swift output is enabled." "$protobuf_negative_out.log" || \
+       [ -e "$protobuf_negative_out" ]; then
         echo "The generator accepted a protobuf message without a swift block, or wrote files ($swift_flag, exit $negative_status)." 1>&2
-        cat "$negative_out.log" 1>&2
+        cat "$protobuf_negative_out.log" 1>&2
         exit 1
     fi
-    rm -f "$negative_out.log"
+    rm -f "$protobuf_negative_out.log"
 done
+
+# The generator must reject methods without outcome<> and write no file.
+negative_out="$temp_out_relative/swift-features/error-negative"
+negative_log="$temp_out/error-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --cpp-out "$negative_out/cpp" \
+    --cpp-namespace testsuite \
+    --swift-out "$negative_out/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-error-type CruxError \
+    --idl "$swift_error_negative_relative") >"$negative_log" 2>&1; then
+    echo "The generator accepted $swift_error_negative_relative with --swift-error-type." 1>&2
+    exit 1
+fi
+for expected in \
+    "interface swift_error_bad_service, method plain: --swift-error-type needs a return type outcome<T, CruxError>" \
+    "interface swift_error_bad_service, method nothing: --swift-error-type needs a return type outcome<T, CruxError>" \
+    "interface swift_error_bad_service, method wrong_error: the error type of the outcome is OtherError, but --swift-error-type is CruxError" \
+    "interface swift_error_bad_service, method load: --swift-error-type needs a return type outcome<T, CruxError>"; do
+    if ! grep -qF "$expected" "$negative_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$negative_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qE "method (fine|on_value)" "$negative_log"; then
+    echo "The generator reported a method that follows the rule." 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$negative_out" ]; then
+    echo "The generator wrote files for a rejected IDL." 1>&2
+    exit 1
+fi
 
 # Copy changes from "$temp_out" to final dir.
 

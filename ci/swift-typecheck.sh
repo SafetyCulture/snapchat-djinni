@@ -81,7 +81,7 @@ python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swif
 # Test-suite cases: the host interface triple, the keyword identifiers, the built-in types and the
 # Sendable cases. The generated files are the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
-case_names=(host idents types sendable legacy future-field async)
+case_names=(host idents types sendable legacy future-field async error)
 tsmods="$work/ts-mods"
 mkdir -p "$tsmods"
 swiftxx_dirs=()

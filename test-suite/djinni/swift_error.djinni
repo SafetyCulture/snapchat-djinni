@@ -1,0 +1,27 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Interfaces for --swift-error-type crux_error. The record needs no deriving(error).
+
+crux_error = record {
+  message: string;
+  code: i32;
+}
+
+swift_error_item = record {
+  id: string;
+}
+
+# The host implements this one, so it is exempt.
+swift_error_observer = interface +o +j +sw {
+  on_item(item: swift_error_item);
+}
+
+swift_error_service = interface +c {
+  # A static method is exempt.
+  static create(): swift_error_service;
+  fetch(id: string): outcome<swift_error_item, crux_error>;
+  count(): outcome<i32, crux_error>;
+  load(id: string): future<outcome<swift_error_item, crux_error>>;
+  watch(observer: swift_error_observer): outcome<bool, crux_error>;
+}

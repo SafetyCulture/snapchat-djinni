@@ -340,6 +340,7 @@ Command line switches:
 - `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
 - `--swift-async-wrap <label-prefix>`: wrap the interfaces that C++ implements in
   Swift classes with `async` methods
+- `--swift-error-type <name>`: the Swift name of the error record. See below.
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated`)
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
@@ -388,6 +389,19 @@ Async wrappers (`--swift-async-wrap`):
 - Static methods stay synchronous, in `<Interface>_statics`.
 - The wrapper needs `--swift-private-in-same-module`. The generator stops with an
   error without it.
+
+Error type (`--swift-error-type <name>`):
+
+- `<name>` is the Swift name of the error record. For the IDL record
+  `crux_error`, the name is `CruxError`.
+- Each instance method of an interface with `+c` must return `outcome<T, E>`,
+  or `future<outcome<T, E>>`. The Swift name of `E` must be `<name>`. If not,
+  the generator stops before it writes a file. It names the interface, the
+  method and the error type it found, and it exits with code 1.
+- The error record conforms to `Error`. It does not need `deriving(error)`.
+- A static method is exempt, for example a factory. A host interface without
+  `+c` is exempt.
+- The flag does not depend on `--swift-async-wrap`. Crux uses both flags.
 
 IDL changes:
 
