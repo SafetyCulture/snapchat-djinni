@@ -2,7 +2,7 @@
 # code use its Java class. The second has the Kotlin keys: the Kotlin classes and the JNI code use the Kotlin class.
 ---
 name: extern_plain_message
-typedef: 'record deriving(eq)'
+typedef: 'record deriving(eq, ord, parcelable)'
 params: []
 prefix: ''
 cpp:
@@ -35,7 +35,7 @@ kotlin:
 
 ---
 name: extern_kotlin_message
-typedef: 'record deriving(eq)'
+typedef: 'record deriving(eq, ord, parcelable)'
 params: []
 prefix: ''
 cpp:

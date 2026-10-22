@@ -656,6 +656,7 @@ fi
     --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern/kotlin" \
     --jni-out "$temp_out_relative/kotlin-jni-extern/jni" \
     --java-package $java_package \
+    --java-implement-android-os-parcelable true \
     --ident-java-field mFooBar \
     --jni-use-on-load-initializer false \
     --idl "djinni/kotlin_extern.djinni" \

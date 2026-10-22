@@ -528,27 +528,68 @@ different from `--kotlin-out`, which writes Kotlin Multiplatform code.
   because the JNI code passes null for it. It is non-null only when
   `--cpp-nn-type` is set. All other types are non-null. `--java-cpp-exception`
   becomes `@Throws`.
-- `--java-out` is not changed. You can use both flags.
+- `--java-out` is not changed. You can use both flags, unless an extern type has
+  Kotlin keys (see below).
+
+### Extern types with Kotlin keys
+
+An extern record normally has a Java class, and the Kotlin classes use it. An
+extern record can also have a pure Kotlin class. Add these optional keys to its
+yaml:
+
+```yaml
+jni:
+  # translator, header and typeSignature stay as they are
+  kotlinTranslator: 'djinni::kotlin::s12::assets::v1::Asset::Translator'
+  kotlinHeader: '"s12/assets/v1/asset.djinni.kotlin.jni.h"'
+  kotlinTypeSignature: 'Lcom/safetyculture/s12kt/assets/v1/Asset;'
+kotlin:
+  # typename and isProtobufMessage stay as they are
+  jniTypename: 'com.safetyculture.s12kt.assets.v1.Asset'
+```
+
+- With `--kotlin-jni-out`, the Kotlin classes use `kotlin.jniTypename` for the
+  type. A type without the key keeps its Java class. The key does not change
+  `kotlin.typename`, which the Kotlin Multiplatform generators read.
+- With `--kotlin-jni-out` and `--jni-out`, the JNI code uses `jni.kotlinTranslator`,
+  `jni.kotlinHeader` and `jni.kotlinTypeSignature` instead of `jni.translator`,
+  `jni.header` and `jni.typeSignature`. The translator binds the Kotlin class, so
+  the type signatures of the fields, the constructors and the methods name it.
+- The four keys go together. The generator reports an extern type that has only
+  some of them.
+- The JNI code binds one class for each extern type. So the generator refuses
+  `--java-out`, `--kotlin-jni-out` and `--jni-out` together when an extern type
+  has the Kotlin keys. Run it twice: once with `--java-out`, and once with
+  `--kotlin-jni-out`. The exit code is 1.
+- With `--java-implement-android-os-parcelable`, Parcelize cannot write the Kotlin
+  class. For a parcelable record with a field of such a type (also in an
+  `optional<>`, a `list<>` or a `map<>`), the generator writes the object
+  `<Class>Parceler` and the annotation `@TypeParceler<Class, <Class>Parceler>()`
+  on the record. The Parceler writes `toByteArray()` and reads
+  `parseFrom(ByteArray)`, the same methods as the JNI translator. Two classes
+  with the same simple name need different Parceler names, so the generator
+  reports them. The Java output does not change.
+- `deriving(ord)` on a record with such a field needs a Kotlin class that is
+  `Comparable`, as the Java class must be.
+- A yaml without the keys gives the same output as before.
 
 ### Kotlin coroutines
 
 `--kotlin-suspend-wrap` makes the instance methods of an interface `suspend`
 functions. It needs `--kotlin-jni-out` and kotlinx-coroutines in the consumer
-module. The classes are tested with kotlinx-coroutines 1.10; the check scripts
-select the newest cached jar, and CI pins 1.10.2 (`ci/kotlin-ci.sh`).
+module. The classes are tested with kotlinx-coroutines 1.10 and 1.11.
 
 - It applies to an interface with `+c` and without `+j`. The JNI code calls only
   the native methods of such an interface. It calls the methods of an interface
   that Kotlin implements (`+j`) by their JVM signature, and a `suspend` function
   has another signature. So an interface with `+j` keeps its normal methods.
-- The generated class `CppProxy` runs the native call in `withContext(dispatcher)`.
-  The dispatcher is `Dispatchers.IO.limitedParallelism(1)`. Each `CppProxy` has
-  its own dispatcher, and one C++ object has one `CppProxy`.
-- Each C++ object runs one native call at a time. The thread can change between
-  calls. The calls to different objects run in parallel. This is the same as the
-  queue of the Swift async wrapper. For a `future<T>` method, only the native
-  call is serialized: the wait for the result runs outside the dispatcher, so a
-  second call can start while the first future is pending.
+- The generated class `CppProxy` runs the native call in
+  `withContext(dispatcher)`. The dispatcher is
+  `Dispatchers.IO.limitedParallelism(1)`. Each `CppProxy` has its own
+  dispatcher, and one C++ object has one `CppProxy`.
+- Each C++ object runs one call at a time. The thread can change between calls.
+  The calls to different objects run in parallel. This is the same as the queue
+  of the Swift async wrapper.
 - Each object that is in a C++ call uses one thread. The 64-thread limit of
   `Dispatchers.IO` does not apply to these views, so N objects that block use
   N threads.
@@ -558,8 +599,8 @@ select the newest cached jar, and CI pins 1.10.2 (`ci/kotlin-ci.sh`).
 - A method that returns `future<T>` is `suspend fun m(): T`. It uses
   `suspendCancellableCoroutine` over `com.snapchat.djinni.Future.then`.
 - A cancelled coroutine stops waiting and throws `CancellationException`. A
-  result that comes later is dropped. The coroutine is released at once, before
-  the C++ future completes. **The C++ future is not cancelled.** The Java
+  result that comes later is dropped. The frame of a cancelled coroutine is
+  released before the C++ future completes. **The C++ future is not cancelled.** The Java
   `Future` and the C++ `Future` have no cancel path.
 - A cancelled coroutine does not call C++ when the cancel happens before the
   `withContext` block starts. A cancel that comes later cannot stop the native
@@ -583,17 +624,29 @@ the classes with `javap -p -s`. The script checks these items:
 - the `JNINativeMethod` tables with `--jni-use-on-load-initializer`
 - the instance fields of the records
 
-The script has a third pass for the suspend functions of `--kotlin-suspend-wrap`.
-It compiles the generated Kotlin with kotlinx-coroutines and runs the same
-checks. It prints the coroutines jar that it selects.
+The script has a third pass for the suspend functions of
+`--kotlin-suspend-wrap`. It compiles the generated Kotlin with
+kotlinx-coroutines and runs the same checks. It prints the coroutines jar that
+it selects. `KOTLIN_JNI_CHECK_CRUX=0` skips the Crux assets IDL.
 
-`ci/kotlin-jni-runtime-test.sh` runs the classes. It builds the generated JNI C++
-and a C++ implementation into a library, and runs Kotlin against it on the JVM
-with `-Xcheck:jni`. The first program checks these items:
+A fourth pass checks an extern record with the Kotlin keys (`kotlin_extern`).
+The script generates Java and the Kotlin classes apart. It compares the Java
+classes with the Kotlin classes, with the Kotlin class of the extern type in
+place of its Java class. The lookups of the translator of the extern type,
+`parseFrom`, `toByteArray` and `getSerializedSize`, must bind to the stub class
+`ci/kotlin-jni/extern/ExternKotlinMessage.kt`. The pass also compiles parcelable
+records with the extern type, alone, in a list, as an optional and in a map,
+with the Parcelize plugin.
+
+`ci/kotlin-jni-runtime-test.sh` runs the classes. It builds the generated JNI
+C++ and a C++ implementation into a library, and runs Kotlin against it on the
+JVM with `-Xcheck:jni`. The first program checks these items:
 
 - calls from Kotlin to C++ and from C++ to a Kotlin object
 - records, enums, outcomes, futures and C++ exceptions
 - the proxy of a C++ object that goes back to C++
+- an extern type with the Kotlin keys that goes between its Kotlin class and
+  C++, alone, in a list and as an optional field
 - an interface that C++ and Kotlin implement
 - the release of collected proxies
 - many threads
@@ -602,7 +655,8 @@ The second program uses the suspend functions of `--kotlin-suspend-wrap`. It
 checks these items:
 
 - a `future<>` that completes, fails or has the type `void`
-- cancellation while a future waits, and a coroutine that is cancelled before the call
+- cancellation while a future waits, and a coroutine that is cancelled before
+  the call
 - the release of a cancelled coroutine before the future completes
 - a late result and a timeout
 - the serialisation of the calls to one object
@@ -616,6 +670,66 @@ missing:
 - a supported system (macOS or Linux)
 
 With `CI` or `KOTLIN_JNI_RUNTIME_REQUIRED` set, a missing part is an error.
+
+## Tests for the Swift and Kotlin flags
+
+Each flag has a case in `test-suite/djinni/` and checked-in output.
+`./ci/generate.sh` runs the generator over all cases and fails when the output
+changes.
+
+| Flag | Case | Output |
+|---|---|---|
+| `--swift-out`, `--swift-module`, `--swift-private-in-same-module`, `+sw` | `swift_host`, `swift_idents`, `swift_types`, `swift_sendable`, `swift_future_field` | `swift-features/` |
+| `--swift-out` without `--swift-private-in-same-module` | `swift_types` | `swift-features/separate-module` |
+| `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
+| `--swift-async-wrap` | `swift_async` | `swift-features/async` |
+| `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |
+| `--swift-error-type` with `--swift-legacy-records` and `--swift-async-wrap` | `swift_error` | `swift-features/error-legacy` |
+| `--swiftxx-out`, `--swiftxx-include-cpp-prefix` | all Swift cases | `swift-features/*/swiftxx` |
+| `--swiftxx-namespace`, `--swiftxx-include-prefix`, `--swiftxx-base-lib-module`, `--swiftxx-base-lib-include-prefix` | `swift_options` | `swift-features/options` |
+| `--kotlin-jni-out` | `kotlin_jni` | `kotlin-jni` |
+| `--kotlin-jni-package` with `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-package` |
+| `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-suspend` |
+| `kotlin.jniTypename`, `jni.kotlin*` of an extern type, with `--kotlin-jni-out` and with `--jni-out` alone | `kotlin_extern` | `kotlin-jni-extern/kotlin`, `kotlin-jni-extern/jni`, `kotlin-jni-extern/jni-java` |
+
+`run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
+`--swift-private-in-same-module`, `--swift-error-type` with a method that has no
+`outcome<>`, `--kotlin-suspend-wrap` without `--kotlin-jni-out`, and `--java-out`
+with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys. It checks
+that the options case imports `--swiftxx-base-lib-module`.
+
+These combinations have no test beyond the checked-in output:
+
+- `--kotlin-jni-package` with a package other than `--java-package`: the JNI code
+  binds to the Java names, so no script compiles it.
+- `--kotlin-suspend-wrap` with `--jni-use-on-load-initializer true`: the binding
+  check runs, the run-time test does not.
+- The separate-module case and `--swift-error-type` without `--swift-async-wrap`
+  are not run at run time.
+- The typecheck of the options case does not prove `--swiftxx-include-prefix`
+  and `--swiftxx-base-lib-module`, because the module map of the case also has
+  `DjinniSupportCxx`. The `grep` for the import and the checked-in output cover
+  them.
+
+### Swift checks (macOS)
+
+The Swift checks need `swiftc` with the C++ interoperability mode (Xcode 26.5).
+The Docker image of the pipeline has no `swiftc`, so the pipeline does not run
+them. Run them on a Mac before you merge a change to a Swift file:
+
+```
+./ci/swift-typecheck.sh      # also the options case, in Swift 5 and Swift 6 mode
+./ci/swift-runtime-test.sh   # also --swift-legacy-records
+```
+
+### Kotlin checks (pipeline and local)
+
+The step `Kotlin JNI checks` of the pipeline runs `./ci/kotlin-ci.sh` in the
+Docker image. The script downloads a pinned `kotlinc` and a pinned
+kotlinx-coroutines jar (SHA-256 sums are in the script), and runs
+`kotlin-jni-check.sh` and `kotlin-jni-runtime-test.sh` with `CI=1`, so a
+missing tool fails the step. The script uses `g++` and `-include stdexcept`.
+On a Mac, run the two scripts with `kotlinc`, `clang++` and a JDK installed.
 
 ## Async interface support
 

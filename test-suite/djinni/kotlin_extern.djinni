@@ -14,3 +14,16 @@ kotlin_extern_service = interface +c {
   static echo_plain(m: extern_plain_message): extern_plain_message;
   static echo_record(r: kotlin_extern_record): kotlin_extern_record;
 }
+
+# A parcelable record needs a Parceler for the Kotlin class of an extern type that has the keys.
+kotlin_extern_parcel_record = record {
+  plain: extern_plain_message;
+  keyed: extern_kotlin_message;
+  keyed_list: list<extern_kotlin_message>;
+  keyed_optional: optional<extern_kotlin_message>;
+  keyed_map: map<string, extern_kotlin_message>;
+} deriving(eq, parcelable)
+
+kotlin_extern_ord_record = record {
+  keyed: extern_kotlin_message;
+} deriving(eq, ord, parcelable)

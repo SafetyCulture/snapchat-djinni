@@ -143,7 +143,7 @@ mkdir -p "$work/$name/yaml"
 cp "$repo_root/test-suite/djinni/vendor/third-party/kotlin_extern.yaml" "$work/$name/yaml/"
 (cd "$repo_root/test-suite" && java -jar "$jar" \
   --java-out "$work/$name/java" --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
-  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar --java-implement-android-os-parcelable true \
   --idl djinni/kotlin_extern.djinni --idl-include-path djinni/vendor)
 (cd "$repo_root/test-suite" && java -jar "$jar" \
   --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" \
