@@ -120,11 +120,17 @@ final class CppProxyCache: @unchecked Sendable {
     }
     // A newer proxy of the same C++ object keeps its entry.
     func removeIfExpired(_ key: UnsafeRawPointer) {
+        // Release the loaded proxy after the unlock. Its deinit calls this function again.
+        var alive: AnyObject?
         lock.lock()
-        defer { lock.unlock() }
-        if let box = mapPtrToProxy[key], box.value == nil {
-            mapPtrToProxy.removeValue(forKey: key)
+        if let box = mapPtrToProxy[key] {
+            alive = box.value
+            if alive == nil {
+                mapPtrToProxy.removeValue(forKey: key)
+            }
         }
+        lock.unlock()
+        withExtendedLifetime(alive) {}
     }
 }
 
