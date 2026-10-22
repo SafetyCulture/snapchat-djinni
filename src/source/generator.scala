@@ -122,6 +122,7 @@ package object generatorTools {
                    swiftxxFileIdentStyle: IdentConverter,
                    swiftxxIncludeCppPrefix: String,
                    swiftxxBaseLibIncludePrefix: String,
+                   swiftLegacyRecords: Boolean,
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol

@@ -62,6 +62,21 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   override def toCpp(tm: MExpr, expr: String): String = s"${helperClass(tm)}.toCpp(${expr})"
   override def fromCpp(tm: MExpr, expr: String): String = s"${helperClass(tm)}.fromCpp(${expr})"
 
+  // True when Swift can check that the type is Sendable. False when the generator has to trust it.
+  def isSendable(tm: MExpr): Boolean = tm.base match {
+    case _: MPrimitive | MString | MDate | MBinary | MVoid => true
+    case MOptional | MList | MArray | MSet | MMap => tm.args.forall(isSendable)
+    case d: MDef => d.defType != DInterface
+    case _: MProtobuf => true
+    case e: MExtern =>
+      if (e.defType == DInterface) false
+      else if (e.swift.translator.startsWith("ProtobufMarshaller")) true
+      else if (e.swift.typename == "Result") tm.args.forall(isSendable)
+      else if (e.swift.typename == "DJFuture") true
+      else false
+    case _: MParam => false
+  }
+
   private def withPackage(packageName: Option[String], t: String) = packageName.fold(t)(_ + "." + t)
 
   def references(m: Meta, exclude: String = ""): Seq[SymbolReference] = m match {
