@@ -123,6 +123,18 @@ single_case_mods() { # <module dir> <case>
 single_case_mods "$work/error-legacy-mods" error-legacy
 single_case_mods "$work/separate-mods" separate-module
 
+# The application declares how its error type holds a C++ exception, so the stub stands in for it.
+error_conformance="$work/CruxErrorConformance.swift"
+cat >"$error_conformance" <<'EOF'
+import DjinniSupport
+
+extension CruxError: CppExceptionConvertible {
+    public init(cppException message: String) {
+        self.init(message: message, code: -1)
+    }
+}
+EOF
+
 # One pass compiles DjinniSupport and typechecks the generated Swift with the given swiftc flags.
 swift_pass() { # <swiftc flags>
   local flags=$1 build
@@ -146,6 +158,7 @@ swift_pass() { # <swiftc flags>
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
+  files+=("$error_conformance")
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
@@ -155,7 +168,7 @@ swift_pass() { # <swiftc flags>
   echo "TEST-SUITE OPTIONS SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite error-legacy (--swift-error-type, --swift-legacy-records, --swift-async-wrap)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift
+  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
   echo "TEST-SUITE ERROR-LEGACY SWIFT TYPECHECK OK [$flags]"
   # Without --swift-private-in-same-module the public files and the private files are two modules.
   echo "== [$flags] TestSuite separate-module"

@@ -258,23 +258,34 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.wl
         writeMethodDoc(w, m, idSwift.local)
         val call = s"_proxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
-        w.w(s"public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
         val ret = m.ret.map(_.resolved)
-        if (ret.exists(marshal.isOutcome)) {
+        // With --swift-error-type, a C++ exception of an outcome method becomes a value of the error type.
+        val typedOutcome = spec.swiftErrorType.isDefined && ret.exists(marshal.isOutcome)
+        w.w(s"public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
+        if (typedOutcome) {
           w.w(s" throws(${marshal.fqParamType(ret.get.args(1))}) -> ${marshal.fqParamType(ret.get.args.head)}")
-        } else if (ret.exists(marshal.isFuture)) {
+        } else if (ret.exists(r => marshal.isOutcome(r) || marshal.isFuture(r))) {
           w.w(s" throws -> ${marshal.fqParamType(ret.get.args.head)}")
         } else {
-          w.w(s" -> ${marshal.fqReturnType(m.ret)}")
+          w.w(s" throws -> ${marshal.fqReturnType(m.ret)}")
         }
         w.braced {
           for (p <- m.params if !marshal.isSendableArgument(p.ty.resolved)) {
             w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
           }
-          if (ret.exists(marshal.isOutcome)) {
+          if (typedOutcome) {
             w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { _continuation in").nested {
               w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(returning: $call)")
+                w.wl(s"_continuation.resume(returning: DjinniSupport.cppOutcome { try $call })")
+              }
+              w.wl("}")
+            }
+            w.wl("}")
+            w.wl("return try result.get()")
+          } else if (ret.exists(marshal.isOutcome)) {
+            w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { _continuation in").nested {
+              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
+                w.wl(s"_continuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
@@ -290,18 +301,17 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl("}")
             w.wl("return try await future.value")
           } else if (m.ret.isEmpty) {
-            w.wl("await withCheckedContinuation { (_continuation: CheckedContinuation<Void, Never>) in").nested {
+            w.wl("try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Error>) in").nested {
               w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(call)
-                w.wl("_continuation.resume()")
+                w.wl(s"_continuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
             w.wl("}")
           } else {
-            w.wl("return await withCheckedContinuation { _continuation in").nested {
+            w.wl("return try await withCheckedThrowingContinuation { _continuation in").nested {
               w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(returning: $call)")
+                w.wl(s"_continuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
@@ -312,26 +322,20 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  // The proxy of a wrapped interface does not throw. A C++ exception stops the program.
+  // The methods of the proxy throw DjinniError when C++ throws. The wrapper turns that into its own error.
   private def writeWrappedCppProxy(w: IndentWriter, ident: Ident, i: Interface) {
     val name = marshal.typename(ident, i)
     w.w(s"final class ${name}CppProxy: DjinniSupport.CppProxy, @unchecked Sendable").braced {
       w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
       for (m <- i.methods.filter(!_.static)) {
-        // A C++ exception before a future exists is thrown. Other exceptions stop the program.
-        val throwing = m.ret.exists(r => marshal.isFuture(r.resolved))
-        w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)})${if (throwing) " throws" else ""} -> ${marshal.fqReturnType(m.ret)}").braced {
+        w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
           w.wl("var _params = djinni.swift.ParameterList()")
           w.wl("_params.addValue(inst)")
           for (p <- m.params) {
             w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
           }
           w.wl(s"var ret = ${spec.swiftxxNamespace}.${name}_${SwiftIdent.plain(m.ident)}(&_params)")
-          if (throwing) {
-            w.wl("try handleCppErrors(&ret)")
-          } else {
-            w.wl(s"""handleCppErrorsAsFatal(&ret, "$name.${SwiftIdent.plain(m.ident)}")""")
-          }
+          w.wl("try handleCppErrors(&ret)")
           if (!m.ret.isEmpty) {
             w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
           }

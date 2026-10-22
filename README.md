@@ -374,16 +374,20 @@ Async wrappers (`--swift-async-wrap`):
   has `+sw` stays a protocol, because the host implements it.
 - The class has one serial `DispatchQueue` with the label
   `<label-prefix>.<interfaceName>`. Every instance method calls C++ on that queue.
-  The method is `async`, and it returns when C++ returns.
-- A method that returns `outcome<T, E>` is `async throws(E) -> T`.
+  The method is `async throws`, and it returns when C++ returns.
+- A C++ exception is never fatal. The generated proxy throws `DjinniError`, and
+  the wrapper method gives it to the caller. `DjinniError.errorMessage` is the
+  message of the exception. The shim catches `std::exception` and every other
+  exception type (the message of the latter is `unknown C++ exception`).
+- A method that returns `outcome<T, E>` is `async throws -> T`. It throws `E`
+  when C++ returns an error, and `DjinniError` when C++ throws.
 - A method that returns `future<T>` is `async throws -> T`. It awaits
   `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
   The C++ future is not cancelled. A C++ exception that is thrown before the
-  future exists is thrown as `DjinniError`.
-- Any other method is `async -> T`. A C++ exception stops the program for these
-  methods and for the methods that return `outcome<T, E>`, because the proxy
-  methods of these methods do not throw. With `--swift-async-wrap`, every method
-  should return `outcome<>`.
+  future exists is thrown as `DjinniError`. A promise that C++ rejects later
+  also throws `DjinniError`.
+- Any other method is `async throws -> T`, or `async throws` for a method with no
+  return value. It throws `DjinniError` when C++ throws.
 - A C++ object has one wrapper, so its calls run one after another on one queue.
   Two values from C++ that name the same object are the same Swift object.
 - Static methods stay synchronous, in `<Interface>_statics`.
@@ -399,6 +403,25 @@ Error type (`--swift-error-type <name>`):
   the generator stops before it writes a file. It names the interface, the
   method and the error type it found, and it exits with code 1.
 - The error record conforms to `Error`. It does not need `deriving(error)`.
+- With `--swift-async-wrap`, a method that returns `outcome<T, E>` is
+  `async throws(<name>) -> T`. A C++ exception of this method becomes a
+  `<name>` value. The error record must conform to
+  `DjinniSupport.CppExceptionConvertible`. The application declares the
+  conformance, because the generator cannot know a meaningful value for every
+  field:
+
+  ```swift
+  extension CruxError: CppExceptionConvertible {
+      public init(cppException message: String) {
+          self.init(message: message, code: -1)
+      }
+  }
+  ```
+
+  The wrapper calls `init(cppException:)` with `DjinniError.errorMessage`. If the
+  conformance is missing, the Swift build of the generated wrapper fails. A
+  method that returns `future<outcome<T, E>>` throws `DjinniError`, as with the
+  flag off.
 - A static method is exempt, for example a factory. A host interface without
   `+c` is exempt.
 - An interface with `+c +sw` is checked, although `--swift-async-wrap` does not
@@ -458,8 +481,9 @@ Three scripts check the Swift support. They read the Crux IDL from
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces, and runs it in both Swift modes. The program checks
   calls in both directions, the identity of proxies and the release of host
-  objects. It also checks the async wrappers, typed errors, task cancellation
-  and many threads. A watchdog fails the run when it deadlocks.
+  objects. It also checks the async wrappers, typed errors, C++ exceptions of
+  wrapped methods, task cancellation and many threads. A watchdog fails the run
+  when it deadlocks.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 

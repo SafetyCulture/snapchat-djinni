@@ -10,10 +10,10 @@ public final class SwiftAsyncChild: @unchecked Sendable {
 
     init(proxy: SwiftAsyncChildCppProxy) { self.proxy = proxy }
 
-    public func name() async -> String {
-        return await withCheckedContinuation { _continuation in
+    public func name() async throws -> String {
+        return try await withCheckedThrowingContinuation { _continuation in
             self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(returning: _proxy.name())
+                _continuation.resume(with: Result { try _proxy.name() })
             }
         }
     }

@@ -35,6 +35,14 @@ public:
         throw std::runtime_error("boom");
     }
 
+    int32_t fail() override { throw std::runtime_error("boom"); }
+
+    void fail_void() override { throw std::runtime_error("boom"); }
+
+    djinni::expected<int32_t, rt::RuntimeError> fail_outcome() override { throw std::runtime_error("boom"); }
+
+    int32_t fail_unknown() override { throw 42; }
+
     djinni::Future<int32_t> pending() override {
         std::lock_guard<std::mutex> lock(_mutex);
         _pending = std::make_unique<djinni::Promise<int32_t>>();

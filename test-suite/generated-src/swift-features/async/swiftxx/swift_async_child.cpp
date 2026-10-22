@@ -13,5 +13,8 @@ djinni::swift::AnyValue SwiftAsyncChild_name(const djinni::swift::ParameterList*
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 
 } // namespace djinni_generated

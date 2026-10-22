@@ -19,6 +19,9 @@ djinni::swift::AnyValue SwiftTypesService_compute(const djinni::swift::Parameter
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftTypesService_load(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
     auto _id = ::djinni::swift::String::toCpp(params->getValue(1));
@@ -28,6 +31,9 @@ djinni::swift::AnyValue SwiftTypesService_load(const djinni::swift::ParameterLis
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftTypesService_reset(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
     auto ret = inst->reset();
@@ -36,6 +42,9 @@ djinni::swift::AnyValue SwiftTypesService_reset(const djinni::swift::ParameterLi
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftTypesService_getPayload(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
     auto ret = inst->get_payload();
@@ -43,6 +52,9 @@ djinni::swift::AnyValue SwiftTypesService_getPayload(const djinni::swift::Parame
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftTypesService_sendView(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
@@ -53,12 +65,18 @@ djinni::swift::AnyValue SwiftTypesService_sendView(const djinni::swift::Paramete
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftTypesService_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftTypesService::create();
     return ::djinni_generated::SwiftTypesService::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftTypesServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
     return {std::make_shared<SwiftTypesServiceSwiftProxy>(instance, dispatcher)};

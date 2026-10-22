@@ -242,10 +242,20 @@ public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws 
     }
 }
 
-// Called by the proxy of a wrapped interface. A C++ exception stops the program.
-public func handleCppErrorsAsFatal(_ ret: UnsafePointer<djinni.swift.AnyValue>, _ method: String) {
-    if (djinni.swift.isError(ret)) {
-        fatalError("\(method) threw a C++ exception: \(String(djinni.swift.getError(ret).msg))")
+/// The error type of `--swift-error-type` must conform to this protocol when an async wrapper calls C++.
+/// The wrapper uses the initialiser for a C++ exception, because the exception is not a value of the error type.
+public protocol CppExceptionConvertible: Error {
+    init(cppException message: String)
+}
+
+// Gives a C++ exception of the call the typed error of the wrapper.
+public func cppOutcome<T, E: CppExceptionConvertible>(_ call: () throws -> Result<T, E>) -> Result<T, E> {
+    do {
+        return try call()
+    } catch let error as DjinniError {
+        return .failure(E(cppException: error.errorMessage))
+    } catch {
+        return .failure(E(cppException: String(describing: error)))
     }
 }
 

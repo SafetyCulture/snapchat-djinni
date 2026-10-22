@@ -17,6 +17,9 @@ djinni::swift::AnyValue SwiftOptionsService_compute(const djinni::swift::Paramet
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftOptionsService_load(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftOptionsService::toCpp(params->getValue(0));
     auto _id = ::djinni::swift::String::toCpp(params->getValue(1));
@@ -26,12 +29,18 @@ djinni::swift::AnyValue SwiftOptionsService_load(const djinni::swift::ParameterL
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftOptionsService_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftOptionsService::create();
     return ::djinni_options::SwiftOptionsService::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftOptionsServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
     return {std::make_shared<SwiftOptionsServiceSwiftProxy>(instance, dispatcher)};

@@ -16,6 +16,9 @@ djinni::swift::AnyValue SwiftIdentService_init(const djinni::swift::ParameterLis
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftIdentService_deinit(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftIdentService::toCpp(params->getValue(0));
     inst->deinit();
@@ -24,12 +27,18 @@ djinni::swift::AnyValue SwiftIdentService_deinit(const djinni::swift::ParameterL
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftIdentService_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftIdentService::create();
     return ::djinni_generated::SwiftIdentService::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
 } // namespace djinni_generated

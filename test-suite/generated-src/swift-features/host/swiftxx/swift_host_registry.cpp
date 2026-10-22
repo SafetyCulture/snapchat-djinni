@@ -13,6 +13,9 @@ djinni::swift::AnyValue SwiftHostRegistry_create(const djinni::swift::ParameterL
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftHostRegistry_registerListener(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftHostRegistry::toCpp(params->getValue(0));
     auto _listener = ::djinni_generated::SwiftHostListener::toCpp(params->getValue(1));
@@ -22,6 +25,9 @@ djinni::swift::AnyValue SwiftHostRegistry_registerListener(const djinni::swift::
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftHostRegistry_notifyValue(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftHostRegistry::toCpp(params->getValue(0));
     auto _value = ::djinni::swift::I32::toCpp(params->getValue(1));
@@ -30,6 +36,9 @@ djinni::swift::AnyValue SwiftHostRegistry_notifyValue(const djinni::swift::Param
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
 } // namespace djinni_generated

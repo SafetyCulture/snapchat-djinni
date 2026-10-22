@@ -19,6 +19,9 @@ djinni::swift::AnyValue SwiftAsyncService_create(const djinni::swift::ParameterL
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_ping(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     inst->ping();
@@ -27,6 +30,9 @@ djinni::swift::AnyValue SwiftAsyncService_ping(const djinni::swift::ParameterLis
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_count(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto ret = inst->count();
@@ -34,6 +40,9 @@ djinni::swift::AnyValue SwiftAsyncService_count(const djinni::swift::ParameterLi
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftAsyncService_find(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
@@ -45,6 +54,9 @@ djinni::swift::AnyValue SwiftAsyncService_find(const djinni::swift::ParameterLis
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_fetch(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto _id = ::djinni::swift::String::toCpp(params->getValue(1));
@@ -54,6 +66,9 @@ djinni::swift::AnyValue SwiftAsyncService_fetch(const djinni::swift::ParameterLi
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_stopWatching(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto ret = inst->stop_watching();
@@ -61,6 +76,9 @@ djinni::swift::AnyValue SwiftAsyncService_stopWatching(const djinni::swift::Para
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftAsyncService_load(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
@@ -71,6 +89,9 @@ djinni::swift::AnyValue SwiftAsyncService_load(const djinni::swift::ParameterLis
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_flush(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto ret = inst->flush();
@@ -78,6 +99,9 @@ djinni::swift::AnyValue SwiftAsyncService_flush(const djinni::swift::ParameterLi
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftAsyncService_send(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
@@ -89,6 +113,9 @@ djinni::swift::AnyValue SwiftAsyncService_send(const djinni::swift::ParameterLis
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_watch(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto _observer = ::djinni_generated::SwiftAsyncObserver::toCpp(params->getValue(1));
@@ -98,6 +125,9 @@ djinni::swift::AnyValue SwiftAsyncService_watch(const djinni::swift::ParameterLi
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_child(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto ret = inst->child();
@@ -105,6 +135,9 @@ djinni::swift::AnyValue SwiftAsyncService_child(const djinni::swift::ParameterLi
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::swift::AnyValue SwiftAsyncService_names(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
@@ -119,6 +152,9 @@ djinni::swift::AnyValue SwiftAsyncService_names(const djinni::swift::ParameterLi
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_futureNames(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto _future = ::djinni::swift::I32::toCpp(params->getValue(1));
@@ -129,6 +165,9 @@ djinni::swift::AnyValue SwiftAsyncService_futureNames(const djinni::swift::Param
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_attach(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto _child = ::djinni_generated::SwiftAsyncChild::toCpp(params->getValue(1));
@@ -138,6 +177,9 @@ djinni::swift::AnyValue SwiftAsyncService_attach(const djinni::swift::ParameterL
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
 } // namespace djinni_generated
