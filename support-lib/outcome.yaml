@@ -36,6 +36,14 @@ ts:
   typename: 'Outcome'
   module: '@djinni_support/Outcome'
   generic: true
+swift:
+  typename: 'Result'
+  generic: true
+  translator: 'OutcomeMarshaller'
+  translator.module: 'DjinniSupport'
+swiftxx:
+  translator: '::djinni::swift::OutcomeAdaptor'
+  header: '"Outcome_swift.hpp"'
 kotlin:
   typename: 'com.safetyculture.djinni.support.Outcome'
   isProtobufType: false

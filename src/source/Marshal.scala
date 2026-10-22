@@ -41,6 +41,7 @@ abstract class Marshal(spec: Spec) {
   protected val idJava = spec.javaIdentStyle
   protected val idKotlin = spec.kotlinIdentStyle
   protected val idObjc = spec.objcIdentStyle
+  protected val idSwift = spec.swiftIdentStyle
 
   protected def withNs(namespace: Option[String], t: String) = namespace match {
       case None => t

@@ -33,7 +33,7 @@ class ObjcMarshal(spec: Spec) extends Marshal(spec) {
   def fqTypename(name: String, ty: TypeDef): String = typename(name, ty)
 
   def cppProtoType(tm: MExpr):Option[String] = tm.base match {
-    case MProtobuf(name, _, ProtobufMessage(cpp, _, None, _)) => Some(cpp.ns + "::" + name)
+    case MProtobuf(name, _, ProtobufMessage(cpp, _, None, _, _)) => Some(cpp.ns + "::" + name)
     case _ => None
   }
 
@@ -54,7 +54,7 @@ class ObjcMarshal(spec: Spec) extends Marshal(spec) {
         case DInterface => interfaceNullity
         case DRecord => if(e.objc.pointer) nonnull else None
       }
-      case MProtobuf(_, _, ProtobufMessage(_, _, None, _)) => None
+      case MProtobuf(_, _, ProtobufMessage(_, _, None, _, _)) => None
       case _ => nonnull
     }
   }
@@ -194,7 +194,7 @@ class ObjcMarshal(spec: Spec) extends Marshal(spec) {
 
   def toBoxedParamType(tm: MExpr): String = {
     tm.base match {
-      case MProtobuf(_, _, ProtobufMessage(_, _, None,_)) =>
+      case MProtobuf(_, _, ProtobufMessage(_, _, None, _, _)) =>
         throw new AssertionError("C++ proto types are not compatible with generics")
       case _ => {
         val (name, needRef) = toObjcType(tm, true)

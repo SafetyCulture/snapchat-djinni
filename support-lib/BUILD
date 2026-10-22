@@ -76,3 +76,29 @@ sh_library(
     data = glob(["ts/*.ts"]),
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "swift-sources",
+    srcs = glob(["swift/*.swift"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "swiftxx-headers",
+    srcs = glob(["swiftxx/*.hpp"]),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "djinni-support-swiftxx-core",
+    srcs = glob(["swiftxx/*.cpp"]) + ["objc/DataRef_objc.cpp"],
+    hdrs = glob(["swiftxx/*.hpp"]),
+    copts = ["-std=c++20", "-Wno-deprecated-declarations"],
+    defines = ["DATAREF_OBJC=1"],
+    includes = [
+        ".",
+        "swiftxx",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":djinni-support-common"],
+)
