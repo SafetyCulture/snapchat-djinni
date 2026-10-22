@@ -1,7 +1,7 @@
 @extern "../../support-lib/future.yaml"
 @extern "../../support-lib/outcome.yaml"
 
-# Interfaces for --swift-error-type crux_error. The record needs no deriving(error).
+# Interfaces for --swift-error-type CruxError. The record needs no deriving(error).
 
 crux_error = record {
   message: string;

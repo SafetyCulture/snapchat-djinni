@@ -458,7 +458,8 @@ for expected in \
     "interface swift_error_bad_service, method plain: --swift-error-type needs a return type outcome<T, CruxError>" \
     "interface swift_error_bad_service, method nothing: --swift-error-type needs a return type outcome<T, CruxError>" \
     "interface swift_error_bad_service, method wrong_error: the error type of the outcome is OtherError, but --swift-error-type is CruxError" \
-    "interface swift_error_bad_service, method load: --swift-error-type needs a return type outcome<T, CruxError>"; do
+    "interface swift_error_bad_service, method load: --swift-error-type needs a return type outcome<T, CruxError>" \
+    "interface swift_error_bad_shared, method value: --swift-error-type needs a return type outcome<T, CruxError>"; do
     if ! grep -qF "$expected" "$negative_log"; then
         echo "Missing error message: $expected" 1>&2
         cat "$negative_log" 1>&2

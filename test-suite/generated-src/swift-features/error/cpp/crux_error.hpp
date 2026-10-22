@@ -9,7 +9,7 @@
 
 namespace testsuite {
 
-/** Interfaces for --swift-error-type crux_error. The record needs no deriving(error). */
+/** Interfaces for --swift-error-type CruxError. The record needs no deriving(error). */
 struct CruxError final {
     std::string message;
     int32_t code;

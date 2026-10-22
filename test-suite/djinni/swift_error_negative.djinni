@@ -1,7 +1,7 @@
 @extern "../../support-lib/future.yaml"
 @extern "../../support-lib/outcome.yaml"
 
-# Each method of bad_service breaks the rule of --swift-error-type crux_error.
+# Methods of swift_error_bad_service, except fine, break the rule of --swift-error-type CruxError.
 
 crux_error = record {
   message: string;
@@ -17,6 +17,11 @@ swift_error_bad_service = interface +c {
   wrong_error(): outcome<i32, other_error>;
   load(): future<i32>;
   fine(): outcome<i32, crux_error>;
+}
+
+# An interface with +c and +sw is checked too.
+swift_error_bad_shared = interface +c +sw {
+  value(): i32;
 }
 
 # Methods of a host interface are exempt.
