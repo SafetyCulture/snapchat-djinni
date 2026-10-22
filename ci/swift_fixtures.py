@@ -12,7 +12,7 @@ import shutil
 import sys
 
 
-def swift_names(cpp_typename):
+def swift_names(cpp_typename: str) -> tuple[str, str, str, str]:
     parts = cpp_typename.split("::")
     ns = [p for p in parts if not p[:1].isupper()]
     msgs = [p for p in parts if p[:1].isupper()]
@@ -21,7 +21,7 @@ def swift_names(cpp_typename):
     return prefix, typename, "::".join(ns), "::".join(msgs)
 
 
-def add_blocks(doc):
+def add_blocks(doc: str) -> str:
     m = re.search(r"^cpp:\n(?:  .*\n)+", doc, re.M)
     t = re.search(r"^  typename: '([^']+)'", m.group(0), re.M) if m else None
     h = re.search(r"^  header: '\"([^\"]+)\.pb\.h\"'", m.group(0), re.M) if m else None
@@ -45,7 +45,7 @@ def add_blocks(doc):
     return doc.rstrip("\n") + "\n" + block
 
 
-def main():
+def main() -> None:
     domain, extern_src, fx, djinni_root, tops = sys.argv[1:6]
     idl_dir = os.path.join(fx, "crux", "djinni", "domain")
     extern_dir = os.path.join(fx, "extern")

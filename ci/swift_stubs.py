@@ -24,7 +24,7 @@ STUB = """    public static let protoMessageName = "stub"
 """
 
 
-def s12protos(extern_dir, out):
+def s12protos(extern_dir: str, out: str) -> None:
     names = set()
     for path in glob.glob(os.path.join(extern_dir, "**", "*.yaml"), recursive=True):
         names.update(re.findall(r"^  typename: '(S12_[^']+)'", open(path).read(), re.M))
@@ -48,7 +48,7 @@ def s12protos(extern_dir, out):
         f.write("import SwiftProtobuf\n\n" + "\n".join(emit(tree, 0)) + "\n")
 
 
-def cxx_header(out, *swiftxx_dirs):
+def cxx_header(out: str, *swiftxx_dirs: str) -> None:
     decls = []
     for path in sorted(p for d in swiftxx_dirs for p in glob.glob(os.path.join(d, "*.h*"))):
         text = open(path).read()
@@ -63,7 +63,7 @@ def cxx_header(out, *swiftxx_dirs):
         f.write("\n".join(decls) + "\n}\n")
 
 
-def cxx_stubs(extern_dir, out_dir):
+def cxx_stubs(extern_dir: str, out_dir: str) -> None:
     pb = {}  # pb header -> {typename path tree}
     tr = {}  # swiftxx header -> list of (namespace path, cpp typename)
     for path in glob.glob(os.path.join(extern_dir, "**", "*.yaml"), recursive=True):
