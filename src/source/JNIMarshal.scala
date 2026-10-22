@@ -64,13 +64,16 @@ class JNIMarshal(spec: Spec) extends Marshal(spec) {
       }
     }
     case d: MDef => List(ImportRef(include(d.name)))
-    case e: MExtern => List(ImportRef(resolveExtJniHdr(e.jni.header)))
+    case e: MExtern => List(ImportRef(resolveExtJniHdr(if (bindsKotlin(e)) e.jni.kotlinHeader.get else e.jni.header)))
     case _ => List()
   }
 
   def resolveExtJniHdr(path: String) = {
     path.replaceAll("\\$", spec.jniBaseLibIncludePrefix);
   }
+
+  // With --kotlin-jni-out the JNI code binds the Kotlin class of an extern type that has the Kotlin keys.
+  private def bindsKotlin(e: MExtern) = spec.kotlinJniOutFolder.isDefined && e.jni.kotlinTranslator.isDefined
 
   def include(ident: String) = q(spec.jniIncludePrefix + spec.jniFileIdentStyle(ident) + "." + spec.cppHeaderExt)
 
@@ -108,7 +111,7 @@ class JNIMarshal(spec: Spec) extends Marshal(spec) {
       case MArray => s"[${javaTypeSignature(tm.args.head)}"
       case MVoid => "Ljava/lang/Void;"
     }
-    case e: MExtern => e.jni.typeSignature
+    case e: MExtern => if (bindsKotlin(e)) e.jni.kotlinTypeSignature.get else e.jni.typeSignature
     case MParam(_) => "Ljava/lang/Object;"
     case d: MDef => d.body match {
       case e: Enum if e.flags => "Ljava/util/EnumSet;"
@@ -142,7 +145,7 @@ class JNIMarshal(spec: Spec) extends Marshal(spec) {
 
   def helperName(tm: MExpr): String = tm.base match {
     case d: MDef => withNs(Some(spec.jniNamespace), helperClass(d.name))
-    case e: MExtern => e.jni.translator
+    case e: MExtern => if (bindsKotlin(e)) e.jni.kotlinTranslator.get else e.jni.translator
     case o => withNs(Some("djinni"), o match {
       case p: MPrimitive => p.idlName match {
         case "i8" => "I8"

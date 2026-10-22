@@ -97,7 +97,7 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
             case _ => "Array<" + f(elem, true) + ">"
           }
         case e: MExtern =>
-          val boxed = externName(if (needRef) e.java.boxed else e.java.typename)
+          val boxed = e.kotlin.jniTypename.getOrElse(externName(if (needRef) e.java.boxed else e.java.typename))
           boxed + (if (e.java.generic) args(tm) else "")
         case p: MProtobuf => p.name
         case o =>
