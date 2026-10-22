@@ -3,6 +3,6 @@
 
 package com.dropbox.djinni.test
 
-abstract class AsyncInterface {
-    abstract fun futureRoundtrip(f: com.snapchat.djinni.Future<Int>): com.snapchat.djinni.Future<String>
+interface AsyncInterface {
+    fun futureRoundtrip(f: com.snapchat.djinni.Future<Int>): com.snapchat.djinni.Future<String>
 }

@@ -7,8 +7,15 @@ The script runs `javap -p -s` on both class trees and checks:
   1. every Java class of the package exists in the Kotlin tree;
   2. each class has the same native methods (name, descriptor, static) in both trees;
   3. the JNI function names of the generated C++ equal the names derived from the Kotlin native methods;
-  4. each class, field and method that the generated C++ looks up exists in the Kotlin classes;
-  5. each Java record has the same instance fields (name, descriptor) in Kotlin.
+  4. each class, field and method that the generated C++ looks up exists in the Kotlin classes, and the
+     lookups that support-lib/jni makes for each CppProxy class (`<init>(J)V`, `nativeRef`) and each enum
+     (`values()`) exist;
+  5. each Java record has the same instance fields (name, descriptor) in Kotlin;
+  6. with --jni-use-on-load-initializer, the JNINativeMethod tables of the generated C++ list the native
+     methods of the Kotlin classes (name and descriptor).
+
+A lookup of a class that the Java tree does not have, such as the hand-written subclass of a record with +j,
+is skipped.
 """
 import glob
 import os
@@ -37,7 +44,7 @@ def javap(root, names):
         decl = re.match(r"^(?:\w+ )*(?:class|interface|enum) ([\w.$]+)", line)
         if decl and not line.startswith(" "):
             current = decl.group(1)
-            classes[current] = {"fields": set(), "methods": set()}
+            classes[current] = {"fields": set(), "methods": set(), "enum": "extends java.lang.Enum" in line}
             continue
         member = re.match(r"^  ([^:]*?);$", line)
         if member and current:
@@ -86,6 +93,23 @@ def jni_lookups(jni_dir):
     return exported, lookups
 
 
+def native_tables(jni_dir):
+    """Returns {class: {(name, descriptor)}} from the JNINativeMethod tables of the generated C++."""
+    tables, registrations = {}, {}
+    entry = re.compile(r'const_cast<char\*>\("([^"]+)"\),\s*const_cast<char\*>\("([^"]+)"\)')
+    for path in sorted(glob.glob(os.path.join(jni_dir, "*"))):
+        if not path.endswith((".cc", ".cpp", ".h", ".hpp")):
+            continue
+        text = open(path).read()
+        for name, body in re.findall(r"const JNINativeMethod (\w+)\[[^\]]*\]\s*=\s*\{(.*?)\};", text, re.S):
+            tables[name] = set(entry.findall(body))
+        for cls, table in re.findall(r'jniRegisterNatives\(env, "([^"]+)", (\w+)\)', text):
+            registrations.setdefault(cls.replace("/", "."), set()).update(tables.get(table, set()))
+        for cls, table in re.findall(r'JNIMethodLoadAutoRegister\w* \w+\("([^"]+)", (\w+)\)', text):
+            registrations.setdefault(cls.replace("/", "."), set()).update(tables.get(table, set()))
+    return registrations
+
+
 def main():
     java_dir, kotlin_dir, jni_dir, package = sys.argv[1:5]
     java_names = class_names(java_dir, package)
@@ -116,13 +140,19 @@ def main():
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")
 
     exported, lookups = jni_lookups(jni_dir)
+    registrations = native_tables(jni_dir)
     derived = {jni_name(n, m) for n in kotlin for (m, _, _) in natives(kotlin[n])}
-    if derived != exported:
-        failures.append(f"JNI function names differ: C++ only {sorted(exported - derived)[:3]}, Kotlin only {sorted(derived - exported)[:3]}")
-    print(f"3. JNI functions: {len(exported)} exported by the C++, {len(derived)} derived from the Kotlin natives")
+    # A native method that is only registered in a table, such as the module guard, has no exported function.
+    registered_only = {jni_name(c, n) for c, listed in registrations.items() for (n, _) in listed} - exported
+    if exported - derived or derived - exported - registered_only:
+        failures.append(f"JNI function names differ: C++ only {sorted(exported - derived)[:3]}, Kotlin only {sorted(derived - exported - registered_only)[:3]}")
+    print(f"3. JNI functions: {len(exported)} exported by the C++, {len(derived)} derived from the Kotlin natives ({len(derived - exported)} registered only)")
 
-    bad = []
+    bad, skipped = [], 0
     for cls, kind, name, desc in sorted(lookups):
+        if cls not in java:
+            skipped += 1
+            continue
         info = kotlin.get(cls)
         if info is None:
             bad.append((cls, kind, name, desc, "no class"))
@@ -136,7 +166,24 @@ def main():
     if bad:
         failures.append(f"{len(bad)} JNI lookups do not bind, for example {bad[:3]}")
     fields = sum(1 for l in lookups if l[1] == "GetFieldID")
-    print(f"4. JNI lookups: {len(lookups)} ({fields} fields, {len(lookups) - fields} methods) bind to the Kotlin classes")
+    # The lookups of support-lib/jni for each CppProxy class and each enum.
+    fixed = 0
+    for name in java_names:
+        info = kotlin.get(name)
+        if info is None:
+            continue
+        if name.endswith("$CppProxy"):
+            fixed += 2
+            if not any(n == "<init>" and d == "(J)V" for (n, d, f) in info["methods"]):
+                failures.append(f"{name} has no constructor (J)V")
+            if not any(n == "nativeRef" and d == "J" for (n, d, f) in info["fields"]):
+                failures.append(f"{name} has no field nativeRef J")
+        if java[name]["enum"]:
+            fixed += 1
+            wanted = f"()[L{name.replace('.', '/')};"
+            if not any(n == "values" and d == wanted and "static" in f for (n, d, f) in info["methods"]):
+                failures.append(f"{name} has no static values() {wanted}")
+    print(f"4. JNI lookups: {len(lookups) - skipped} ({fields} fields, {len(lookups) - fields} methods) of the generated C++ and {fixed} of support-lib/jni bind to the Kotlin classes ({skipped} skipped)")
 
     records = 0
     for name in java_names:
@@ -147,6 +194,21 @@ def main():
             if jf != kf:
                 failures.append(f"instance fields differ in {name}: Java only {sorted(jf - kf)[:3]}, Kotlin only {sorted(kf - jf)[:3]}")
     print(f"5. record fields: {records} classes have the same instance field names and descriptors")
+
+    if registrations:
+        entries = 0
+        for cls, listed in sorted(registrations.items()):
+            info = kotlin.get(cls)
+            if info is None:
+                failures.append(f"registered class {cls} is missing in Kotlin")
+                continue
+            have = {(n, d) for (n, d, f) in info["methods"] if "native" in f}
+            entries += len(listed)
+            if not listed <= have:
+                failures.append(f"JNINativeMethod entries without a Kotlin native in {cls}: {sorted(listed - have)[:3]}")
+        print(f"6. JNINativeMethod tables: {entries} entries of {len(registrations)} classes match the Kotlin natives")
+    else:
+        print("6. JNINativeMethod tables: none (the JNI code is bound by name)")
 
     for failure in failures:
         print("FAIL: " + failure)

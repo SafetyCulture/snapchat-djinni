@@ -7,3 +7,19 @@
 @import "vendor/third-party/date.djinni"
 @import "third-party/duration.djinni"
 @import "third-party/outcome.djinni"
+
+# Cases for the Kotlin JNI classes.
+kotlin_jni_arrays = record {
+  # A dollar sign in a string constant needs an escape in Kotlin.
+  const dollar: string = "a$b";
+  bin: binary;
+  nums: array<i32>;
+  name: string;
+} deriving(eq)
+
+# A Kotlin interface with constants of different kinds.
+kotlin_jni_listener = interface +j {
+  const count: i32 = 3;
+  const label: optional<string> = "label";
+  on_event(value: i32);
+}

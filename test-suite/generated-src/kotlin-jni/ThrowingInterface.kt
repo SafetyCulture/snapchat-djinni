@@ -3,6 +3,6 @@
 
 package com.dropbox.djinni.test
 
-abstract class ThrowingInterface {
-    abstract fun throwException()
+interface ThrowingInterface {
+    fun throwException()
 }

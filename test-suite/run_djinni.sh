@@ -531,6 +531,7 @@ expect_failure error-enum "$swift_error_enum_relative" CruxError \
     --java-nonnull-annotation "javax.annotation.Nonnull" \
     --java-use-final-for-record false \
     --java-implement-android-os-parcelable true \
+    --java-gen-interface true \
     --ident-java-field mFooBar \
     --jni-use-on-load-initializer false \
     --idl "djinni/kotlin_jni.djinni" \

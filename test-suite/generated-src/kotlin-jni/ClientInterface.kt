@@ -4,15 +4,15 @@
 package com.dropbox.djinni.test
 
 /** Client interface */
-abstract class ClientInterface {
+interface ClientInterface {
     /** Returns record of given string */
-    abstract fun getRecord(recordId: Long, utf8string: String, misc: String?): ClientReturnedRecord
+    fun getRecord(recordId: Long, utf8string: String, misc: String?): ClientReturnedRecord
 
-    abstract fun identifierCheck(data: ByteArray, r: Int, jret: Long): Double
+    fun identifierCheck(data: ByteArray, r: Int, jret: Long): Double
 
-    abstract fun returnStr(): String
+    fun returnStr(): String
 
-    abstract fun methTakingInterface(i: ClientInterface?): String
+    fun methTakingInterface(i: ClientInterface?): String
 
-    abstract fun methTakingOptionalInterface(i: ClientInterface?): String
+    fun methTakingOptionalInterface(i: ClientInterface?): String
 }

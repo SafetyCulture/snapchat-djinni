@@ -56,7 +56,7 @@ compile_and_compare() {
   # shellcheck disable=SC2046
   javac -nowarn -d "$dir/java-classes" $(find "$dir/stubs" "$dir/java" "$repo_root/ci/kotlin-jni/stubs" "$repo_root/support-lib/java" -name '*.java')
   echo "== $name: kotlinc ($(find "$dir/kotlin" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
-  kotlinc -nowarn -d "$dir/kotlin-classes" -Xplugin="$kotlin_lib/parcelize-compiler.jar" \
+  kotlinc -Werror -d "$dir/kotlin-classes" -Xplugin="$kotlin_lib/parcelize-compiler.jar" \
     -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar" "$dir/kotlin"
   echo "== $name: javap"
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package"
@@ -82,18 +82,21 @@ if ! grep -q "val mAsset:" "$work/crux/kotlin/AssetResult.kt" || ! grep -q 'jniG
 fi
 echo "record field: Kotlin 'val mAsset' and JNI GetFieldID \"mAsset\""
 
-# 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh.
+# 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh. The second run registers the natives in JNI_OnLoad.
 package=com.dropbox.djinni.test
-mkdir -p "$work/suite"
-(cd "$repo_root/test-suite" && java -jar "$jar" \
-  --java-out "$work/suite/java" --jni-out "$work/suite/jni" --kotlin-jni-out "$work/suite/kotlin" \
-  --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
-  --java-nonnull-annotation javax.annotation.Nonnull --java-use-final-for-record false \
-  --java-implement-android-os-parcelable true --ident-java-field mFooBar \
-  --cpp-out "$work/suite/cpp" --cpp-namespace testsuite --ident-cpp-enum-type foo_bar \
-  --cpp-optional-template "std::experimental::optional" --cpp-optional-header "\"../../handwritten-src/cpp/optional.hpp\"" \
-  --cpp-extended-record-include-prefix "../../handwritten-src/cpp/" \
-  --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
-  --idl djinni/kotlin_jni.djinni --idl-include-path djinni/vendor)
-compile_and_compare suite "$package" ""
+for mode in suite:false suite-onload:true; do
+  name="${mode%%:*}"
+  mkdir -p "$work/$name"
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --java-out "$work/$name/java" --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" \
+    --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
+    --java-nonnull-annotation javax.annotation.Nonnull --java-use-final-for-record false \
+    --java-implement-android-os-parcelable true --java-gen-interface true --ident-java-field mFooBar \
+    --cpp-out "$work/$name/cpp" --cpp-namespace testsuite --ident-cpp-enum-type foo_bar \
+    --cpp-optional-template "std::experimental::optional" --cpp-optional-header "\"../../handwritten-src/cpp/optional.hpp\"" \
+    --cpp-extended-record-include-prefix "../../handwritten-src/cpp/" \
+    --jni-use-on-load-initializer "${mode##*:}" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+    --idl djinni/kotlin_jni.djinni --idl-include-path djinni/vendor)
+  compile_and_compare "$name" "$package" ""
+done
 echo "KOTLIN JNI CHECK OK"

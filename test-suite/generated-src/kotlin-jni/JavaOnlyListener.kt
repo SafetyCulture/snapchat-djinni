@@ -3,5 +3,5 @@
 
 package com.dropbox.djinni.test
 
-abstract class JavaOnlyListener {
+interface JavaOnlyListener {
 }

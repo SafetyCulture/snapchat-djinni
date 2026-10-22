@@ -27,11 +27,17 @@ fun main(args: Array<String>) {
     watchdog.isDaemon = true
     watchdog.start()
 
-    val service = KjService.create()
+    val service = KjService.create()!!
     check(service.add(2, 3) == 5, "add")
 
     val item = KjItem("a", 3, arrayListOf("x", "y"), null)
     check(service.echo(item) == item, "echo of a record")
+
+    // Records with arrays are equal when the content is equal.
+    val blob = KjBlob(byteArrayOf(1, 2, 3), intArrayOf(4, 5))
+    val echoed = service.echoBlob(blob)
+    check(echoed == blob && echoed.hashCode() == blob.hashCode(), "content equality of arrays")
+    check(echoed != KjBlob(byteArrayOf(1, 2, 3), intArrayOf(4, 6)), "different arrays")
 
     val ok = service.divide(10, 2)
     check(ok.resultOr(-1) == 5, "outcome value")
@@ -57,6 +63,22 @@ fun main(args: Array<String>) {
     check(sum.get() == (0 until 2000).sumOf { it + 1 }, "concurrent calls")
     pool.shutdown()
     pool.awaitTermination(30, TimeUnit.SECONDS)
+
+    // An enum goes through JNI by its ordinal.
+    check(service.invert(KjColor.RED) == KjColor.GREEN, "enum")
+
+    // A proxy of a C++ object that goes back to C++ and returns is the same Java object.
+    check(service.echoService(service) === service, "proxy round trip")
+
+    // C++ and Kotlin implement the same interface.
+    check(service.callBoth(object : KjBoth() { override fun value(): Int = 5 }) == 5, "Kotlin implementation of +c +j")
+    check(service.callBoth(service.makeBoth()) == 11, "C++ implementation of +c +j")
+
+    // Proxies that are collected release their C++ objects.
+    repeat(2000) { KjService.create() }
+    System.gc()
+    Thread.sleep(200)
+    check(service.add(1, 1) == 2, "service after GC")
 
     println("KOTLIN JNI RUNTIME OK")
     System.exit(0)

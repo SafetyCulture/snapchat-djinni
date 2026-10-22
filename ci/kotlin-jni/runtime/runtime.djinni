@@ -8,6 +8,17 @@ kj_error = record {
   code: i32;
 }
 
+kj_color = enum {
+  red;
+  green;
+  blue;
+}
+
+kj_blob = record {
+  data: binary;
+  nums: array<i32>;
+} deriving(eq)
+
 kj_item = record {
   id: string;
   count: i32;
@@ -19,16 +30,22 @@ kj_listener = interface +j {
   on_value(value: i32): i32;
 }
 
+# C++ and Kotlin can implement this one.
+kj_both = interface +c +j {
+  value(): i32;
+}
+
 kj_service = interface +c {
   static create(): kj_service;
   add(a: i32, b: i32): i32;
   echo(item: kj_item): kj_item;
+  echo_blob(blob: kj_blob): kj_blob;
   divide(a: i32, b: i32): outcome<i32, kj_error>;
   call_listener(listener: kj_listener, value: i32): i32;
   delayed(value: i32, millis: i32): future<i32>;
-  pending(): future<i32>;
-  complete_pending(value: i32);
   fail(): i32;
-  busy(millis: i32);
-  max_concurrent(): i32;
+  invert(color: kj_color): kj_color;
+  echo_service(service: kj_service): kj_service;
+  call_both(both: kj_both): i32;
+  make_both(): kj_both;
 }

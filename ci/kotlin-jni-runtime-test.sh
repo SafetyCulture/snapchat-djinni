@@ -3,13 +3,13 @@
 #
 # The test calls C++ from the generated Kotlin classes, and C++ calls a Kotlin object back. It checks
 # records, outcomes, futures, C++ exceptions and many threads. A watchdog fails the run when it deadlocks.
-# The script skips with exit code 0 and a message when a tool is missing: javac, java, kotlinc,
-# clang++, jni.h and the Kotlin standard library.
+# The script skips with exit code 77 and a message when something is missing: javac, java, kotlinc, clang++
+# (CXX), jni.h in JAVA_HOME, kotlin-stdlib.jar, or a supported system (macOS, Linux). With CI or
+# KOTLIN_JNI_RUNTIME_REQUIRED set, a missing part is an error (exit code 2).
 #
 # Environment:
 #   JAVA_HOME          the JDK (default: derived from javac)
 #   KOTLIN_LIB         directory of kotlinc with kotlin-stdlib.jar (default: derived from kotlinc)
-#   KOTLIN_FLAGS       extra generator flags, for example --kotlin-suspend-wrap
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
 #   KEEP_OUT           set to 1 to keep the work directory
@@ -18,7 +18,14 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
 src="$repo_root/ci/kotlin-jni/runtime"
 
-skip() { echo "SKIPPED: $1"; exit 0; }
+skip() {
+  if [ -n "${CI:-}" ] || [ -n "${KOTLIN_JNI_RUNTIME_REQUIRED:-}" ]; then
+    echo "MISSING: $1" >&2
+    exit 2
+  fi
+  echo "SKIPPED: $1"
+  exit 77
+}
 
 for tool in javac java kotlinc "${CXX:-clang++}"; do
   command -v "$tool" >/dev/null 2>&1 || skip "$tool is not installed"
@@ -57,7 +64,7 @@ out="$work/out"
   --cpp-out "$out/cpp" --cpp-namespace kj \
   --jni-out "$out/jni" --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
   --java-package rt.kj --ident-java-field mFooBar \
-  --kotlin-jni-out "$out/kotlin" ${KOTLIN_FLAGS:-} \
+  --kotlin-jni-out "$out/kotlin" \
   --idl runtime.djinni)
 
 # The JNI library: the support library, the generated JNI code and the C++ implementation.
@@ -75,9 +82,8 @@ lib="$work/libkj.$lib_ext"
 echo "== javac and kotlinc"
 mkdir -p "$work/java-classes" "$work/kotlin-classes"
 # shellcheck disable=SC2046
-javac -nowarn -d "$work/java-classes" $(find "$repo_root/support-lib/java" -name '*.java')
-coroutines="${KOTLINX_COROUTINES_JAR:-}"
-classpath="$work/java-classes:$kotlin_lib/kotlin-stdlib.jar${coroutines:+:$coroutines}"
-kotlinc -nowarn -d "$work/kotlin-classes" -cp "$classpath" "$out/kotlin" "$src/Main.kt"
+javac -Werror -Xlint:all -d "$work/java-classes" $(find "$repo_root/support-lib/java" -name '*.java')
+classpath="$work/java-classes:$kotlin_lib/kotlin-stdlib.jar"
+kotlinc -Werror -d "$work/kotlin-classes" -cp "$classpath" "$out/kotlin" "$src/Main.kt"
 echo "== run"
 java -Xcheck:jni -cp "$work/kotlin-classes:$classpath" rt.kj.MainKt "$lib"

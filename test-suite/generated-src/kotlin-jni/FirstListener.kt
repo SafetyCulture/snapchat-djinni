@@ -4,6 +4,6 @@
 package com.dropbox.djinni.test
 
 /** Used for ObjC multiple inheritance tests */
-abstract class FirstListener {
-    abstract fun first()
+interface FirstListener {
+    fun first()
 }
