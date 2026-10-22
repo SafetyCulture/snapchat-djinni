@@ -20,8 +20,8 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
 
   val packageName: Option[String] = spec.kotlinJniPackage.orElse(spec.javaPackage)
 
-  // An interface reference is nullable only when the Java code marks it so.
-  private val interfaceNullable = spec.cppNnType.isEmpty && spec.javaNullableAnnotation.isDefined
+  // The JNI code passes null for an interface reference, unless a C++ non-null type is set.
+  private val interfaceNullable = spec.cppNnType.isEmpty
 
   override def typename(tm: MExpr): String = toKotlinType(tm, None)
   def typename(name: String, ty: TypeDef): String = idJava.ty(name)

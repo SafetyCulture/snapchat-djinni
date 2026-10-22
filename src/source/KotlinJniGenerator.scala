@@ -64,7 +64,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
 
   private def returnClause(ret: Option[TypeRef]): String = ret.fold("")(ty => ": " + marshal.returnType(Some(ty)))
 
-  private def writeConsts(w: IndentWriter, consts: Seq[Const]) {
+  private def writeConsts(w: IndentWriter, consts: Seq[Const], inInterface: Boolean = false) {
     val constTypes = Set("Int", "Long", "Short", "Byte", "Float", "Double", "Boolean", "String")
 
     def writeValue(ty: TypeRef, v: Any): Unit = v match {
@@ -73,7 +73,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       case d: Double if marshal.fieldType(ty).stripSuffix("?") == "Float" => w.w(d.toString + "f")
       case d: Double => w.w(d.toString)
       case b: Boolean => w.w(if (b) "true" else "false")
-      case s: String => w.w(s)
+      case s: String => w.w(s.replace("$", "\\$"))
       case e: EnumValue => w.w(s"${marshal.typename(ty)}.${idJava.enum(e)}")
       case v: ConstRef => w.w(idJava.const(v))
       case z: Map[_, _] =>
@@ -91,10 +91,14 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         w.decrease()
     }
 
+    def isConstVal(c: Const) = constTypes.contains(marshal.fieldType(c.ty)) && !c.value.isInstanceOf[Map[_, _]] && !c.value.isInstanceOf[EnumValue] && !c.value.isInstanceOf[ConstRef]
+    // Kotlin needs @JvmField on all or none of the properties of an interface companion.
+    val allJvmField = inInterface && !consts.forall(isConstVal)
+
     for (c <- consts) {
       writeDoc(w, c.doc)
       val ty = marshal.fieldType(c.ty)
-      val prefix = if (constTypes.contains(ty) && !c.value.isInstanceOf[Map[_, _]] && !c.value.isInstanceOf[EnumValue] && !c.value.isInstanceOf[ConstRef]) "const val" else "@JvmField val"
+      val prefix = if (isConstVal(c) && !allJvmField) "const val" else "@JvmField val"
       w.w(s"$prefix ${idJava.const(c.ident)}: $ty = ")
       writeValue(c.ty, c.value)
       w.wl
@@ -181,7 +185,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         if (i.consts.nonEmpty || statics.nonEmpty) {
           skipFirst { w.wl }
           w.w("companion object").braced {
-            writeConsts(w, i.consts)
+            writeConsts(w, i.consts, asInterface)
             if (statics.nonEmpty) {
               writeModuleInitializer(w)
             }
@@ -265,7 +269,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         w.w(")")
       }
       w.w(inherits)
-      val hasBody = r.consts.nonEmpty || extended || r.fields.isEmpty || r.derivingTypes.contains(DerivingType.Ord)
+      // A data class compares arrays by reference. Java compares the content.
+      def isArray(f: Field) = f.ty.resolved.base == MBinary || f.ty.resolved.base == MArray
+      val hasArrays = !extended && r.fields.exists(isArray)
+      val hasBody = r.consts.nonEmpty || extended || r.fields.isEmpty || hasArrays || r.derivingTypes.contains(DerivingType.Ord)
       def writeBody() {
         val skipFirst = SkipFirst()
         if (r.consts.nonEmpty) {
@@ -280,6 +287,29 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             val parts = r.fields.map(f => s""""${idJava.field(f.ident)}=" + ${kt(idJava.field(f.ident))}""")
             val body = if (parts.isEmpty) q(self + "{}") else (q(self + "{") +: parts.zipWithIndex.map { case (p, k) => if (k > 0) q(",") + " + " + p else p } :+ q("}")).mkString(" + ")
             w.wl("return " + body)
+          }
+        }
+        if (hasArrays) {
+          skipFirst { w.wl }
+          val star = if (params.isEmpty) "" else "<*>"
+          w.w("override fun equals(other: Any?): Boolean").braced {
+            w.wl("if (this === other) return true")
+            w.wl(s"if (other !is $self$star) return false")
+            val tests = r.fields.map { f =>
+              val name = kt(idJava.field(f.ident))
+              if (isArray(f)) s"$name.contentEquals(other.$name)" else s"$name == other.$name"
+            }
+            w.wl("return " + tests.mkString(" && "))
+          }
+          w.wl
+          w.w("override fun hashCode(): Int").braced {
+            w.wl("var hashCode = 17")
+            for (f <- r.fields) {
+              val name = kt(idJava.field(f.ident))
+              val hash = if (isArray(f)) s"$name.contentHashCode()" else s"java.util.Objects.hashCode($name)"
+              w.wl(s"hashCode = hashCode * 31 + $hash")
+            }
+            w.wl("return hashCode")
           }
         }
         if (r.derivingTypes.contains(DerivingType.Ord)) {
