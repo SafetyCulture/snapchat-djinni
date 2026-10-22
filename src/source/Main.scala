@@ -123,6 +123,7 @@ object Main {
     var swiftxxBaseLibIncludePrefix: String = ""
     var swiftLegacyRecords: Boolean = false
     var swiftAsyncWrap: Option[String] = None
+    var swiftErrorType: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -290,6 +291,8 @@ object Main {
         .text("Generate Swift records with `var` fields. The default is `let` fields.")
       opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
         .text("Wrap the interfaces that C++ implements in a Swift class with async methods. Each wrapper has a serial queue labelled <label-prefix>.<interface>. Needs --swift-private-in-same-module.")
+      opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
+        .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E. The record conforms to Error.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -522,6 +525,7 @@ object Main {
       swiftxxBaseLibIncludePrefix,
       swiftLegacyRecords,
       swiftAsyncWrap,
+      swiftErrorType,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

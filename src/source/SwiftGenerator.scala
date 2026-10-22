@@ -182,10 +182,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     val refs = new SwiftRefs(ident.name)
     r.fields.foreach(f => refs.find(f.ty))
     val sendable = if (r.fields.forall(f => marshal.isSendable(f.ty.resolved))) "Sendable" else "@unchecked Sendable"
+    val deriving = if (spec.swiftErrorType.contains(marshal.typename(ident, r))) r.derivingTypes + DerivingType.Error else r.derivingTypes
     val fieldKeyword = if (spec.swiftLegacyRecords) "var" else "let"
     writeSwiftFile(ident, origin, refs.swiftImports, w => {
       writeDoc(w, doc)
-      w.w(s"public struct ${marshal.typename(ident, r)}${generateConformance(r.derivingTypes, sendable, ": ")}").braced {
+      w.w(s"public struct ${marshal.typename(ident, r)}${generateConformance(deriving, sendable, ": ")}").braced {
         generateSwiftConstants(w, r.consts)
         for (f <- r.fields) {
           writeDoc(w, f.doc)
