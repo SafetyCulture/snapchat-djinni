@@ -380,8 +380,8 @@ Async wrappers (`--swift-async-wrap`):
   The C++ future is not cancelled. A C++ exception that is thrown before the
   future exists is thrown as `DjinniError`.
 - Any other method is `async -> T`. A C++ exception stops the program for these
-  methods and for the methods that return `outcome<T, E>`, because the proxy of a
-  wrapped interface does not throw. With `--swift-async-wrap`, every method
+  methods and for the methods that return `outcome<T, E>`, because the proxy
+  methods of these methods do not throw. With `--swift-async-wrap`, every method
   should return `outcome<>`.
 - A C++ object has one wrapper, so its calls run one after another on one queue.
   Two values from C++ that name the same object are the same Swift object.

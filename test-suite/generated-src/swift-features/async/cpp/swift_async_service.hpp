@@ -47,7 +47,9 @@ public:
     virtual /*not-null*/ std::shared_ptr<SwiftAsyncChild> child() = 0;
 
     /** Parameters with the names of members of the wrapper. */
-    virtual void names(int32_t proxy, int32_t queue, int32_t continuation, int32_t result, int32_t future) = 0;
+    virtual djinni::expected<int32_t, SwiftAsyncError> names(int32_t proxy, int32_t queue, int32_t continuation, int32_t result, int32_t future) = 0;
+
+    virtual ::djinni::Future<int32_t> future_names(int32_t future, int32_t result) = 0;
 
     virtual void attach(const /*not-null*/ std::shared_ptr<SwiftAsyncChild> & child, const /*nullable*/ std::shared_ptr<SwiftAsyncService> & parent) = 0;
 };

@@ -113,8 +113,18 @@ djinni::swift::AnyValue SwiftAsyncService_names(const djinni::swift::ParameterLi
     auto _continuation = ::djinni::swift::I32::toCpp(params->getValue(3));
     auto _result = ::djinni::swift::I32::toCpp(params->getValue(4));
     auto _future = ::djinni::swift::I32::toCpp(params->getValue(5));
-    inst->names(std::move(_proxy), std::move(_queue), std::move(_continuation), std::move(_result), std::move(_future));
-    return djinni::swift::makeVoidValue();
+    auto ret = inst->names(std::move(_proxy), std::move(_queue), std::move(_continuation), std::move(_result), std::move(_future));
+    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated::SwiftAsyncError>::fromCpp(ret);
+}
+catch (const std::exception& e) {
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+djinni::swift::AnyValue SwiftAsyncService_futureNames(const djinni::swift::ParameterList* params) try {
+    auto inst = SwiftAsyncService::toCpp(params->getValue(0));
+    auto _future = ::djinni::swift::I32::toCpp(params->getValue(1));
+    auto _result = ::djinni::swift::I32::toCpp(params->getValue(2));
+    auto ret = inst->future_names(std::move(_future), std::move(_result));
+    return ::djinni::swift::FutureAdaptor<::djinni::swift::I32>::fromCpp(std::move(ret));
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};

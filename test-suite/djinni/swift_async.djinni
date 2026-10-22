@@ -33,7 +33,8 @@ swift_async_service = interface +c {
   watch(observer: swift_async_observer);
   child(): swift_async_child;
   # Parameters with the names of members of the wrapper.
-  names(proxy: i32, queue: i32, continuation: i32, result: i32, future: i32);
+  names(proxy: i32, queue: i32, continuation: i32, result: i32, future: i32): outcome<i32, swift_async_error>;
+  future_names(future: i32, result: i32): future<i32>;
   attach(child: swift_async_child, parent: optional<swift_async_service>);
 }
 

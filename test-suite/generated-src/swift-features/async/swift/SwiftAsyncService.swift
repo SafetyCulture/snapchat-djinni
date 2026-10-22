@@ -100,13 +100,22 @@ public final class SwiftAsyncService: @unchecked Sendable {
     }
 
     /** Parameters with the names of members of the wrapper. */
-    public func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) async -> Void {
-        await withCheckedContinuation { (_continuation: CheckedContinuation<Void, Never>) in
+    public func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) async throws(TestSuite.SwiftAsyncError) -> Int32 {
+        let result: Result<Int32, TestSuite.SwiftAsyncError> = await withCheckedContinuation { _continuation in
             self.queue.async { [_proxy = self.proxy] in
-                _proxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future)
-                _continuation.resume()
+                _continuation.resume(returning: _proxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future))
             }
         }
+        return try result.get()
+    }
+
+    public func futureNames(_ future: Int32, result: Int32) async throws -> Int32 {
+        let future: DjinniSupport.DJFuture<Int32> = try await withCheckedThrowingContinuation { _continuation in
+            self.queue.async { [_proxy = self.proxy] in
+                _continuation.resume(with: Result { try _proxy.futureNames(future, result: result) })
+            }
+        }
+        return try await future.value
     }
 
     public func attach(_ child: TestSuite.SwiftAsyncChild, parent: Optional<TestSuite.SwiftAsyncService>) async -> Void {

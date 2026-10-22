@@ -22,6 +22,7 @@ djinni::swift::AnyValue SwiftAsyncService_send(const djinni::swift::ParameterLis
 djinni::swift::AnyValue SwiftAsyncService_watch(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_child(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_names(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftAsyncService_futureNames(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_attach(const djinni::swift::ParameterList* params);
 
 } // namespace djinni_generated
