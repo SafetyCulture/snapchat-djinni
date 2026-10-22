@@ -1,0 +1,34 @@
+@extern "../../../support-lib/future.yaml"
+@extern "../../../support-lib/outcome.yaml"
+
+# Types for the Kotlin JNI runtime test. C++ implements the service, and Kotlin implements the listener.
+
+kj_error = record {
+  message: string;
+  code: i32;
+}
+
+kj_item = record {
+  id: string;
+  count: i32;
+  tags: list<string>;
+  note: optional<string>;
+} deriving(eq)
+
+kj_listener = interface +j {
+  on_value(value: i32): i32;
+}
+
+kj_service = interface +c {
+  static create(): kj_service;
+  add(a: i32, b: i32): i32;
+  echo(item: kj_item): kj_item;
+  divide(a: i32, b: i32): outcome<i32, kj_error>;
+  call_listener(listener: kj_listener, value: i32): i32;
+  delayed(value: i32, millis: i32): future<i32>;
+  pending(): future<i32>;
+  complete_pending(value: i32);
+  fail(): i32;
+  busy(millis: i32);
+  max_concurrent(): i32;
+}

@@ -498,6 +498,13 @@ the classes with `javap -p -s`. The script checks the classes, the native
 methods, the JNI function names, every class, field and method that the JNI
 code looks up, and the instance fields of the records.
 
+`ci/kotlin-jni-runtime-test.sh` runs the classes. It builds the generated JNI C++
+and a C++ implementation into a library, and runs Kotlin against it on the JVM
+with `-Xcheck:jni`. The test calls C++ from Kotlin, calls a Kotlin object from
+C++, and checks records, outcomes, futures, C++ exceptions and many threads. The
+script skips with a message when `javac`, `kotlinc`, `clang++` or `jni.h` is
+missing.
+
 ## Async interface support
 
 With the new yaml type `future<>` we can now write Djinni interfaces that return
