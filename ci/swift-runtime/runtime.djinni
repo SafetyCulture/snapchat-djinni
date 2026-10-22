@@ -1,0 +1,14 @@
+# Types for the Swift runtime test. C++ implements the service, and Swift implements the listener.
+
+runtime_listener = interface +o +j +sw {
+  on_value(value: i32): i32;
+}
+
+runtime_service = interface +c +sw {
+  static create(): runtime_service;
+  add(a: i32, b: i32): i32;
+  call_listener(listener: runtime_listener, value: i32): i32;
+  keep_listener(listener: runtime_listener);
+  call_kept_listener(value: i32): i32;
+  same_service(): runtime_service;
+}
