@@ -363,11 +363,6 @@ object Main {
       cppIdentStyle = cppIdentStyle.copy(enumType = cppTypeEnumIdentStyle)
     }
 
-    if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
-      System.err.println("Error: --swift-async-wrap needs --swift-private-in-same-module.")
-      System.exit(1); return
-    }
-
     val swiftxxClassIdentStyle = swiftxxClassIdentStyleOptional.getOrElse(cppIdentStyle.ty)
     val swiftxxFileIdentStyle = swiftxxFileIdentStyleOptional.getOrElse(cppFileIdentStyle)
 
@@ -398,6 +393,11 @@ object Main {
       if (!argParser.parse(flags.map({_.split(" ", 2)}).flatten :+ "--idl" :+ idlFile.getName())) {
         System.exit(1); return
       }
+    }
+
+    if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
+      System.err.println("Error: --swift-async-wrap needs --swift-private-in-same-module.")
+      System.exit(1); return
     }
 
     val yamlOptions = YamlOptions(enableKotlinWarnings = kotlinOutFolder.isDefined)
