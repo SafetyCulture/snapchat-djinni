@@ -411,6 +411,8 @@ Error type (`--swift-error-type <name>`):
   meaningful value for every field, so you declare the conformance:
 
   ```swift
+  import DjinniSupport
+
   extension CruxError: CppExceptionConvertible {
       public init(cppException error: DjinniError) {
           self.init(message: error.errorMessage, code: -1)
