@@ -1,6 +1,7 @@
 #include "runtime_async.hpp"
 #include "runtime_error.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -8,7 +9,7 @@
 
 namespace {
 
-class RuntimeAsyncImpl : public rt::RuntimeAsync {
+class RuntimeAsyncImpl : public rt::RuntimeAsync, public std::enable_shared_from_this<RuntimeAsyncImpl> {
 public:
     int32_t add(int32_t a, int32_t b) override { return a + b; }
 
@@ -46,7 +47,21 @@ public:
         }
     }
 
+    void busy(int32_t millis) override {
+        const int32_t active = ++_active;
+        int32_t seen = _maxActive.load();
+        while (active > seen && !_maxActive.compare_exchange_weak(seen, active)) {}
+        std::this_thread::sleep_for(std::chrono::milliseconds(millis));
+        --_active;
+    }
+
+    int32_t max_concurrent() override { return _maxActive.load(); }
+
+    std::shared_ptr<rt::RuntimeAsync> same() override { return shared_from_this(); }
+
 private:
+    std::atomic<int32_t> _active{0};
+    std::atomic<int32_t> _maxActive{0};
     std::mutex _mutex;
     std::unique_ptr<djinni::Promise<int32_t>> _pending;
 };
@@ -55,4 +70,9 @@ private:
 
 std::shared_ptr<rt::RuntimeAsync> rt::RuntimeAsync::create() {
     return std::make_shared<RuntimeAsyncImpl>();
+}
+
+std::shared_ptr<rt::RuntimeAsync> rt::RuntimeAsync::shared() {
+    static const std::shared_ptr<RuntimeAsyncImpl> instance = std::make_shared<RuntimeAsyncImpl>();
+    return instance;
 }

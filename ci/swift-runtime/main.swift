@@ -117,6 +117,18 @@ func runAsyncTests() async throws {
         check(error.code == 1 && error.message == "division by zero", "typed error of an outcome")
     }
 
+    // One C++ object has one wrapper, and the wrapper serialises the calls to the object.
+    let first = try RuntimeAsync_statics.shared()
+    let second = try RuntimeAsync_statics.shared()
+    check(first === second, "the same C++ object has one wrapper")
+    check(await first.same() === first, "a C++ object that returns itself has one wrapper")
+    await withTaskGroup(of: Void.self) { group in
+        for i in 0..<40 {
+            group.addTask { await (i % 2 == 0 ? first : second).busy(5) }
+        }
+    }
+    check(await first.maxConcurrent() == 1, "calls to one C++ object interleave: \(await first.maxConcurrent())")
+
     // A future maps to async.
     check(try await service.delayed(7, millis: 50) == 7, "async future")
 

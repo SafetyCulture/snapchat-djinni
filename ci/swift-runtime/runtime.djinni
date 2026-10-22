@@ -34,4 +34,8 @@ runtime_async = interface +c {
   delayed(value: i32, millis: i32): future<i32>;
   pending(): future<i32>;
   complete_pending(value: i32);
+  static shared(): runtime_async;
+  same(): runtime_async;
+  busy(millis: i32);
+  max_concurrent(): i32;
 }
