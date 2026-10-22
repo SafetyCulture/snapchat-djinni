@@ -86,8 +86,9 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
                     }
                 }
             } onCancel: {
-                self.cancel(token: token)
+                // Cancel the waiter first. Then a body that is between install and subscribe sees isCancelled.
                 waiter.cancel()
+                self.cancel(token: token)
             }
         }
     }
