@@ -30,7 +30,12 @@ skip() {
 for tool in javac java kotlinc "${CXX:-clang++}"; do
   command -v "$tool" >/dev/null 2>&1 || skip "$tool is not installed"
 done
-java_home="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")}"
+# /usr/bin/javac on macOS is a launcher, so readlink would resolve java_home to /usr
+java_home="${JAVA_HOME:-}"
+if [ -z "$java_home" ] && [ "$(uname -s)" = Darwin ] && [ -x /usr/libexec/java_home ]; then
+  java_home="$(/usr/libexec/java_home 2>/dev/null || true)"
+fi
+java_home="${java_home:-$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")}"
 jni_include="$java_home/include"
 [ -f "$jni_include/jni.h" ] || skip "jni.h is not in $jni_include (set JAVA_HOME)"
 case "$(uname -s)" in

@@ -9,7 +9,7 @@ import re
 import sys
 
 
-def main():
+def main() -> None:
     extern_dir, out = sys.argv[1:3]
     names = set()
     for path in glob.glob(os.path.join(extern_dir, "**", "*.yaml"), recursive=True):

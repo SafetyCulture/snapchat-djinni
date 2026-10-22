@@ -24,7 +24,7 @@ import subprocess
 import sys
 
 
-def class_names(root, package):
+def class_names(root: str, package: str) -> list[str]:
     base = os.path.join(root, *package.split("."))
     names = []
     for path in glob.glob(os.path.join(base, "**", "*.class"), recursive=True):
@@ -36,7 +36,7 @@ def class_names(root, package):
     return sorted(names)
 
 
-def javap(root, names):
+def javap(root: str, names: list[str]) -> dict[str, dict]:
     """Returns {class: {"fields": set, "methods": set}}, where a member is (name, descriptor, flags)."""
     out = subprocess.run(["javap", "-p", "-s", "-cp", root] + names, capture_output=True, text=True, check=True).stdout
     classes, current, pending = {}, None, None
@@ -67,15 +67,15 @@ def javap(root, names):
     return classes
 
 
-def mangle(text):
+def mangle(text: str) -> str:
     return text.replace("_", "_1").replace(".", "_").replace("$", "_00024")
 
 
-def jni_name(cls, method):
+def jni_name(cls: str, method: str) -> str:
     return "Java_" + mangle(cls) + "_" + mangle(method)
 
 
-def jni_lookups(jni_dir):
+def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]]]:
     """Returns the exported function names and the lookups: (class, kind, name, descriptor)."""
     exported, lookups = set(), set()
     for path in sorted(glob.glob(os.path.join(jni_dir, "*"))):
@@ -93,7 +93,7 @@ def jni_lookups(jni_dir):
     return exported, lookups
 
 
-def native_tables(jni_dir):
+def native_tables(jni_dir: str) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
     """Returns ({class: {(name, descriptor)}}, problems) from the JNINativeMethod tables of the generated C++.
 
     The tables are in the files of the types. The registrations are in the module file. So the function
@@ -117,7 +117,7 @@ def native_tables(jni_dir):
     return registrations, problems
 
 
-def main():
+def main() -> None:
     java_dir, kotlin_dir, jni_dir, package = sys.argv[1:5]
     java_names = class_names(java_dir, package)
     kotlin_names = class_names(kotlin_dir, package)

@@ -27,7 +27,7 @@ fun main(args: Array<String>) {
     watchdog.isDaemon = true
     watchdog.start()
 
-    val service = KjService.create()!!
+    val service = requireNotNull(KjService.create()) { "KjService.create() returned null" }
     check(service.add(2, 3) == 5, "add")
 
     val item = KjItem("a", 3, arrayListOf("x", "y"), null)
@@ -52,7 +52,7 @@ fun main(args: Array<String>) {
         service.fail()
         check(false, "a C++ exception must throw")
     } catch (e: RuntimeException) {
-        check(e.message!!.contains("boom"), "exception message: ${e.message}")
+        check(e.message?.contains("boom") == true, "exception message: ${e.message}")
     }
 
     // Many threads call one object.
@@ -75,9 +75,11 @@ fun main(args: Array<String>) {
     check(service.callBoth(service.makeBoth()) == 11, "C++ implementation of +c +j")
 
     // Proxies that are collected release their C++ objects.
-    repeat(2000) { KjService.create() }
+    // Kept until the baseline count is read, so the JVM cannot collect them early
+    val retained = MutableList(2000) { KjService.create() }
     var live = KjService.liveCount()
     check(live > 1000, "live services before GC: $live")
+    retained.clear()
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
     while (live > 10 && System.nanoTime() < deadline) {
         System.gc()
