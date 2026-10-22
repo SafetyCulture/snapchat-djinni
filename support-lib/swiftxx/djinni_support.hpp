@@ -50,6 +50,7 @@ struct InterfaceValue {
     std::shared_ptr<ProtocolWrapper> sptr;
     template<typename T>
     InterfaceValue(const std::shared_ptr<T>& p) : ptr(p), sptr(std::dynamic_pointer_cast<ProtocolWrapper>(p)) {}
+    InterfaceValue(std::shared_ptr<void> p, std::shared_ptr<ProtocolWrapper> s) : ptr(std::move(p)), sptr(std::move(s)) {}
 };
 
 struct CompositeValue;
@@ -115,7 +116,11 @@ struct InterfaceInfo {
 };
 InterfaceInfo getInterfaceInfo(const AnyValue* v);
 
-using WeakSwiftProxy = std::weak_ptr<ProtocolWrapper>;
+// Keeps both pointers because the ProtocolWrapper is a base class, and its address differs from the address of the interface.
+struct WeakSwiftProxy {
+    std::weak_ptr<void> ptr;
+    std::weak_ptr<ProtocolWrapper> sptr;
+};
 WeakSwiftProxy weakify(const AnyValue& v);
 AnyValue strongify(const WeakSwiftProxy& v);
 bool isExpired(const WeakSwiftProxy& v);
@@ -129,6 +134,8 @@ protected:
     ProtocolWrapper(void* ctx, DispatchFunc dispatcher);
     AnyValue callProtocol(int idx, const ParameterList* params);
 public:
+    ProtocolWrapper(const ProtocolWrapper&) = delete;
+    ProtocolWrapper& operator=(const ProtocolWrapper&) = delete;
     virtual ~ProtocolWrapper();
     void* ctx() const { return _ctx; }
 };

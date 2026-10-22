@@ -60,15 +60,15 @@ void setErrorMessage(AnyValue* ret, const std::string& s) {
 
 WeakSwiftProxy weakify(const AnyValue& v) {
     auto i = std::get<InterfaceValue>(v);
-    return i.sptr;
+    return {i.ptr, i.sptr};
 }
 
 AnyValue strongify(const WeakSwiftProxy& v) {
-    return {v.lock()};
+    return {InterfaceValue{v.ptr.lock(), v.sptr.lock()}};
 }
 
 bool isExpired(const WeakSwiftProxy& v) {
-    return v.expired();
+    return v.sptr.expired();
 }
 
 InterfaceInfo getInterfaceInfo(const AnyValue* v) {
