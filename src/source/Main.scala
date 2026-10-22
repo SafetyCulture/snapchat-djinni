@@ -511,9 +511,11 @@ object Main {
       swiftxxBaseLibIncludePrefix,
       idlFile.getName.stripSuffix(".djinni"))
 
+    var failed = false
     try {
       val r = generate(idl, outSpec)
       r.foreach(e => System.err.println("Error generating output: " + e))
+      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined)
     }
     finally {
       if (outFileListWriter.isDefined) {
@@ -522,6 +524,11 @@ object Main {
       if (objcSwiftBridgingHeaderWriter.isDefined) {
         objcSwiftBridgingHeaderWriter.get.close()
       }
+    }
+
+    // A failed generation of the Swift output fails the build.
+    if (failed) {
+      System.exit(1)
     }
 
     System.out.println("Complete!")
