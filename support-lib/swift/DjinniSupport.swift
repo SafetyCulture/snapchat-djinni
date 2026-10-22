@@ -191,6 +191,15 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
     }
 }
 
+// Returns the one wrapper of a C++ object, so that all calls to the object use the queue of that wrapper.
+public func cppWrapperToSwift<W: AnyObject>(_ c: djinni.swift.AnyValue,
+                                            _ newWrapper: () -> W) -> W {
+    return withUnsafePointer(to: c) { p in
+        let info = djinni.swift.getInterfaceInfo(p)
+        return CppProxyCache.shared.getOrCreate(info.cppPointer) { newWrapper() } as! W
+    }
+}
+
 // 1. object is a an existing cpp proxy  : unwrap swift proxy
 // 2. object is a an existing swift proxy: return existing
 // 3. need to create a new proxy         : call newProxyFunc

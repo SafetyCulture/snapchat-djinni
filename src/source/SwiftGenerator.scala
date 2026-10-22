@@ -426,8 +426,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"public enum ${marshal.typename(ident, i)}Marshaller: DjinniSupport.Marshaller").braced {
           w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
           w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {
-            w.wl(s"let proxy: ${marshal.typename(ident, i)}CppProxy = cppInterfaceToSwift(c, { ${marshal.typename(ident, i)}CppProxy(c) })")
-            w.wl(s"return ${marshal.typename(ident, i)}(proxy: proxy)")
+            w.wl(s"return cppWrapperToSwift(c, { ${marshal.typename(ident, i)}(proxy: ${marshal.typename(ident, i)}CppProxy(c)) })")
           }
           w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
             w.wl("return s.proxy.inst")

@@ -95,8 +95,7 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
 public enum SwiftAsyncServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncService
     public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        let proxy: SwiftAsyncServiceCppProxy = cppInterfaceToSwift(c, { SwiftAsyncServiceCppProxy(c) })
-        return SwiftAsyncService(proxy: proxy)
+        return cppWrapperToSwift(c, { SwiftAsyncService(proxy: SwiftAsyncServiceCppProxy(c)) })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
         return s.proxy.inst
