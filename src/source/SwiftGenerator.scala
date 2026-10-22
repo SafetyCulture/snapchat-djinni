@@ -229,6 +229,109 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       }
     })
   }
+  private def paramList(m: Interface.Method): String = {
+    // skip label for the first parameter
+    val first = if (m.params.nonEmpty) "_ " else ""
+    first + m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", ")
+  }
+
+  // The arguments of a call to the proxy, from a closure that runs on another queue.
+  private def proxyArguments(m: Interface.Method): String = {
+    m.params.view.zipWithIndex.map { case (p, index) =>
+      val label = if (index == 0) "" else s"${SwiftIdent.label(idSwift.local(p.ident))}: "
+      val value = if (marshal.isSendableArgument(p.ty.resolved)) idSwift.local(p.ident) else s"_${SwiftIdent.plain(p.ident)}.value"
+      label + value
+    }.mkString(", ")
+  }
+
+  private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
+    val name = marshal.typename(ident, i)
+    writeDoc(w, doc)
+    w.w(s"public final class $name: @unchecked Sendable").braced {
+      w.wl(s"let proxy: ${name}CppProxy")
+      w.wl(s"""private let queue = DispatchQueue(label: "${spec.swiftAsyncWrap.get}.${SwiftIdent.plain(ident)}")""")
+      w.wl
+      w.wl(s"init(proxy: ${name}CppProxy) { self.proxy = proxy }")
+      for (m <- i.methods.filter(!_.static)) {
+        w.wl
+        writeMethodDoc(w, m, idSwift.local)
+        val call = s"proxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
+        w.w(s"public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
+        val ret = m.ret.map(_.resolved)
+        if (ret.exists(marshal.isOutcome)) {
+          w.w(s" throws(${marshal.fqParamType(ret.get.args(1))}) -> ${marshal.fqParamType(ret.get.args.head)}")
+        } else if (ret.exists(marshal.isFuture)) {
+          w.w(s" throws -> ${marshal.fqParamType(ret.get.args.head)}")
+        } else {
+          w.w(s" -> ${marshal.fqReturnType(m.ret)}")
+        }
+        w.braced {
+          for (p <- m.params if !marshal.isSendableArgument(p.ty.resolved)) {
+            w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
+          }
+          if (ret.exists(marshal.isOutcome)) {
+            w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { continuation in").nested {
+              w.wl("queue.async { [proxy] in").nested {
+                w.wl(s"continuation.resume(returning: $call)")
+              }
+              w.wl("}")
+            }
+            w.wl("}")
+            w.wl("return try result.get()")
+          } else if (ret.exists(marshal.isFuture)) {
+            w.wl(s"let future: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { continuation in").nested {
+              w.wl("queue.async { [proxy] in").nested {
+                w.wl(s"continuation.resume(returning: $call)")
+              }
+              w.wl("}")
+            }
+            w.wl("}")
+            w.wl("return try await future.value")
+          } else if (m.ret.isEmpty) {
+            w.wl("await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in").nested {
+              w.wl("queue.async { [proxy] in").nested {
+                w.wl(call)
+                w.wl("continuation.resume()")
+              }
+              w.wl("}")
+            }
+            w.wl("}")
+          } else {
+            w.wl("return await withCheckedContinuation { continuation in").nested {
+              w.wl("queue.async { [proxy] in").nested {
+                w.wl(s"continuation.resume(returning: $call)")
+              }
+              w.wl("}")
+            }
+            w.wl("}")
+          }
+        }
+      }
+    }
+  }
+
+  // The proxy of a wrapped interface does not throw. A C++ exception stops the program.
+  private def writeWrappedCppProxy(w: IndentWriter, ident: Ident, i: Interface) {
+    val name = marshal.typename(ident, i)
+    w.w(s"final class ${name}CppProxy: DjinniSupport.CppProxy, @unchecked Sendable").braced {
+      w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
+      for (m <- i.methods.filter(!_.static)) {
+        w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) -> ${marshal.fqReturnType(m.ret)}").braced {
+          w.wl("var _params = djinni.swift.ParameterList()")
+          w.wl("_params.addValue(inst)")
+          for (p <- m.params) {
+            w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
+          }
+          w.wl(s"var ret = ${spec.swiftxxNamespace}.${name}_${SwiftIdent.plain(m.ident)}(&_params)")
+          w.wl(s"""handleCppErrorsAsFatal(&ret, "$name.${SwiftIdent.plain(m.ident)}")""")
+          if (!m.ret.isEmpty) {
+            w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
+          }
+        }
+      }
+    }
+  }
+
   override def generateInterface(origin: String, ident: Ident, doc: Doc, typeParams: Seq[TypeParam], i: Interface) {
     if (i.ext.objc && !i.ext.swift) {
       System.err.println(s"Warning: interface ${ident.name} has +o but not +sw. The generator makes no Swift proxy for it.")
@@ -241,23 +344,34 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     i.consts.foreach(c => {
       refs.find(c.ty)
     })
+    // The wrapper takes the name of the protocol, so a wrapped interface has no protocol.
+    val wrap = spec.swiftAsyncWrap.isDefined && i.ext.cpp && !i.ext.swift
+    if (wrap) {
+      refs.swiftImports.add("DjinniSupport")
+    }
     writeSwiftFile(ident, origin, refs.swiftImports, w => {
-      writeDoc(w, doc)
-      w.w(s"public protocol ${marshal.typename(ident, i)}: AnyObject, Sendable").braced {
-        for (m <- i.methods.filter(!_.static)) {
-          writeMethodDoc(w, m, idSwift.local)
-          w.w(s"func ${idSwift.method(m.ident)}(")
-          // skip label for the first parameter
-          if (m.params.nonEmpty) { w.w("_ ") }
-          w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
-          w.wl(s") throws -> ${marshal.fqReturnType(m.ret)}")
+      if (wrap) {
+        writeAsyncWrapper(w, ident, doc, i)
+      } else {
+        writeDoc(w, doc)
+        w.w(s"public protocol ${marshal.typename(ident, i)}: AnyObject, Sendable").braced {
+          for (m <- i.methods.filter(!_.static)) {
+            writeMethodDoc(w, m, idSwift.local)
+            w.w(s"func ${idSwift.method(m.ident)}(")
+            // skip label for the first parameter
+            if (m.params.nonEmpty) { w.w("_ ") }
+            w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
+            w.wl(s") throws -> ${marshal.fqReturnType(m.ret)}")
+          }
         }
       }
     })
     writeSwiftPrivateFile(ident, origin, refs.privateImports, w => {
       writeDoc(w, doc)
       // Define CppProxy class if interface is implemented in C++
-      if (i.ext.cpp) {
+      if (wrap) {
+        writeWrappedCppProxy(w, ident, i)
+      } else if (i.ext.cpp) {
         w.w(s"final class ${marshal.typename(ident, i)}CppProxy: DjinniSupport.CppProxy, ${marshal.fqTypename(ident, i)}, @unchecked Sendable").braced {
           w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
           for (m <- i.methods.filter(!_.static)) {
@@ -308,6 +422,18 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.wl
       }
       // Define the marshaller
+      if (wrap) {
+        w.w(s"public enum ${marshal.typename(ident, i)}Marshaller: DjinniSupport.Marshaller").braced {
+          w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
+          w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {
+            w.wl(s"let proxy: ${marshal.typename(ident, i)}CppProxy = cppInterfaceToSwift(c, { ${marshal.typename(ident, i)}CppProxy(c) })")
+            w.wl(s"return ${marshal.typename(ident, i)}(proxy: proxy)")
+          }
+          w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
+            w.wl("return s.proxy.inst")
+          }
+        }
+      } else
       w.w(s"public enum ${marshal.typename(ident, i)}Marshaller: DjinniSupport.Marshaller").braced {
         w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
         w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {

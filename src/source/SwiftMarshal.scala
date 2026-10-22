@@ -62,6 +62,23 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   override def toCpp(tm: MExpr, expr: String): String = s"${helperClass(tm)}.toCpp(${expr})"
   override def fromCpp(tm: MExpr, expr: String): String = s"${helperClass(tm)}.fromCpp(${expr})"
 
+  def isOutcome(tm: MExpr): Boolean = tm.base match {
+    case e: MExtern => e.name == "outcome" && tm.args.size == 2
+    case _ => false
+  }
+
+  def isFuture(tm: MExpr): Boolean = tm.base match {
+    case e: MExtern => e.name == "future" && tm.args.size == 1
+    case _ => false
+  }
+
+  // True when a value of the type can cross into a closure that runs on another queue.
+  def isSendableArgument(tm: MExpr): Boolean = tm.base match {
+    case d: MDef if d.defType == DInterface => true
+    case MOptional | MList | MArray | MSet | MMap => tm.args.forall(isSendableArgument)
+    case _ => isSendable(tm)
+  }
+
   // True when Swift can check that the type is Sendable. False when the generator has to trust it.
   def isSendable(tm: MExpr): Boolean = tm.base match {
     case _: MPrimitive | MString | MDate | MBinary | MVoid => true

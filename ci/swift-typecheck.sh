@@ -63,6 +63,14 @@ out="$work/out"
   --swift-out "$out/swift" --swift-module Crux --swift-private-in-same-module \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix generated/ \
   --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
+# The same IDL with the async wrappers.
+out_async="$work/out-async"
+# shellcheck disable=SC2086
+(cd "$work/fx" && java -jar "$jar" \
+  --cpp-out "$out_async/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h --ident-cpp-method FooBar \
+  --swift-out "$out_async/swift" --swift-module Crux --swift-private-in-same-module \
+  --swift-async-wrap com.safetyculture.crux \
+  --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 
 # Stub modules
 mods="$work/mods"
@@ -73,7 +81,7 @@ python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swif
 # Test-suite cases: the host interface triple, the keyword identifiers, the built-in types and the
 # Sendable cases. The generated files are the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
-case_names=(host idents types sendable legacy future-field)
+case_names=(host idents types sendable legacy future-field async)
 tsmods="$work/ts-mods"
 mkdir -p "$tsmods"
 swiftxx_dirs=()
@@ -111,6 +119,10 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
   echo "SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] Crux with --swift-async-wrap (generated Swift, $(ls "$out_async"/swift/*.swift | wc -l | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
+  echo "SWIFT ASYNC TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done

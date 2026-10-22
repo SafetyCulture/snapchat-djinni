@@ -123,6 +123,7 @@ package object generatorTools {
                    swiftxxIncludeCppPrefix: String,
                    swiftxxBaseLibIncludePrefix: String,
                    swiftLegacyRecords: Boolean,
+                   swiftAsyncWrap: Option[String],
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
