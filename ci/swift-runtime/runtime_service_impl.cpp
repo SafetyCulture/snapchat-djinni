@@ -24,3 +24,8 @@ private:
 std::shared_ptr<rt::RuntimeService> rt::RuntimeService::create() {
     return std::make_shared<RuntimeServiceImpl>();
 }
+
+std::shared_ptr<rt::RuntimeService> rt::RuntimeService::shared() {
+    static const std::shared_ptr<RuntimeServiceImpl> instance = std::make_shared<RuntimeServiceImpl>();
+    return instance;
+}

@@ -403,12 +403,19 @@ exits with 1.
 The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
 `DJFuture`, `Result`, and `NSData` (both data types).
 
-Two scripts check the Swift support. `ci/swift-typecheck.sh` generates Swift for
-the Crux assets IDL, runs `swiftc -typecheck` on it and compiles the C++ glue
-with `-fsyntax-only`. It does the same for the Swift cases of the test suite
-(`test-suite/djinni/swift_*.djinni`). It also runs the typecheck with `-swift-version 6 -strict-concurrency=complete`. `ci/check-byte-identity.sh` proves that a change does not
-alter the output of the other generators. Both read the Crux IDL from
-`MITTI_MOBILE_ROOT`.
+Three scripts check the Swift support. They read the Crux IDL from
+`MITTI_MOBILE_ROOT`, except for the runtime test.
+
+- `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It runs
+  `swiftc -typecheck` in Swift 5 mode and in Swift 6 mode with strict
+  concurrency checking, and compiles the C++ glue with `-fsyntax-only`. It does
+  the same for the Swift cases of the test suite (`test-suite/djinni/swift_*.djinni`).
+- `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
+  of generated interfaces, and runs it in both Swift modes. The program checks
+  calls in both directions, the identity of proxies, the release of host objects,
+  and many threads. A watchdog fails the run when it deadlocks.
+- `ci/check-byte-identity.sh` proves that a change does not alter the output of
+  the other generators.
 
 ## Async interface support
 

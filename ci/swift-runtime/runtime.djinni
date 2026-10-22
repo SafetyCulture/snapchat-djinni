@@ -6,6 +6,7 @@ runtime_listener = interface +o +j +sw {
 
 runtime_service = interface +c +sw {
   static create(): runtime_service;
+  static shared(): runtime_service;
   add(a: i32, b: i32): i32;
   call_listener(listener: runtime_listener, value: i32): i32;
   keep_listener(listener: runtime_listener);

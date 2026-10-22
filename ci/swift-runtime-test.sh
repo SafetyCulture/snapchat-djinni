@@ -2,18 +2,19 @@
 # Builds and runs a Swift program against a C++ implementation of generated interfaces.
 #
 # The program checks the runtime: calls from Swift into C++, calls from C++ into a Swift object,
-# the identity of proxies, and many threads that create and release host objects. macOS only.
+# the identity of proxies, and many threads that create and release proxies and host objects.
+# It runs in Swift 5 mode and in Swift 6 mode. A watchdog fails the program when it deadlocks. macOS only.
 #
 # Environment:
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
-#   SWIFT_FLAGS        swiftc flags (default: -swift-version 5)
+#   RUNS               runs of the program in each mode (default: 3)
 #   KEEP_OUT           set to 1 to keep the work directory
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
 src="$repo_root/ci/swift-runtime"
-swift_flags="${SWIFT_FLAGS:--swift-version 5}"
+runs="${RUNS:-3}"
 cache="${SWIFT_CACHE:-$HOME/.cache/djinni-swift}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/djinni-runtime.XXXXXX")"
 trap '[ "${KEEP_OUT:-0}" = 1 ] && echo "kept: $work" || rm -rf "$work"' EXIT
@@ -71,11 +72,23 @@ for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/Dat
   "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$objs/$(basename "$f").o"
 done
 
-# Swift: DjinniSupport as a static library, then the program
-# shellcheck disable=SC2086
-swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-  -parse-as-library $swift_flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
-# shellcheck disable=SC2086
-swiftc -module-name RuntimeTest $swift_flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift "$src/main.swift" \
-  "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$work/runtime-test"
-"$work/runtime-test"
+# Swift: DjinniSupport as a static library, then the program. Each mode has its own build.
+run_mode() { # <swiftc flags>
+  local flags=$1 build
+  build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
+  mkdir -p "$build"
+  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
+  echo "== [$flags]"
+  # shellcheck disable=SC2086
+  swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
+    -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
+  # shellcheck disable=SC2086
+  swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out"/swift/*.swift "$src/main.swift" \
+    "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test"
+  local i
+  for i in $(seq 1 "$runs"); do
+    "$build/runtime-test"
+  done
+}
+run_mode "-swift-version 5"
+run_mode "-swift-version 6 -strict-concurrency=complete"
