@@ -1,19 +1,3 @@
-/**
-  * Copyright 2024 Snap, Inc.
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  *    http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
-
 package djinni
 
 import djinni.ast._
@@ -32,12 +16,24 @@ object SwiftErrorType {
       m <- i.methods if !m.static
       problem <- methodProblem(marshal, td.ident.name, m, name)
     } yield problem
-    if (problems.isEmpty) None else Some(problems.mkString("\n"))
+    val missing = if (idl.exists(td => isErrorRecord(spec, td, name))) Seq() else Seq(s"--swift-error-type $name: no record has this Swift name")
+    val all = missing ++ problems
+    if (all.isEmpty) None else Some(all.mkString("\n"))
+  }
+
+  private def isErrorRecord(spec: Spec, td: TypeDecl, name: String): Boolean = td match {
+    case _: InternTypeDecl => td.body.isInstanceOf[Record] && spec.swiftIdentStyle.ty(td.ident.name) == name
+    case e: ExternTypeDecl => e.body.isInstanceOf[Record] && swiftTypename(e).contains(name)
+    case _ => false
+  }
+
+  private def swiftTypename(e: ExternTypeDecl): Option[String] = e.properties.get("swift") match {
+    case Some(block: java.util.Map[_, _]) => Option(block.get("typename")).map(_.toString)
+    case _ => None
   }
 
   private def methodProblem(marshal: SwiftMarshal, interface: String, m: Interface.Method, name: String): Option[String] = {
     val where = s"interface $interface, method ${m.ident.name}"
-    // An outcome, or a future of an outcome.
     val outcome = m.ret.map(_.resolved).flatMap { tm =>
       if (marshal.isOutcome(tm)) Some(tm)
       else if (marshal.isFuture(tm) && marshal.isOutcome(tm.args.head)) Some(tm.args.head)
@@ -45,9 +41,11 @@ object SwiftErrorType {
     }
     outcome match {
       case None => Some(s"$where: --swift-error-type needs a return type outcome<T, $name>")
-      case Some(tm) if !marshal.isErrorRecord(tm.args(1), name) =>
+      case Some(tm) if marshal.isErrorRecord(tm.args(1), name) => None
+      case Some(tm) if marshal.hasErrorName(tm.args(1), name) =>
+        Some(s"$where: the error type $name is not a record")
+      case Some(tm) =>
         Some(s"$where: the error type of the outcome is ${marshal.typename(tm.args(1))}, but --swift-error-type is $name")
-      case _ => None
     }
   }
 }
