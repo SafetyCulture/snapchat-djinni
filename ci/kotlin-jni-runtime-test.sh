@@ -15,6 +15,7 @@
 #   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for the suspend mode (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
+#   CXX, CXXFLAGS      the C++ compiler (default: clang++) and extra flags for it
 #   KEEP_OUT           set to 1 to keep the work directory
 set -euo pipefail
 
@@ -80,12 +81,13 @@ generate() { # <kotlin out> [generator flags]
 generate "$out/kotlin"
 
 # The JNI library: the support library, the generated JNI code and the C++ implementation.
-echo "== clang++ ($(ls "$out"/jni/*.cpp | wc -l | tr -d ' ') generated JNI files)"
+echo "== ${CXX:-clang++} ($(ls "$out"/jni/*.cpp | wc -l | tr -d ' ') generated JNI files)"
 mkdir -p "$work/objs"
 cxxflags=(-std=c++17 -fPIC -Wno-deprecated-declarations -DDATAREF_JNI=1 -I "$jni_include" -I "$jni_platform"
   -I "$out/cpp" -I "$out/jni" -I "$repo_root/support-lib/jni" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib")
 for f in "$repo_root"/support-lib/jni/*.cpp "$out"/jni/*.cpp "$src/kj_service_impl.cpp"; do
-  "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$work/objs/$(basename "$f").o"
+  # shellcheck disable=SC2086
+  "${CXX:-clang++}" "${cxxflags[@]}" ${CXXFLAGS:-} -c "$f" -o "$work/objs/$(basename "$f").o"
 done
 lib="$work/libkj.$lib_ext"
 "${CXX:-clang++}" -shared -o "$lib" "$work"/objs/*.o

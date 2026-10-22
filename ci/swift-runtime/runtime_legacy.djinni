@@ -1,0 +1,9 @@
+legacy_point = record {
+  x: i32;
+  y: i32;
+}
+
+legacy_service = interface +c {
+  static create(): legacy_service;
+  echo(point: legacy_point): legacy_point;
+}

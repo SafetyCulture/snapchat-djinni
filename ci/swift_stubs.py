@@ -58,8 +58,9 @@ def cxx_header(out: str, *swiftxx_dirs: str) -> None:
             decls.append(
                 f"struct {proxy} {{ static djinni::swift::AnyValue make(void* instance, djinni::swift::DispatchFunc dispatcher); }};"
             )
+    namespace = os.environ.get("SWIFTXX_NAMESPACE", "djinni_generated")
     with open(out, "w") as f:
-        f.write('#pragma once\n#include "djinni_support.hpp"\n\nnamespace djinni_generated {\n')
+        f.write(f'#pragma once\n#include "djinni_support.hpp"\n\nnamespace {namespace} {{\n')
         f.write("\n".join(decls) + "\n}\n")
 
 

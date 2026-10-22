@@ -128,6 +128,13 @@ func runAsyncTests() async throws {
         check(error.code == 7 && error.message == "division by zero", "CruxError from the wrapper")
     }
 
+    // A legacy record (--swift-legacy-records) crosses the C++ boundary in both directions.
+    let legacy = try LegacyService_statics.create()
+    var input = LegacyPoint(x: 3, y: -4)
+    input.y = 5
+    let point = await legacy.echo(input)
+    check(point.x == 3 && point.y == 5, "legacy record round trip")
+
     // One C++ object has one wrapper, and the wrapper serialises the calls to the object.
     let first = try RuntimeAsync_statics.shared()
     let second = try RuntimeAsync_statics.shared()

@@ -9,6 +9,7 @@
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
+#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux assets IDL (pass 1), which needs MITTI_MOBILE_ROOT
 #   KOTLIN_LIB         directory of kotlinc with parcelize-compiler.jar (default: derived from kotlinc)
 #   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for --kotlin-suspend-wrap (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
@@ -39,9 +40,12 @@ if [ -z "$coroutines" ]; then
 fi
 [ -n "$coroutines" ] && [ -f "$coroutines" ] || { echo "kotlinx-coroutines-core-jvm.jar not found, set KOTLINX_COROUTINES_JAR" >&2; exit 2; }
 echo "== coroutines: $coroutines"
-for d in "$domain_dir" "$extern_src"; do
-  [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
-done
+check_crux="${KOTLIN_JNI_CHECK_CRUX:-1}"
+if [ "$check_crux" != 0 ]; then
+  for d in "$domain_dir" "$extern_src"; do
+    [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
+  done
+fi
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/djinni-kotlin-jni.XXXXXX")"
 trap '[ "${KEEP_OUT:-0}" = 1 ] && echo "kept: $work" || rm -rf "$work"' EXIT
@@ -74,24 +78,26 @@ compile_and_compare() {
 }
 
 # 1. Crux assets IDL, with the flags of crux/tools/generate_code.sh. The names of the fields are the Java names (mFooBar).
-package=com.safetyculture.crux.domain
-python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx" "$repo_root" "common.djinni,media.djinni,assets.djinni"
-(cd "$work/fx" && java -jar "$jar" \
-  --java-out "$work/crux/java" --java-package "$package" --ident-java-field mFooBar \
-  --cpp-out "$work/crux/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
-  --java-nonnull-annotation androidx.annotation.NonNull \
-  --jni-out "$work/crux/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar --ident-cpp-method FooBar \
-  --jni-include-cpp-prefix generated/ --java-implement-android-os-parcelable true \
-  --kotlin-jni-out "$work/crux/kotlin" --kotlin-jni-package "$package" \
-  --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
-compile_and_compare crux "$package" "$work/fx/extern"
+if [ "$check_crux" != 0 ]; then
+  package=com.safetyculture.crux.domain
+  python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx" "$repo_root" "common.djinni,media.djinni,assets.djinni"
+  (cd "$work/fx" && java -jar "$jar" \
+    --java-out "$work/crux/java" --java-package "$package" --ident-java-field mFooBar \
+    --cpp-out "$work/crux/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
+    --java-nonnull-annotation androidx.annotation.NonNull \
+    --jni-out "$work/crux/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar --ident-cpp-method FooBar \
+    --jni-include-cpp-prefix generated/ --java-implement-android-os-parcelable true \
+    --kotlin-jni-out "$work/crux/kotlin" --kotlin-jni-package "$package" \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
+  compile_and_compare crux "$package" "$work/fx/extern"
 
-# The Kotlin property has the Java field name, and the JNI code looks up that name.
-if ! grep -q "val mAsset:" "$work/crux/kotlin/AssetResult.kt" || ! grep -q 'jniGetFieldID(clazz.get(), "mAsset"' "$work/crux/jni"/NativeAssetResult.*; then
-  echo "FAIL: the Kotlin property of a record has not the name of the Java field" >&2
-  exit 1
+  # The Kotlin property has the Java field name, and the JNI code looks up that name.
+  if ! grep -q "val mAsset:" "$work/crux/kotlin/AssetResult.kt" || ! grep -q 'jniGetFieldID(clazz.get(), "mAsset"' "$work/crux/jni"/NativeAssetResult.*; then
+    echo "FAIL: the Kotlin property of a record has not the name of the Java field" >&2
+    exit 1
+  fi
+  echo "record field: Kotlin 'val mAsset' and JNI GetFieldID \"mAsset\""
 fi
-echo "record field: Kotlin 'val mAsset' and JNI GetFieldID \"mAsset\""
 
 # 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh. The second run registers the natives in JNI_OnLoad.
 package=com.dropbox.djinni.test
@@ -111,15 +117,17 @@ for mode in suite:false suite-onload:true; do
   compile_and_compare "$name" "$package" ""
 done
 
-# 3. Suspend functions. The natives, the lookups and the fields must not change.
-name=suspend
-mkdir -p "$work/$name"
-(cd "$repo_root/test-suite" && java -jar "$jar" \
-  --java-out "$work/$name/java" --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" --kotlin-suspend-wrap \
-  --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
-  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
-  --cpp-out "$work/$name/cpp" --cpp-namespace testsuite \
-  --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
-  --idl djinni/kotlin_suspend.djinni)
-compile_and_compare "$name" "$package" ""
+# 3. Suspend functions, also with the registration in JNI_OnLoad. The natives, the lookups and the fields must not change.
+for mode in suspend:false suspend-onload:true; do
+  name="${mode%%:*}"
+  mkdir -p "$work/$name"
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --java-out "$work/$name/java" --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" --kotlin-suspend-wrap \
+    --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
+    --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+    --cpp-out "$work/$name/cpp" --cpp-namespace testsuite \
+    --jni-use-on-load-initializer "${mode##*:}" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+    --idl djinni/kotlin_suspend.djinni)
+  compile_and_compare "$name" "$package" ""
+done
 echo "KOTLIN JNI CHECK OK"

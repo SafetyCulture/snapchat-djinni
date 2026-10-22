@@ -87,6 +87,13 @@ swiftxx_dirs=()
 for c in "${case_names[@]}"; do swiftxx_dirs+=("$cases/$c/swiftxx"); done
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$tsmods/TestSuiteCxx.hpp" "${swiftxx_dirs[@]}"
 
+# The case with non-default --swiftxx-* flags has its own stub modules. Its base library module is
+# OptionsSupport, which re-exports the support headers, and its glue namespace is djinni_options.
+optmods="$work/opt-mods"
+mkdir -p "$optmods"
+SWIFTXX_NAMESPACE=djinni_options python3 "$repo_root/ci/swift_stubs.py" cxx-header "$optmods/TestSuiteCxx.hpp" "$cases/options/swiftxx"
+printf '#pragma once\n#include "djinni_support.hpp"\n' >"$optmods/OptionsSupport.hpp"
+
 support_module() {
   cat <<EOF
 module DjinniSupportCxx {
@@ -101,6 +108,20 @@ EOF
 }
 { support_module; printf 'module CruxCxx {\n  header "%s/CruxCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$mods"; } >"$mods/module.modulemap"
 { support_module; printf 'module TestSuiteCxx {\n  header "%s/TestSuiteCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$tsmods"; } >"$tsmods/module.modulemap"
+{
+  support_module
+  printf 'module OptionsSupport {\n  header "%s/OptionsSupport.hpp"\n  requires cplusplus\n  export *\n}\n' "$optmods"
+  printf 'module TestSuiteCxx {\n  header "%s/TestSuiteCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$optmods"
+} >"$optmods/module.modulemap"
+
+# Cases with the same type names as another case have their own stub modules.
+single_case_mods() { # <module dir> <case>
+  mkdir -p "$1"
+  python3 "$repo_root/ci/swift_stubs.py" cxx-header "$1/TestSuiteCxx.hpp" "$cases/$2/swiftxx"
+  { support_module; printf 'module TestSuiteCxx {\n  header "%s/TestSuiteCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$1"; } >"$1/module.modulemap"
+}
+single_case_mods "$work/error-legacy-mods" error-legacy
+single_case_mods "$work/separate-mods" separate-module
 
 # One pass compiles DjinniSupport and typechecks the generated Swift with the given swiftc flags.
 swift_pass() { # <swiftc flags>
@@ -128,6 +149,27 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite options (--swiftxx-namespace, --swiftxx-include-prefix, --swiftxx-base-lib-*)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$optmods" "$cases/options"/swift/*.swift
+  echo "TEST-SUITE OPTIONS SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite error-legacy (--swift-error-type, --swift-legacy-records, --swift-async-wrap)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift
+  echo "TEST-SUITE ERROR-LEGACY SWIFT TYPECHECK OK [$flags]"
+  # Without --swift-private-in-same-module the public files and the private files are two modules.
+  echo "== [$flags] TestSuite separate-module"
+  local sm="$build/separate" public=() private=() f
+  mkdir -p "$sm"
+  for f in "$cases/separate-module"/swift/*.swift; do
+    case "$f" in *+Private.swift) private+=("$f") ;; *) public+=("$f") ;; esac
+  done
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$sm/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/separate-mods" "${public[@]}"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/separate-mods" -I "$sm" "${private[@]}"
+  echo "TEST-SUITE SEPARATE-MODULE SWIFT TYPECHECK OK [$flags]"
 }
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
@@ -146,6 +188,26 @@ for c in "${case_names[@]}"; do
   done
 done
 echo "TEST-SUITE C++ GLUE SYNTAX OK"
+
+# Each include prefix of the options case is a directory on the include path.
+inc="$work/options-inc"
+mkdir -p "$inc"
+cp -R "$cases/options/swiftxx" "$inc/options"
+cp -R "$cases/options/cpp" "$inc/cpp"
+cp -R "$repo_root/support-lib/swiftxx" "$inc/support"
+for f in "$inc"/options/*.cpp; do
+  "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
+    -I "$inc" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib" "$f"
+done
+echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
+
+for c in error-legacy separate-module; do
+  for f in "$cases/$c"/swiftxx/*.cpp; do
+    "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
+      -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
+  done
+done
+echo "TEST-SUITE ERROR-LEGACY AND SEPARATE-MODULE C++ GLUE SYNTAX OK"
 
 echo "== Runtime C++ (support-lib/swiftxx, objc/DataRef_objc.cpp): clang++ -fsyntax-only"
 for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp"; do
