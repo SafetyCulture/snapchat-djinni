@@ -99,7 +99,6 @@ cc_library(
     defines = ["DATAREF_OBJC=1"],
     visibility = ["//visibility:public"],
     deps = [":djinni-support-common"],
-    alwayslink = 1,
 )
 
 cc_library(
