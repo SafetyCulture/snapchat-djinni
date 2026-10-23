@@ -189,7 +189,7 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
             return inst
         }
         // 3. Create new proxy and store a weak reference in CppProxyCache
-        guard let proxy = CppProxyCache.shared.getOrCreate(info.cppPointer, { try newProxyFunc() as AnyObject }) as? I else { return try newProxyFunc() }
+        guard let proxy = try CppProxyCache.shared.getOrCreate(info.cppPointer, { try newProxyFunc() as AnyObject }) as? I else { return try newProxyFunc() }
         return proxy
     }
 }
@@ -199,7 +199,7 @@ public func cppWrapperToSwift<W: AnyObject>(_ c: djinni.swift.AnyValue,
                                             _ newWrapper: () throws -> W) throws -> W {
     return try withUnsafePointer(to: c) { p in
         let info = djinni.swift.getInterfaceInfo(p)
-        guard let wrapper = CppProxyCache.shared.getOrCreate(info.cppPointer, { try newWrapper() }) as? W else { return try newWrapper() }
+        guard let wrapper = try CppProxyCache.shared.getOrCreate(info.cppPointer, { try newWrapper() }) as? W else { return try newWrapper() }
         return wrapper
     }
 }
