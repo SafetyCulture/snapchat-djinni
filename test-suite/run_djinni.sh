@@ -349,6 +349,31 @@ swift_types_relative="djinni/swift_types.djinni"
     --idl "$swift_types_relative" \
 )
 
+# A protobuf message without a swift block must fail the run before any file is written.
+swift_protobuf_negative_relative="djinni/swift_protobuf_negative.djinni"
+for swift_flag in --swift-out --swiftxx-out; do
+    negative_out="$temp_out/swift-protobuf-negative-${swift_flag#--}"
+    rm -rf "$negative_out"
+    set +e
+    (cd "$base_dir" && \
+    "$base_dir/../src/run-assume-built" \
+        --cpp-out "$negative_out/cpp" \
+        --cpp-namespace testsuite \
+        "$swift_flag" "$negative_out/swift" \
+        --swift-module TestSuite \
+        --idl "$swift_protobuf_negative_relative") > "$negative_out.log" 2>&1
+    negative_status=$?
+    set -e
+    if [ "$negative_status" -ne 1 ] || \
+       ! grep -q "Protobuf message Person has no 'swift' block in its manifest, but Swift output is enabled." "$negative_out.log" || \
+       [ -e "$negative_out" ]; then
+        echo "The generator accepted a protobuf message without a swift block, or wrote files ($swift_flag, exit $negative_status)." 1>&2
+        cat "$negative_out.log" 1>&2
+        exit 1
+    fi
+    rm -f "$negative_out.log"
+done
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
