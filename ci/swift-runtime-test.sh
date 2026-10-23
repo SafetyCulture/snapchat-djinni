@@ -9,6 +9,7 @@
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
 #   RUNS               runs of the program in each mode (default: 3)
+#   RUNTIME_TIMEOUT    seconds after which a run of the program is killed (default: 300)
 #   KEEP_OUT           set to 1 to keep the work directory
 set -euo pipefail
 
@@ -123,7 +124,15 @@ run_mode() { # <swiftc flags>
     "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test"
   local i
   for i in $(seq 1 "$runs"); do
-    "$build/runtime-test"
+    # The program has a watchdog of its own. This guard kills it from outside when even the watchdog cannot run.
+    "$build/runtime-test" &
+    local pid=$! guard status=0
+    ( sleep "${RUNTIME_TIMEOUT:-300}"; echo "FAIL: the runtime test did not end in ${RUNTIME_TIMEOUT:-300} s" >&2; kill -9 "$pid" 2>/dev/null ) &
+    guard=$!
+    wait "$pid" || status=$?
+    kill "$guard" 2>/dev/null || true
+    wait "$guard" 2>/dev/null || true
+    [ "$status" -eq 0 ] || exit "$status"
   done
 }
 run_mode "-swift-version 5"
