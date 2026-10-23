@@ -16,6 +16,9 @@ class SwiftOptionsService {
 public:
     virtual ~SwiftOptionsService() = default;
 
+    /** An interface constant is emitted on the _statics class */
+    static constexpr int32_t MAX_COUNT = 64;
+
     virtual int32_t compute(int32_t value) = 0;
 
     virtual ::djinni::Future<SwiftOptionsItem> load(const std::string & id) = 0;

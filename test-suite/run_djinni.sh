@@ -836,7 +836,6 @@ fi
     --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-parceler-name/kotlin" \
     --java-package $java_package \
     --java-implement-android-os-parcelable true \
-    --idl "djinni/kotlin_extern.djinni" \
     --idl "djinni/kotlin_extern_parceler_name.djinni" \
     --idl-include-path "djinni/vendor" \
 )
@@ -867,8 +866,8 @@ fi
     --idl "djinni/kotlin_extern_array.djinni" \
     --idl-include-path "djinni/vendor" \
 )
-if ! grep -qF -- "val mBytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
-   ! grep -qF -- "val mKeyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
+if ! grep -qF -- "val bytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
+   ! grep -qF -- "val keyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
     echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2
     exit 1
 fi

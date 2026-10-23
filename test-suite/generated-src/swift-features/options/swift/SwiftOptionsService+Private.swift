@@ -46,6 +46,8 @@ public enum SwiftOptionsServiceMarshaller: DjinniSupport.Marshaller {
     }
 }
 public class SwiftOptionsService_statics: @unchecked Sendable {
+    /** An interface constant is emitted on the _statics class */
+    public static let maxCount: Int32 = 64
     public static func create() throws -> TestSuite.SwiftOptionsService {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_options.SwiftOptionsService_create(&_params)
