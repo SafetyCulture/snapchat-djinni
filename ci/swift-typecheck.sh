@@ -26,7 +26,7 @@ domain_dir="$mitti_root/crux/djinni/domain"
 extern_src="$mitti_root/crux/deps/APISchema/_generated/crux/cpp"
 idl_files="${IDL_FILES:-common.djinni,media.djinni,assets.djinni}"
 cache="${SWIFT_CACHE:-$HOME/.cache/djinni-swift}"
-protobuf_tag=1.28.2
+protobuf_tag=1.38.1
 
 for d in "$domain_dir" "$extern_src"; do
   [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
@@ -48,10 +48,11 @@ fi
 spb_mod="$cache/spb-$protobuf_tag-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/SwiftProtobuf.swiftmodule" ]; then
   mkdir -p "$cache"
-  [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch "$protobuf_tag" https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
+  # The sources of one tag stay in their own directory; a tag bump never reuses stale sources
+  [ -d "$cache/swift-protobuf-$protobuf_tag" ] || git clone --quiet --depth 1 --branch "$protobuf_tag" https://github.com/apple/swift-protobuf "$cache/swift-protobuf-$protobuf_tag"
   mkdir -p "$spb_mod"
   swiftc -emit-module -emit-module-path "$spb_mod/SwiftProtobuf.swiftmodule" -module-name SwiftProtobuf \
-    -parse-as-library -swift-version 5 -wmo -Onone "$cache"/swift-protobuf/Sources/SwiftProtobuf/*.swift
+    -parse-as-library -swift-version 5 -wmo -Onone "$cache"/swift-protobuf-$protobuf_tag/Sources/SwiftProtobuf/*.swift
 fi
 
 # Fixtures and generation
@@ -190,7 +191,7 @@ swift_pass "-swift-version 6 -strict-concurrency=complete"
 echo "== C++ glue ($(ls "$out"/swiftxx/*.cc | wc -l | tr -d ' ') files): ${CXX:-clang++} -std=c++20 -fsyntax-only"
 python3 "$repo_root/ci/swift_stubs.py" cxx-stubs "$work/fx/extern" "$work/cxxstubs"
 ls "$out"/swiftxx/*.cc | xargs -P 4 -I{} "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
-  -I "$out/cpp" -I "$out/cpp/generated" -I "$work/cxxstubs" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" {}
+  -I "$out/cpp" -I "$out/cpp/generated" -I "$work/cxxstubs" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" {}
 echo "C++ GLUE SYNTAX OK"
 
 for c in "${case_names[@]}"; do
