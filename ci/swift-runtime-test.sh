@@ -28,7 +28,7 @@ else
 fi
 
 # SwiftProtobuf is a dependency of DjinniSupport. It is built once per compiler.
-spb_mod="$cache/spb-1.28.2-$(swiftc --version | md5 -q)"
+spb_mod="$cache/spb-1.28.2-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/libSwiftProtobuf.a" ]; then
   mkdir -p "$cache" "$spb_mod"
   [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch 1.28.2 https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
