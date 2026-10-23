@@ -29,7 +29,9 @@ import java.util.Date
 import java.util.EnumSet
 import java.util.HashMap
 import java.util.HashSet
+import java.lang.ref.WeakReference
 import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
 
 private fun check(condition: Boolean, message: String) {
     if (!condition) {
@@ -147,6 +149,14 @@ private class JavaListenerImpl : JavaListener() {
     override fun maybeListener(value: JavaListener?): JavaListener? = value
 }
 
+// The wrapper cache holds the source only weakly.
+private fun weakListenerAfterConversion(): WeakReference<KotlinListener> {
+    val listener = KotlinListenerImpl()
+    val weak = WeakReference<KotlinListener>(listener)
+    listener.toJava()
+    return weak
+}
+
 private class KotlinBothImpl : KotlinBoth() {
     override fun ping(leaf: KotlinLeaf): KotlinLeaf = leaf
 }
@@ -244,6 +254,15 @@ fun main() {
     check(javaListener.listeners(ArrayList(listOf(javaListener)))[0] === javaListener, "interface list")
     check(javaListener.maybeListener(null) == null, "interface optional null")
     check(javaListener.maybeListener(javaListener) === javaListener, "interface optional")
+
+    // The cache releases a source that nothing else holds.
+    val weakListener = weakListenerAfterConversion()
+    val weakDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
+    while (weakListener.get() != null && System.nanoTime() < weakDeadline) {
+        System.gc()
+        Thread.sleep(50)
+    }
+    check(weakListener.get() == null, "the wrapper cache releases the source")
 
     // A Java +j implementation behind the Kotlin abstract class.
     val javaImpl = JavaListenerImpl()
