@@ -1,0 +1,25 @@
+# Identifiers that are keywords in Swift.
+
+# Enum cases that need backticks.
+swift_kind = enum {
+  internal;
+  default;
+  plain;
+}
+
+# A record named like a Swift metatype member, with fields that are keywords.
+type = record {
+  type: string;
+  in: bool;
+  protocol: optional<string>;
+  self: i32;
+  inout: i32;
+  kind: swift_kind;
+}
+
+swift_ident_service = interface +c {
+  # A method that is a Swift keyword and arguments that are keywords.
+  init(is: i32, internal: string): type;
+  deinit();
+  static create(): swift_ident_service;
+}

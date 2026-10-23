@@ -33,6 +33,15 @@ wasm:
 ts:
   typename: 'Uint8Array'
   module: ''
+swift:
+  typename: 'NSData'
+  module: 'Foundation'
+  generic: false
+  translator: 'DataViewMarshaller'
+  translator.module: 'DjinniSupport'
+swiftxx:
+  translator: '::djinni::swift::DataViewAdaptor'
+  header: '"Data_swift.hpp"'
 kotlin:
   typename: 'com.safetyculture.djinni.support.ByteBuffer'
   isProtobufType: false

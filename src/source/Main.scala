@@ -109,6 +109,18 @@ object Main {
     var yamlOutFolder: Option[File] = None
     var yamlOutFile: Option[String] = None
     var yamlPrefix: String = ""
+    var swiftOutFolder: Option[File] = None
+    var swiftModule: String = "Module"
+    var swiftPrivateInSameModule: Boolean = false
+    var swiftIdentStyle = IdentStyle.swiftDefault
+    var swiftxxOutFolder: Option[File] = None
+    var swiftxxNamespace: String = "djinni_generated"
+    var swiftxxIncludePrefix: String = ""
+    var swiftxxBaseLibModule: String = "DjinniSupportCxx"
+    var swiftxxClassIdentStyleOptional: Option[IdentConverter] = None
+    var swiftxxFileIdentStyleOptional: Option[IdentConverter] = None
+    var swiftxxIncludeCppPrefix: String = ""
+    var swiftxxBaseLibIncludePrefix: String = ""
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -266,6 +278,25 @@ object Main {
       opt[String]("ts-module").valueName("<name>").foreach(tsModule = _)
         .text("TypeScript declaration module name (default: \"module\").")
       note("")
+      opt[File]("swift-out").valueName("<out-folder>").foreach(x => swiftOutFolder = Some(x))
+        .text("The output folder for Swift files (Generator disabled if unspecified).")
+      opt[String]("swift-module").valueName("<name>").foreach(swiftModule = _)
+        .text("Swift module name (default: \"Module\").")
+      opt[Unit]("swift-private-in-same-module").foreach(_ => swiftPrivateInSameModule = true)
+        .text("Omit 'import <module>' in +Private Swift files (use when those files are compiled in the same module to avoid 'ignoring import' warnings).")
+      opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
+        .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
+      opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
+        .text("The C++ namespace for Swift/C++ interop files (default: \"djinni_generated\").")
+      opt[String]("swiftxx-include-prefix").valueName("<prefix>").foreach(swiftxxIncludePrefix = _)
+        .text("The prefix for #includes of Swift C++ header files.")
+      opt[String]("swiftxx-include-cpp-prefix").valueName("<prefix>").foreach(swiftxxIncludeCppPrefix = _)
+        .text("The prefix for #includes of the main header files from Swift C++ files.")
+      opt[String]("swiftxx-base-lib-module").valueName("<name>").foreach(swiftxxBaseLibModule = _)
+        .text("The Swift module that exposes the C++ support library (default: \"DjinniSupportCxx\").")
+      opt[String]("swiftxx-base-lib-include-prefix").valueName("...").foreach(x => swiftxxBaseLibIncludePrefix = x)
+        .text("The Swift C++ base library's include path, relative to the Swift C++ classes.")
+      note("")
       opt[File]("yaml-out").valueName("<out-folder>").foreach(x => yamlOutFolder = Some(x))
         .text("The output folder for YAML files (Generator disabled if unspecified).")
       opt[String]("yaml-out-file").valueName("<out-file>").foreach(x => yamlOutFile = Some(x))
@@ -302,6 +333,8 @@ object Main {
       identStyle("ident-objc-local",      c => { objcIdentStyle = objcIdentStyle.copy(local = c) })
       identStyle("ident-objc-const",      c => { objcIdentStyle = objcIdentStyle.copy(const = c) })
       identStyle("ident-objc-file",       c => { objcFileIdentStyleOptional = Some(c) })
+      identStyle("ident-swiftxx-class",   c => { swiftxxClassIdentStyleOptional = Some(c) })
+      identStyle("ident-swiftxx-file",    c => { swiftxxFileIdentStyleOptional = Some(c) })
     }
 
     if (!argParser.parse(args)) {
@@ -323,6 +356,9 @@ object Main {
     if (cppTypeEnumIdentStyle != null) {
       cppIdentStyle = cppIdentStyle.copy(enumType = cppTypeEnumIdentStyle)
     }
+
+    val swiftxxClassIdentStyle = swiftxxClassIdentStyleOptional.getOrElse(cppIdentStyle.ty)
+    val swiftxxFileIdentStyle = swiftxxFileIdentStyleOptional.getOrElse(cppFileIdentStyle)
 
     // Parse IDL file.
     System.out.println("Parsing...")
@@ -461,11 +497,25 @@ object Main {
       yamlOutFolder,
       yamlOutFile,
       yamlPrefix,
+      swiftOutFolder,
+      swiftIdentStyle,
+      swiftModule,
+      swiftPrivateInSameModule,
+      swiftxxOutFolder,
+      swiftxxNamespace,
+      swiftxxIncludePrefix,
+      swiftxxBaseLibModule,
+      swiftxxClassIdentStyle,
+      swiftxxFileIdentStyle,
+      swiftxxIncludeCppPrefix,
+      swiftxxBaseLibIncludePrefix,
       idlFile.getName.stripSuffix(".djinni"))
 
+    var failed = false
     try {
       val r = generate(idl, outSpec)
       r.foreach(e => System.err.println("Error generating output: " + e))
+      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined)
     }
     finally {
       if (outFileListWriter.isDefined) {
@@ -474,6 +524,11 @@ object Main {
       if (objcSwiftBridgingHeaderWriter.isDefined) {
         objcSwiftBridgingHeaderWriter.get.close()
       }
+    }
+
+    // A failed generation of the Swift output fails the build.
+    if (failed) {
+      System.exit(1)
     }
 
     System.out.println("Complete!")

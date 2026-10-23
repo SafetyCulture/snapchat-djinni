@@ -317,6 +317,81 @@ The command to run Wasm/TypeScript unit tests is `bazel run
 //test-suite:server-ts`. You will need the `tsc` compiler and the `browserify`
 tool to run these tests.
 
+## Swift support
+
+Djinni generates Swift that calls C++ directly, without Objective-C. The Swift
+code uses the C++ interoperability mode of the Swift compiler.
+
+For Swift, Djinni generates:
+- Swift protocols, structs and enums (`--swift-out`)
+- Swift files named `<Type>+Private.swift` with the marshalling code
+- C++ glue code that the Swift code calls (`--swiftxx-out`)
+
+The runtime is in `support-lib/swift` (module `DjinniSupport`) and
+`support-lib/swiftxx` (C++ module `DjinniSupportCxx`). `support-lib/apple` is a
+separate Bazel module that supplies SwiftProtobuf.
+
+Command line switches:
+
+- `--swift-out`: Swift output folder
+- `--swift-module`: Swift module name (default: `Module`)
+- `--swift-private-in-same-module`: omit `import <module>` in the `+Private`
+  files, for use when all generated Swift files are in one module
+- `--swiftxx-out`: output folder for the C++ glue code
+- `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated`)
+- `--swiftxx-include-prefix`: path prefix for includes of glue headers
+- `--swiftxx-include-cpp-prefix`: path prefix for includes of the main C++ headers
+- `--swiftxx-base-lib-module`: Swift module that exposes the support library to
+  C++ (default: `DjinniSupportCxx`)
+- `--swiftxx-base-lib-include-prefix`: path prefix for includes of the support library
+- `--ident-swiftxx-class`, `--ident-swiftxx-file`: identifier styles of the glue code
+
+IDL changes:
+
+- `+sw` marks a type or a method as implemented in Swift. An interface with no
+  language marks has all languages, `+sw` included. An interface can have
+  `+o +j +sw`. Then the host implements it in Objective-C, Java and Swift, and
+  the generator makes the three host proxies.
+- If an interface has `+o` but not `+sw`, the generator prints one warning for
+  it with `--swift-out`: `Warning: interface X has +o but not +sw. The generator
+  makes no Swift proxy for it.`
+- `deriving(hashable, sendable, codable, error)` adds the matching Swift conformances.
+- A Swift identifier that is a Swift keyword gets backticks, for example
+  `` `internal` ``. These names get a trailing `_` because Swift cannot escape
+  them in member position: `Type`, `Protocol`, `self`, `Self`, `init`, `deinit`,
+  `subscript`. The list is `SwiftIdent` in `SwiftMarshal.scala`.
+
+Extern yaml files have two new blocks. A type without them cannot be used in Swift.
+
+```yaml
+swift:
+  typename: 'S12_Assets_V1_Asset'
+  module: 'S12Protos'
+  generic: false
+  translator: 'ProtobufMarshaller<S12_Assets_V1_Asset>'
+  translator.module: 'DjinniSupport'
+swiftxx:
+  translator: 'djinni::swift::s12::assets::v1::Asset::Translator'
+  header: '"s12/assets/v1/asset.djinni.swiftxx.h"'
+```
+
+Extra keys in the `swift:` block, such as `prefix`, are ignored.
+
+A Protobuf manifest also needs a `swift` block (`module` and `prefix`) when the IDL
+uses one of its messages with `--swift-out` or `--swiftxx-out`. If the block is
+missing, the generator checks this before it writes a file, prints an error and
+exits with 1.
+
+The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
+`DJFuture`, `Result`, and `NSData` (both data types).
+
+Two scripts check the Swift support. `ci/swift-typecheck.sh` generates Swift for
+the Crux assets IDL, runs `swiftc -typecheck` on it and compiles the C++ glue
+with `-fsyntax-only`. It does the same for the Swift cases of the test suite
+(`test-suite/djinni/swift_host.djinni`, `swift_idents.djinni`). `ci/check-byte-identity.sh` proves that a change does not
+alter the output of the other generators. Both read the Crux IDL from
+`MITTI_MOBILE_ROOT`.
+
 ## Async interface support
 
 With the new yaml type `future<>` we can now write Djinni interfaces that return

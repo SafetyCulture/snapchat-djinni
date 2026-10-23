@@ -1,2 +1,4 @@
 # Use a separate workspace for the external tests to replicate external consumption
 external-test
+# Swift runtime package; its BUILD loads rules the main workspace does not define
+support-lib/apple

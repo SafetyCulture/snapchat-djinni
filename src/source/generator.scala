@@ -110,6 +110,18 @@ package object generatorTools {
                    yamlOutFolder: Option[File],
                    yamlOutFile: Option[String],
                    yamlPrefix: String,
+                   swiftOutFolder: Option[File],
+                   swiftIdentStyle: SwiftIdentStyle,
+                   swiftModule: String,
+                   swiftPrivateInSameModule: Boolean,
+                   swiftxxOutFolder: Option[File],
+                   swiftxxNamespace: String,
+                   swiftxxIncludePrefix: String,
+                   swiftxxBaseLibModule: String,
+                   swiftxxClassIdentStyle: IdentConverter,
+                   swiftxxFileIdentStyle: IdentConverter,
+                   swiftxxIncludeCppPrefix: String,
+                   swiftxxBaseLibIncludePrefix: String,
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
@@ -164,6 +176,10 @@ package object generatorTools {
                           method: IdentConverter, field: IdentConverter, local: IdentConverter,
                           enum: IdentConverter, const: IdentConverter)
 
+  case class SwiftIdentStyle(ty: IdentConverter, typeParam: IdentConverter,
+                             method: IdentConverter, field: IdentConverter, local: IdentConverter,
+                             enum: IdentConverter, const: IdentConverter)
+
   object IdentStyle {
     private val camelUpperStrict = (s: String) => {
         s.split("[-_]").map(leadingUpperStrict).mkString
@@ -195,6 +211,9 @@ package object generatorTools {
     val cppDefault = CppIdentStyle(camelUpper, camelUpper, camelUpper, underLower, underLower, underLower, underCaps, underCaps)
     val objcDefault = ObjcIdentStyle(camelUpperID, camelUpperID, camelLowerID, camelLowerID, camelLowerID, camelUpperID, camelUpperID)
     val jsDefault = JsIdentStyle(camelUpper, camelUpper, camelLower, camelLower, camelLower, underCaps, underCaps)
+    private val swiftUpper = (s: String) => SwiftIdent.escape(camelUpper(s))
+    private val swiftLower = (s: String) => SwiftIdent.escape(camelLower(s))
+    val swiftDefault = SwiftIdentStyle(swiftUpper, swiftUpper, swiftLower, swiftLower, swiftLower, swiftLower, swiftLower)
 
     val styles = Map(
       "FooBar" -> camelUpper,
@@ -270,6 +289,9 @@ package object generatorTools {
 
   def generate(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     try {
+      if (spec.swiftOutFolder.isDefined || spec.swiftxxOutFolder.isDefined) {
+        SwiftProtobuf.check(idl).foreach(message => throw GenerateException(message))
+      }
       if (spec.cppOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("C++", spec.cppOutFolder.get)
@@ -327,6 +349,18 @@ package object generatorTools {
         }
         new TsGenerator(spec).generate(idl)
       }
+      if (spec.swiftOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Swift", spec.swiftOutFolder.get)
+        }
+        new SwiftGenerator(spec).generate(idl)
+      }
+      if (spec.swiftxxOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Swift/C++ interop", spec.swiftxxOutFolder.get)
+        }
+        new SwiftxxGenerator(spec).generate(idl)
+      }
       if (spec.yamlOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("YAML", spec.yamlOutFolder.get)
@@ -343,6 +377,7 @@ package object generatorTools {
   sealed abstract class SymbolReference
   case class ImportRef(arg: String) extends SymbolReference // Already contains <> or "" in C contexts
   case class DeclRef(decl: String, namespace: Option[String]) extends SymbolReference
+  case class PrivateImportRef(arg: String) extends SymbolReference
 }
 
 abstract class Generator(spec: Spec)
@@ -388,6 +423,7 @@ abstract class Generator(spec: Spec)
   val idKotlin = spec.kotlinIdentStyle
   val idObjc = spec.objcIdentStyle
   val idJs = spec.jsIdentStyle
+  val idSwift = spec.swiftIdentStyle
 
   def wrapNamespace(w: IndentWriter, ns: String, f: IndentWriter => Unit) {
     ns match {
@@ -509,11 +545,11 @@ abstract class Generator(spec: Spec)
     }
   }
 
-  def writeEnumOptions(w: IndentWriter, e: Enum, ident: IdentConverter, delim: String = "=") {
+  def writeEnumOptions(w: IndentWriter, e: Enum, ident: IdentConverter, delim: String = "=", prefix: String = "", lineEnd: String = ",") {
     var shift = 0
     for (o <- normalEnumOptions(e)) {
       writeDoc(w, o.doc)
-      w.wl(ident(o.ident.name) + (if(e.flags) s" $delim 1 << $shift" else s" $delim $shift") + ",")
+      w.wl(prefix + ident(o.ident.name) + (if(e.flags) s" $delim 1 << $shift" else s" $delim $shift") + lineEnd)
       shift += 1
     }
   }

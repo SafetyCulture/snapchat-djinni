@@ -1,0 +1,20 @@
+# Interfaces that a host language can implement.
+
+# The host implements this one in Objective-C, Java and Swift.
+swift_host_listener = interface +o +j +sw {
+  on_value(value: i32);
+  on_text(text: string, internal: bool, inout: i32): string;
+}
+
+# The host implements this one in Objective-C and Java only. With --swift-out the generator
+# prints a warning and generates no Swift host proxy.
+objc_host_listener = interface +o +j {
+  on_value(value: i32);
+}
+
+# Implemented in C++. Swift calls it and passes a Swift host listener to it.
+swift_host_registry = interface +c {
+  static create(): swift_host_registry;
+  register_listener(listener: swift_host_listener);
+  notify_value(value: i32);
+}

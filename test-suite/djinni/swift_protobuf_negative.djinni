@@ -1,0 +1,5 @@
+@protobuf "vendor/third-party/proto.yaml"
+
+record_with_proto = record {
+    person: Person;
+}
