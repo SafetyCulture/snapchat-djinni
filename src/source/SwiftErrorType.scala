@@ -43,7 +43,7 @@ object SwiftErrorType {
     m.ret.map(_.resolved) match {
       // A future of an outcome has two error channels and no place for a cancellation; reject it
       case Some(tm) if marshal.isFuture(tm) && marshal.isOutcome(tm.args.head) =>
-        Some(s"$where: --swift-error-type does not support a return type future<outcome<T, $name>>")
+        Some(s"$where: --swift-error-type does not support a return type future<outcome<T, ${found(marshal, tm.args.head.args(1))}>>")
       case Some(tm) =>
         val outcome = if (marshal.isOutcome(tm)) Some(tm) else None
         outcome match {

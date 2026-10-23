@@ -349,7 +349,7 @@ public:
         BinaryValue bin(c.ByteSizeLong());
         bool success = c.SerializeToArray(bin.data(), static_cast<int>(bin.size()));
         if (!success) {
-            // Thrown, not returned: a nested ErrorValue would surface as bad_variant_access
+            // A returned ErrorValue nested in a record or a list would surface as bad_variant_access
             throw ErrorValue("failed to serialize protobuf type " + c.GetTypeName());
         }
         return {bin};

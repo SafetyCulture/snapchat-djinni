@@ -48,6 +48,13 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
     case _ => List()
   }
 
+  // The Kotlin array type of an extern whose Java typename is a Java primitive (for example DataRef → byte)
+  private val javaPrimitiveArrays = Map(
+    "boolean" -> "BooleanArray", "byte" -> "ByteArray", "short" -> "ShortArray", "int" -> "IntArray",
+    "long" -> "LongArray", "float" -> "FloatArray", "double" -> "DoubleArray", "char" -> "CharArray")
+  private def javaPrimitiveArrayName(e: MExtern): Option[String] =
+    javaPrimitiveArrays.get(e.java.typename)
+
   // The Kotlin type of the value of a future<T>, if the type is a future.
   def futureValueType(ty: TypeRef): Option[String] = ty.resolved.base match {
     case e: MExtern if e.name == "future" && ty.resolved.args.size == 1 =>
@@ -95,6 +102,8 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
           val elem = tm.args.head
           elem.base match {
             case p: MPrimitive => p.kName + "Array"
+            // An extern whose Java name is a primitive also stays a primitive array
+            case e: MExtern if javaPrimitiveArrayName(e).nonEmpty => javaPrimitiveArrayName(e).get
             case _ => "Array<" + f(elem, true) + ">"
           }
         case e: MExtern =>

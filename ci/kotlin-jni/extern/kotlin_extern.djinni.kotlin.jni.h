@@ -1,6 +1,6 @@
-// The JNI translator of the extern type extern_kotlin_message. It has the form of the translators
-// that the s12-proto Go plugin writes (#176 golden shape): LocalRef handles, a checked
-// ParseFromArray, a RAII release of the array elements, and a jniExceptionCheck after each call.
+// The JNI translator of the extern type extern_kotlin_message, in the form of the translators
+// that the s12-proto Go plugin writes: LocalRef handles, a checked ParseFromArray, a RAII
+// release of the array elements, and a jniExceptionCheck after each call.
 #pragma once
 #include "djinni_support.hpp"
 #include "kotlin_extern.pb.h"
