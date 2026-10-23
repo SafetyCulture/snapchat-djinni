@@ -9,7 +9,7 @@ import TestSuiteCxx
 /** The host implements this one in Swift, so it is not wrapped. */
 let swiftAsyncObserverMethods: Vtbl<SwiftAsyncObserver> = [
     { inst, params, ret in
-        let _item = try SwiftAsyncItemMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
+        let _item = try SwiftAsyncItemMarshaller.fromCpp(djinni.swift.getMember(params, 0))
         try inst.onItem(_item)
     },
 ]
@@ -20,6 +20,6 @@ public enum SwiftAsyncObserverMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftAsyncObserver has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)) })
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
     }
 }

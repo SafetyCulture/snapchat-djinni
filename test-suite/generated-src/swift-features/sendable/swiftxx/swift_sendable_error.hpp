@@ -6,7 +6,7 @@
 #include "../cpp/swift_sendable_error.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftSendableError {
     using CppType = ::testsuite::SwiftSendableError;
@@ -14,4 +14,4 @@ struct SwiftSendableError {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

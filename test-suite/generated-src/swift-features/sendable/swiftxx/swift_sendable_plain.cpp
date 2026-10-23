@@ -5,7 +5,7 @@
 #include "swift_sendable_flags.hpp"
 #include "swift_sendable_kind.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendablePlain::fromCpp(const ::testsuite::SwiftSendablePlain& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -15,13 +15,13 @@ djinni::swift::AnyValue SwiftSendablePlain::fromCpp(const ::testsuite::SwiftSend
     ret->addValue(::djinni::swift::Map<::djinni::swift::String, ::djinni::swift::F64>::fromCpp(c.scores));
     ret->addValue(::djinni::swift::Date::fromCpp(c.when));
     ret->addValue(::djinni::swift::Binary::fromCpp(c.bytes));
-    ret->addValue(::djinni_generated::SwiftSendableKind::fromCpp(c.kind));
-    ret->addValue(::djinni_generated::SwiftSendableFlags::fromCpp(c.flags));
+    ret->addValue(::djinni_generated_swift::SwiftSendableKind::fromCpp(c.kind));
+    ret->addValue(::djinni_generated_swift::SwiftSendableFlags::fromCpp(c.flags));
     return {ret};
 }
 ::testsuite::SwiftSendablePlain SwiftSendablePlain::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftSendablePlain(::djinni::swift::I32::toCpp(p->getValue(0)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(1)), ::djinni::swift::List<::djinni::swift::String>::toCpp(p->getValue(2)), ::djinni::swift::Map<::djinni::swift::String, ::djinni::swift::F64>::toCpp(p->getValue(3)), ::djinni::swift::Date::toCpp(p->getValue(4)), ::djinni::swift::Binary::toCpp(p->getValue(5)), ::djinni_generated::SwiftSendableKind::toCpp(p->getValue(6)), ::djinni_generated::SwiftSendableFlags::toCpp(p->getValue(7)));
+    return ::testsuite::SwiftSendablePlain(::djinni::swift::I32::toCpp(p->getValue(0)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(1)), ::djinni::swift::List<::djinni::swift::String>::toCpp(p->getValue(2)), ::djinni::swift::Map<::djinni::swift::String, ::djinni::swift::F64>::toCpp(p->getValue(3)), ::djinni::swift::Date::toCpp(p->getValue(4)), ::djinni::swift::Binary::toCpp(p->getValue(5)), ::djinni_generated_swift::SwiftSendableKind::toCpp(p->getValue(6)), ::djinni_generated_swift::SwiftSendableFlags::toCpp(p->getValue(7)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

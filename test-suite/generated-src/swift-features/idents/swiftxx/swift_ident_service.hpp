@@ -6,7 +6,7 @@
 #include "../cpp/swift_ident_service.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftIdentService = djinni::swift::Interface<::testsuite::SwiftIdentService>;
 
@@ -14,4 +14,4 @@ djinni::swift::AnyValue SwiftIdentService_init(const djinni::swift::ParameterLis
 djinni::swift::AnyValue SwiftIdentService_deinit(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftIdentService_create(const djinni::swift::ParameterList* params);
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

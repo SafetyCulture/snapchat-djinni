@@ -6,7 +6,7 @@
 #include "../cpp/swift_async_error.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftAsyncError {
     using CppType = ::testsuite::SwiftAsyncError;
@@ -14,4 +14,4 @@ struct SwiftAsyncError {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

@@ -12,14 +12,14 @@ final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try StringMarshaller.toCpp(id))
-        var ret = djinni_generated.SwiftErrorService_fetch(&_params)
+        var ret = djinni_generated_swift.SwiftErrorService_fetch(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<SwiftErrorItemMarshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
     func count() throws -> Result<Int32, TestSuite.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftErrorService_count(&_params)
+        var ret = djinni_generated_swift.SwiftErrorService_count(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<I32Marshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
@@ -27,7 +27,7 @@ final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try SwiftErrorObserverMarshaller.toCpp(observer))
-        var ret = djinni_generated.SwiftErrorService_watch(&_params)
+        var ret = djinni_generated_swift.SwiftErrorService_watch(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<BoolMarshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
@@ -44,7 +44,7 @@ public enum SwiftErrorServiceMarshaller: DjinniSupport.Marshaller {
 public class SwiftErrorService_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftErrorService {
         var _params = djinni.swift.ParameterList()
-        var ret = djinni_generated.SwiftErrorService_create(&_params)
+        var ret = djinni_generated_swift.SwiftErrorService_create(&_params)
         try handleCppErrors(&ret)
         return try SwiftErrorServiceMarshaller.fromCpp(ret)
     }

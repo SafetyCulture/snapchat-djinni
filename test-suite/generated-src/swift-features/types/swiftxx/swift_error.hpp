@@ -6,7 +6,7 @@
 #include "../cpp/swift_error.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftError {
     using CppType = ::testsuite::SwiftError;
@@ -14,4 +14,4 @@ struct SwiftError {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

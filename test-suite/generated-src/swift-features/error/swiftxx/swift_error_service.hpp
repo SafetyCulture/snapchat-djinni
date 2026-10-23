@@ -6,7 +6,7 @@
 #include "../cpp/swift_error_service.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftErrorService = djinni::swift::Interface<::testsuite::SwiftErrorService>;
 
@@ -15,4 +15,4 @@ djinni::swift::AnyValue SwiftErrorService_fetch(const djinni::swift::ParameterLi
 djinni::swift::AnyValue SwiftErrorService_count(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftErrorService_watch(const djinni::swift::ParameterList* params);
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

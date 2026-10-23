@@ -4,7 +4,7 @@
 #include "swift_payload.hpp"  // my header
 #include "Data_swift.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftPayload::fromCpp(const ::testsuite::SwiftPayload& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -20,4 +20,4 @@ djinni::swift::AnyValue SwiftPayload::fromCpp(const ::testsuite::SwiftPayload& c
     return ::testsuite::SwiftPayload(::djinni::swift::DataRefAdaptor::toCpp(p->getValue(0)), ::djinni::swift::Binary::toCpp(p->getValue(1)), ::djinni::swift::Date::toCpp(p->getValue(2)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(3)), ::djinni::swift::List<::djinni::swift::String>::toCpp(p->getValue(4)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

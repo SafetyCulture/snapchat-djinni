@@ -3,7 +3,7 @@
 
 #include "swift_host_listener.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftHostListenerSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftHostListenerSwiftProxy>(instance, dispatcher)};
@@ -29,4 +29,4 @@ std::string SwiftHostListenerSwiftProxy::on_text(const std::string & text, bool 
     return ::djinni::swift::String::toCpp(callProtocol(1, &params));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

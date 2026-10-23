@@ -13,7 +13,7 @@ final class SwiftErrorExternServiceCppProxy: DjinniSupport.CppProxy, TestSuite.S
     func f() throws -> Result<Int32, Models.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftErrorExternService_f(&_params)
+        var ret = djinni_generated_swift.SwiftErrorExternService_f(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<I32Marshaller, Models.CruxErrorMarshaller>.fromCpp(ret)
     }

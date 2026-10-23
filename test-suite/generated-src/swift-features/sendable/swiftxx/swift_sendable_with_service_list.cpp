@@ -4,16 +4,16 @@
 #include "swift_sendable_with_service_list.hpp"  // my header
 #include "swift_sendable_service.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableWithServiceList::fromCpp(const ::testsuite::SwiftSendableWithServiceList& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
-    ret->addValue(::djinni::swift::List<::djinni_generated::SwiftSendableService>::fromCpp(c.services));
+    ret->addValue(::djinni::swift::List<::djinni_generated_swift::SwiftSendableService>::fromCpp(c.services));
     return {ret};
 }
 ::testsuite::SwiftSendableWithServiceList SwiftSendableWithServiceList::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftSendableWithServiceList(::djinni::swift::List<::djinni_generated::SwiftSendableService>::toCpp(p->getValue(0)));
+    return ::testsuite::SwiftSendableWithServiceList(::djinni::swift::List<::djinni_generated_swift::SwiftSendableService>::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

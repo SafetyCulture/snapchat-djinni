@@ -12,13 +12,13 @@ import TestSuiteCxx
  */
 let swiftHostListenerMethods: Vtbl<SwiftHostListener> = [
     { inst, params, ret in
-        let _value = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 0))
+        let _value = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
         try inst.onValue(_value)
     },
     { inst, params, ret in
-        let _text = try StringMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
-        let _internal = try BoolMarshaller.fromCpp(DjinniSupport.parameter(params, 1))
-        let _inout = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 2))
+        let _text = try StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _internal = try BoolMarshaller.fromCpp(djinni.swift.getMember(params, 1))
+        let _inout = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 2))
         djinni.swift.setReturnValue(ret, try StringMarshaller.toCpp(inst.onText(_text, internal: _internal, `inout`: _inout)))
     },
 ]
@@ -29,6 +29,6 @@ public enum SwiftHostListenerMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftHostListener has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated.SwiftHostListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftHostListenerMethods), dispatcherProtocalCall)) })
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftHostListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftHostListenerMethods), dispatcherProtocalCall)})
     }
 }

@@ -4,7 +4,7 @@
 #include "swift_error_observer.hpp"  // my header
 #include "swift_error_item.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftErrorObserverSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftErrorObserverSwiftProxy>(instance, dispatcher)};
@@ -19,8 +19,8 @@ catch (...) {
 }
 void SwiftErrorObserverSwiftProxy::on_item(const ::testsuite::SwiftErrorItem & item) {
     djinni::swift::ParameterList params;
-    params.addValue(::djinni_generated::SwiftErrorItem::fromCpp(item));
+    params.addValue(::djinni_generated_swift::SwiftErrorItem::fromCpp(item));
     callProtocol(0, &params);
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

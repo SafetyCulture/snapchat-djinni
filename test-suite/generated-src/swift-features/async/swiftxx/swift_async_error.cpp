@@ -3,7 +3,7 @@
 
 #include "swift_async_error.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftAsyncError::fromCpp(const ::testsuite::SwiftAsyncError& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -16,4 +16,4 @@ djinni::swift::AnyValue SwiftAsyncError::fromCpp(const ::testsuite::SwiftAsyncEr
     return ::testsuite::SwiftAsyncError(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni::swift::I32::toCpp(p->getValue(1)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

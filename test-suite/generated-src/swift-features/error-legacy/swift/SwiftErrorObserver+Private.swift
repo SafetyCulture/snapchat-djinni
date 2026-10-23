@@ -9,7 +9,7 @@ import TestSuiteCxx
 /** The host implements this one, so it is exempt. */
 let swiftErrorObserverMethods: Vtbl<SwiftErrorObserver> = [
     { inst, params, ret in
-        let _item = try SwiftErrorItemMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
+        let _item = try SwiftErrorItemMarshaller.fromCpp(djinni.swift.getMember(params, 0))
         try inst.onItem(_item)
     },
 ]
@@ -20,6 +20,6 @@ public enum SwiftErrorObserverMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftErrorObserver has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated.SwiftErrorObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftErrorObserverMethods), dispatcherProtocalCall)) })
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftErrorObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftErrorObserverMethods), dispatcherProtocalCall)})
     }
 }

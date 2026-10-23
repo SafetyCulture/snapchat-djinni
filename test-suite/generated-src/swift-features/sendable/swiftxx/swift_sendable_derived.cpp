@@ -3,7 +3,7 @@
 
 #include "swift_sendable_derived.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableDerived::fromCpp(const ::testsuite::SwiftSendableDerived& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -15,4 +15,4 @@ djinni::swift::AnyValue SwiftSendableDerived::fromCpp(const ::testsuite::SwiftSe
     return ::testsuite::SwiftSendableDerived(::djinni::swift::I32::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

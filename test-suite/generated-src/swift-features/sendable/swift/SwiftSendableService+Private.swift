@@ -11,7 +11,7 @@ final class SwiftSendableServiceCppProxy: DjinniSupport.CppProxy, TestSuite.Swif
     func ping() throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftSendableService_ping(&_params)
+        var ret = djinni_generated_swift.SwiftSendableService_ping(&_params)
         try handleCppErrors(&ret)
     }
 }
@@ -27,6 +27,6 @@ public enum SwiftSendableServiceMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { SwiftSendableServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated.SwiftSendableServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftSendableServiceMethods), dispatcherProtocalCall)) })
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftSendableServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftSendableServiceMethods), dispatcherProtocalCall)})
     }
 }

@@ -13,14 +13,14 @@ final class SwiftIdentServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftId
         _params.addValue(inst)
         _params.addValue(try I32Marshaller.toCpp(`is`))
         _params.addValue(try StringMarshaller.toCpp(`internal`))
-        var ret = djinni_generated.SwiftIdentService_init(&_params)
+        var ret = djinni_generated_swift.SwiftIdentService_init(&_params)
         try handleCppErrors(&ret)
         return try Type_Marshaller.fromCpp(ret)
     }
     func deinit_() throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftIdentService_deinit(&_params)
+        var ret = djinni_generated_swift.SwiftIdentService_deinit(&_params)
         try handleCppErrors(&ret)
     }
 }
@@ -36,7 +36,7 @@ public enum SwiftIdentServiceMarshaller: DjinniSupport.Marshaller {
 public class SwiftIdentService_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftIdentService {
         var _params = djinni.swift.ParameterList()
-        var ret = djinni_generated.SwiftIdentService_create(&_params)
+        var ret = djinni_generated_swift.SwiftIdentService_create(&_params)
         try handleCppErrors(&ret)
         return try SwiftIdentServiceMarshaller.fromCpp(ret)
     }

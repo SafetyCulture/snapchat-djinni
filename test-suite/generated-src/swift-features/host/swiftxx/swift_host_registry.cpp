@@ -4,11 +4,11 @@
 #include "swift_host_registry.hpp"  // my header
 #include "swift_host_listener.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftHostRegistry_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftHostRegistry::create();
-    return ::djinni_generated::SwiftHostRegistry::fromCpp(ret);
+    return ::djinni_generated_swift::SwiftHostRegistry::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -18,7 +18,7 @@ catch (...) {
 }
 djinni::swift::AnyValue SwiftHostRegistry_registerListener(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftHostRegistry::toCpp(params->getValue(0));
-    auto _listener = ::djinni_generated::SwiftHostListener::toCpp(params->getValue(1));
+    auto _listener = ::djinni_generated_swift::SwiftHostListener::toCpp(params->getValue(1));
     inst->register_listener(std::move(_listener));
     return djinni::swift::makeVoidValue();
 }
@@ -41,4 +41,4 @@ catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift
