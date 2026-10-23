@@ -56,7 +56,7 @@ elif [ $# -eq 1 ]; then
     for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out" \
         "$base_dir/generated-src/swift-features" "$base_dir/generated-src/kotlin-jni" \
         "$base_dir/generated-src/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-package" \
-        "$base_dir/generated-src/kotlin-jni-extern"; do
+        "$base_dir/generated-src/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-java-bridge"; do
         if [ -e "$dir" ]; then
             echo "Deleting \"$dir\"..."
             rm -r "$dir"
@@ -1336,6 +1336,53 @@ fi
     --idl "djinni/kotlin_extern_array.djinni" \
     --idl-include-path "djinni/vendor" \
 )
+
+# The Java <-> Kotlin JNI converters. Run 1 writes the Java classes, and run 2 writes the Kotlin JNI classes and
+# the bridge that converts between them.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --java-out "$temp_out_relative/kotlin-jni-java-bridge/java" \
+    --java-package "com.dropbox.djinni.bridgejava" \
+    --ident-java-field mFooBar \
+    --idl "djinni/kotlin_jni_java_bridge.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --ident-java-field mFooBar \
+    --idl "djinni/kotlin_jni_java_bridge.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+
+# Both bridge flags are needed, and the output needs --kotlin-jni-out. Each case exits 1 and writes no file.
+bridge_flag_log="$temp_out/kotlin-jni-java-bridge-flags.log"
+check_bridge_flag() { # <log name> <message> <arguments...>
+    local name=$1 message=$2
+    shift 2
+    local out="$temp_out_relative/kotlin-jni-java-bridge-flags/$name"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" "$@" --idl "djinni/kotlin_jni_java_bridge.djinni" \
+        --idl-include-path "djinni/vendor") >"$bridge_flag_log" 2>&1; then
+        echo "The generator accepted a partial set of bridge flags: $name." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "$message" "$bridge_flag_log" || [ -e "$base_dir/$out" ]; then
+        echo "Missing error message for $name, or files were written: $message" 1>&2
+        cat "$bridge_flag_log" 1>&2
+        exit 1
+    fi
+}
+check_bridge_flag out-only "Error: --kotlin-jni-java-bridge-out needs --kotlin-jni-out." \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-flags/out-only"
+check_bridge_flag missing-package "Error: --kotlin-jni-java-bridge-out needs --kotlin-jni-java-bridge-package." \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags/missing-package/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-flags/missing-package/bridge"
+check_bridge_flag package-only "Error: --kotlin-jni-java-bridge-package needs --kotlin-jni-java-bridge-out." \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags/package-only/kotlin" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava"
 if ! grep -qF -- "val bytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
    ! grep -qF -- "val keyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
     echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2
@@ -1506,6 +1553,7 @@ mirror "kotlin-jni-suspend" "$temp_out/kotlin-jni-suspend" "$base_dir/generated-
 mirror "kotlin-jni-package" "$temp_out/kotlin-jni-package" "$base_dir/generated-src/kotlin-jni-package"
 mirror "kotlin-jni-error" "$temp_out/kotlin-jni-error" "$base_dir/generated-src/kotlin-jni-error"
 mirror "kotlin-jni-extern" "$temp_out/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-extern"
+mirror "kotlin-jni-java-bridge" "$temp_out/kotlin-jni-java-bridge" "$base_dir/generated-src/kotlin-jni-java-bridge"
 
 date > "$gen_stamp"
 
