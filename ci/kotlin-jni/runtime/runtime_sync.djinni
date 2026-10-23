@@ -1,0 +1,34 @@
+@extern "../../../support-lib/outcome.yaml"
+
+# Types for the runtime test of --kotlin-error-type without --kotlin-suspend-wrap. The flag needs a suspend function
+# for a future, so this IDL has no future. C++ implements the service, and Kotlin implements the listener.
+
+kjs_error = record {
+  message: string;
+  code: i32;
+}
+
+kjs_listener = interface +j {
+  on_value(value: i32): i32;
+}
+
+# C++ and Kotlin can implement this one, so it keeps the raw outcome.
+kjs_both = interface +c +j {
+  divide(a: i32, b: i32): outcome<i32, kjs_error>;
+}
+
+kjs_service = interface +c {
+  static create(): kjs_service;
+  static fail_static(): i32;
+  static divide_static(a: i32, b: i32): outcome<i32, kjs_error>;
+  add(a: i32, b: i32): i32;
+  ping();
+  divide(a: i32, b: i32): outcome<i32, kjs_error>;
+  fail(): i32;
+  fail_void();
+  # An exception that does not derive from std::exception
+  fail_unknown(): i32;
+  call_listener(listener: kjs_listener, value: i32): i32;
+  call_both(both: kjs_both, a: i32, b: i32): outcome<i32, kjs_error>;
+  make_both(): kjs_both;
+}
