@@ -376,6 +376,12 @@ swiftxx:
 ```
 
 Extra keys in the `swift:` block, such as `prefix`, are ignored.
+
+A Protobuf manifest also needs a `swift` block (`module` and `prefix`) when the IDL
+uses one of its messages with `--swift-out` or `--swiftxx-out`. If the block is
+missing, the generator checks this before it writes a file, prints an error and
+exits with 1.
+
 The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
 `DJFuture`, `Result`, and `NSData` (both data types).
 
