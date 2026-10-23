@@ -31,6 +31,37 @@ final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<BoolMarshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
+    func add(_ a: Int32, b: Int32) throws -> Int32 {
+        var _params = djinni.swift.ParameterList()
+        _params.addValue(inst)
+        _params.addValue(try I32Marshaller.toCpp(a))
+        _params.addValue(try I32Marshaller.toCpp(b))
+        var ret = djinni_generated_swift.SwiftErrorService_add(&_params)
+        try handleCppErrors(&ret)
+        return try I32Marshaller.fromCpp(ret)
+    }
+    func ping() throws -> Void {
+        var _params = djinni.swift.ParameterList()
+        _params.addValue(inst)
+        var ret = djinni_generated_swift.SwiftErrorService_ping(&_params)
+        try handleCppErrors(&ret)
+    }
+    func load(_ id: String) throws -> DjinniSupport.DJFuture<TestSuite.SwiftErrorItem> {
+        var _params = djinni.swift.ParameterList()
+        _params.addValue(inst)
+        _params.addValue(try StringMarshaller.toCpp(id))
+        var ret = djinni_generated_swift.SwiftErrorService_load(&_params)
+        try handleCppErrors(&ret)
+        return try DjinniSupport.FutureMarshaller<SwiftErrorItemMarshaller>.fromCpp(ret)
+    }
+    func fetchLater(_ id: String) throws -> DjinniSupport.DJFuture<Swift.Result<TestSuite.SwiftErrorItem, TestSuite.CruxError>> {
+        var _params = djinni.swift.ParameterList()
+        _params.addValue(inst)
+        _params.addValue(try StringMarshaller.toCpp(id))
+        var ret = djinni_generated_swift.SwiftErrorService_fetchLater(&_params)
+        try handleCppErrors(&ret)
+        return try DjinniSupport.FutureMarshaller<DjinniSupport.OutcomeMarshaller<SwiftErrorItemMarshaller, CruxErrorMarshaller>>.fromCpp(ret)
+    }
 }
 public enum SwiftErrorServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftErrorService
@@ -42,10 +73,21 @@ public enum SwiftErrorServiceMarshaller: DjinniSupport.Marshaller {
     }
 }
 public class SwiftErrorService_statics: @unchecked Sendable {
-    public static func create() throws -> TestSuite.SwiftErrorService {
-        var _params = djinni.swift.ParameterList()
-        var ret = djinni_generated_swift.SwiftErrorService_create(&_params)
-        try handleCppErrors(&ret)
-        return try SwiftErrorServiceMarshaller.fromCpp(ret)
+    public static func create() throws(TestSuite.CruxError) -> TestSuite.SwiftErrorService {
+        return try DjinniSupport.djinniTyped(TestSuite.CruxError.self) {
+            var _params = djinni.swift.ParameterList()
+            var ret = djinni_generated_swift.SwiftErrorService_create(&_params)
+            try handleCppErrors(&ret)
+            return try SwiftErrorServiceMarshaller.fromCpp(ret)
+        }
+    }
+    @concurrent public static func loadStatic(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
+        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) {
+            var _params = djinni.swift.ParameterList()
+            _params.addValue(try StringMarshaller.toCpp(id))
+            var ret = djinni_generated_swift.SwiftErrorService_loadStatic(&_params)
+            try handleCppErrors(&ret)
+            return try DjinniSupport.FutureMarshaller<SwiftErrorItemMarshaller>.fromCpp(ret)
+        }
     }
 }

@@ -26,3 +26,24 @@ public func djinniCallFuture<T>(_ queue: DispatchQueue, _ call: @escaping @Senda
     let future = UncheckedSendable(try await djinniCall(queue, call))
     return try await future.value.value
 }
+
+/// `djinniCall` for `--swift-error-type`: a cancellation and a C++ exception become `E`.
+public func djinniCallTyped<T, E: CppExceptionConvertible>(_ type: E.Type, _ queue: DispatchQueue, _ call: @escaping @Sendable () throws -> T) async throws(E) -> sending T {
+    do {
+        return try await djinniCall(queue, call)
+    } catch {
+        let typed: E = djinniTypedError(error)
+        throw typed
+    }
+}
+
+/// `djinniCallFuture` for `--swift-error-type`: a cancellation, a C++ exception, a rejected future and a dropped promise
+/// become `E`.
+public func djinniCallFutureTyped<T, E: CppExceptionConvertible>(_ type: E.Type, _ queue: DispatchQueue, _ call: @escaping @Sendable () throws -> DJFuture<T>) async throws(E) -> sending T {
+    do {
+        return try await djinniCallFuture(queue, call)
+    } catch {
+        let typed: E = djinniTypedError(error)
+        throw typed
+    }
+}

@@ -301,7 +301,7 @@ object Main {
         .validate(x => if (x.trim.nonEmpty && !x.exists(c => c == '\n' || c == '\r') && !x.contains("*/")) success else failure("--swift-async-queue needs a Swift expression on one line."))
         .text("With --swift-async-wrap, the DispatchQueue of the blocking C++ calls, as a Swift expression (default: DispatchQueue.global(qos: .userInitiated)).")
       opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
-        .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E; future<outcome<T, E>> is rejected. The record conforms to Error.")
+        .text("The Swift name of the error record. The methods that Swift calls into C++ throw it: the instance methods of an interface with +c and without +sw, and the static methods of an interface with +c. An outcome<T, E> needs this E. A future<> needs --swift-async-wrap. The record conforms to Error.")
       opt[File]("kotlin-jni-out").valueName("<out-folder>").foreach(x => kotlinJniOutFolder = Some(x))
         .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))

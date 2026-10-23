@@ -463,24 +463,8 @@ func runAsyncTests() async throws {
     }
     check(try await service.add(1, b: 1) == 2, "the wrapper works after a C++ exception")
 
-    // The error record of --swift-error-type conforms to Error without deriving(error).
-    let errors = try ErrorService_statics.create()
-    check(try await errors.divide(8, b: 2) == 4, "divide with the error type")
-    do throws(CruxError) {
-        _ = try await errors.divide(1, b: 0)
-        check(false, "divide by zero must fail with CruxError")
-    } catch {
-        check(error.code == 7 && error.message == "division by zero", "CruxError from the wrapper")
-    }
-
-    // With --swift-error-type, a C++ exception is a CruxError of CppExceptionConvertible.
-    do throws(CruxError) {
-        _ = try await errors.fail()
-        check(false, "fail must throw CruxError")
-    } catch {
-        check(error.code == -1 && error.message.contains("boom"), "CruxError of a C++ exception: \(error.message)")
-    }
-    check(try await errors.divide(9, b: 3) == 3, "the typed wrapper works after a C++ exception")
+    try await runTypedErrorTests()
+    try runSyncTypedErrorTests()
 
     // A Swift listener throws, C++ catches the exception and returns its message.
     let hostMessage = try await service.describeListenerFailure(Doubler())
@@ -579,10 +563,114 @@ func runAsyncTests() async throws {
     check(try await service.delayed(9, millis: 10) == 9, "future after cancellation")
 }
 
-// The error type of --swift-error-type holds the C++ exception as a message.
+// Checks that a call throws CruxError with the code, and with the text in the message.
+func expectCruxError(_ name: String, code: Int32, message: String? = nil, _ call: () async throws(CruxError) -> Void) async {
+    do throws(CruxError) {
+        try await call()
+        check(false, "\(name) must throw CruxError")
+    } catch {
+        check(error.code == code, "\(name): code \(error.code), expected \(code) (\(error.message))")
+        if let message {
+            check(error.message.contains(message), "\(name): message \(error.message)")
+        }
+    }
+}
+
+// The value of a task that throws only CruxError.
+func typedValue<T>(_ task: Task<T, any Error>) async throws(CruxError) -> T {
+    do {
+        return try await task.value
+    } catch let error as CruxError {
+        throw error
+    } catch {
+        check(false, "the task threw \(error), not CruxError")
+        exit(1)
+    }
+}
+
+// The methods of an interface with +c throw CruxError of --swift-error-type, also the static methods.
+func runTypedErrorTests() async throws {
+    let errors = try ErrorService_statics.create()
+
+    // Success
+    check(try await errors.add(2, b: 3) == 5, "plain method with the error type")
+    check(try await errors.divide(8, b: 2) == 4, "outcome method with the error type")
+    check(try await errors.delayed(7, millis: 10) == 7, "future method with the error type")
+    check(try await errors.divideLater(8, b: 2) == 4, "future of an outcome with the error type")
+    check(try await ErrorService_statics.delayedStatic(6) == 6, "static future with the error type")
+
+    // The error of an outcome is thrown as it is, also from a future.
+    await expectCruxError("outcome error", code: 7, message: "division by zero") { () async throws(CruxError) in _ = try await errors.divide(1, b: 0) }
+    await expectCruxError("outcome error of a future", code: 7, message: "division by zero") { () async throws(CruxError) in _ = try await errors.divideLater(1, b: 0) }
+
+    // A C++ exception becomes init(cppException:).
+    await expectCruxError("C++ exception of an outcome method", code: -1, message: "boom") { () async throws(CruxError) in _ = try await errors.fail() }
+    await expectCruxError("C++ exception of a plain method", code: -1, message: "boom") { () async throws(CruxError) in _ = try await errors.failPlain() }
+    await expectCruxError("C++ exception of a void method", code: -1, message: "boom") { () async throws(CruxError) in try await errors.failVoid() }
+    await expectCruxError("C++ exception before the future", code: -1, message: "boom") { () async throws(CruxError) in _ = try await errors.throwFuture() }
+    await expectCruxError("rejected future", code: -1, message: "failed future") { () async throws(CruxError) in _ = try await errors.failFuture() }
+    await expectCruxError("C++ exception of a static method", code: -1, message: "boom") { () async throws(CruxError) in _ = try ErrorService_statics.failStatic() }
+
+    // A promise that C++ drops becomes init(cppException:).
+    await expectCruxError("dropped promise", code: -1, message: "broken promise") { () async throws(CruxError) in _ = try await errors.dropped() }
+
+    // A task that is cancelled before the call throws init(cancellation:) and does not call C++.
+    let startedBefore = try await errors.pendingStarted()
+    let early = Task { () async throws(CruxError) -> Int32 in
+        while !Task.isCancelled { await Task.yield() }
+        return try await errors.pending()
+    }
+    early.cancel()
+    await expectCruxError("cancellation before the call", code: -2) { () async throws(CruxError) in _ = try await typedValue(early) }
+    let startedAfter = try await errors.pendingStarted()
+    check(startedAfter == startedBefore, "a cancelled task called C++: \(startedBefore) -> \(startedAfter)")
+
+    // A task that is cancelled while it waits for a future throws init(cancellation:) once. The late value is dropped.
+    let waiting = Task { () async throws(CruxError) -> Int32 in try await errors.pending() }
+    while try await errors.pendingStarted() == startedAfter { await Task.yield() }
+    waiting.cancel()
+    await expectCruxError("cancellation while waiting", code: -2) { () async throws(CruxError) in _ = try await typedValue(waiting) }
+    try await errors.completePending(1)
+    check(try await errors.divide(9, b: 3) == 3, "the typed wrapper works after a cancellation")
+}
+
+// Without --swift-async-wrap the protocol and static methods throw SyncError synchronously.
+func runSyncTypedErrorTests() throws {
+    let errors = try SyncErrorService_statics.create()
+    check(try errors.add(1, b: 2) == 3, "plain method of the protocol with the error type")
+    check(try errors.divide(6, b: 3) == 2, "outcome method of the protocol with the error type")
+    let calls: [(String, Int32, () throws(SyncError) -> Void)] = [
+        ("outcome error", 7, { () throws(SyncError) in _ = try errors.divide(1, b: 0) }),
+        ("C++ exception of a plain method", -1, { () throws(SyncError) in _ = try errors.fail() }),
+        ("C++ exception of a void method", -1, { () throws(SyncError) in try errors.failVoid() }),
+        ("C++ exception of a static method", -1, { () throws(SyncError) in _ = try SyncErrorService_statics.failStatic() }),
+    ]
+    for (name, code, call) in calls {
+        do throws(SyncError) {
+            try call()
+            check(false, "\(name) must throw SyncError")
+        } catch {
+            check(error.code == code, "\(name): code \(error.code), expected \(code) (\(error.message))")
+        }
+    }
+}
+
+// The error types of --swift-error-type hold the C++ exception as a message, and a cancellation as code -2.
 extension CruxError: CppExceptionConvertible {
     public init(cppException error: DjinniError) {
         self.init(message: error.errorMessage, code: -1)
+    }
+    public init(cancellation: CancellationError) {
+        self.init(message: "cancelled", code: -2)
+    }
+}
+
+extension SyncError: CppExceptionConvertible {
+    public init(cppException error: DjinniError) {
+        self.init(message: error.errorMessage, code: -1)
+    }
+    public init(cancellation: CancellationError) {
+        self.init(message: "cancelled", code: -2)
     }
 }
 

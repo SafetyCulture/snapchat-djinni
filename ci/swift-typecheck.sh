@@ -9,7 +9,8 @@
 # generated protobuf types (module S12Protos) are the real messages of the assets protos
 # (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
-# because they come from other build steps.
+# because they come from other build steps. One more pass generates the whole Crux IDL (main.djinni) with
+# --swift-error-type CruxError and --swift-async-wrap; the fixture adds the crux_error record, which Crux lacks.
 #
 # It also compiles the Java, JNI C++ and Objective-C++ output of the +sw host case of the test suite, so the
 # other languages still compile next to the Swift files. That needs javac and the JNI headers of a JDK.
@@ -82,6 +83,19 @@ out_async="$work/out-async"
   --swift-out "$out_async/swift" --swift-module Crux --swift-private-in-same-module \
   --swift-async-wrap com.safetyculture.crux \
   --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
+# The whole Crux IDL with --swift-error-type and the async wrappers. The Crux IDL has no error record, so the
+# fixture adds crux_error.
+python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-error" "$repo_root" main.djinni
+printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-error/crux/djinni/domain/ci_crux_error.djinni"
+printf '@import "ci_crux_error.djinni"\n' >>"$work/fx-error/crux/djinni/domain/swift_fixture.djinni"
+out_error="$work/out-error"
+# shellcheck disable=SC2086
+(cd "$work/fx-error" && java -jar "$jar" \
+  --cpp-out "$out_error/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h --ident-cpp-method FooBar \
+  --swift-out "$out_error/swift" --swift-module Crux --swift-private-in-same-module \
+  --swiftxx-out "$out_error/swiftxx" --swiftxx-include-cpp-prefix generated/ \
+  --swift-async-wrap com.safetyculture.crux --swift-error-type CruxError \
+  --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 
 # Stub modules
 mods="$work/mods"
@@ -90,6 +104,10 @@ python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12Pro
 # The real s12 Swift messages of the assets protos come with the checkout; the other yamls keep stubs
 cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
+errmods="$work/error-mods"
+mkdir -p "$errmods"
+python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx-error/extern" "$work/S12ProtosErrorStubs.swift" "$repo_root/ci/fixtures/s12"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$errmods/CruxCxx.hpp" "$out_error/swiftxx"
 
 # Test-suite cases: the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
@@ -120,6 +138,7 @@ module DjinniSupportCxx {
 EOF
 }
 { support_module; printf 'module CruxCxx {\n  header "%s/CruxCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$mods"; } >"$mods/module.modulemap"
+{ support_module; printf 'module CruxCxx {\n  header "%s/CruxCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$errmods"; } >"$errmods/module.modulemap"
 { support_module; printf 'module TestSuiteCxx {\n  header "%s/TestSuiteCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$tsmods"; } >"$tsmods/module.modulemap"
 {
   support_module
@@ -146,6 +165,9 @@ import DjinniSupport
 extension CruxError: CppExceptionConvertible {
     public init(cppException error: DjinniError) {
         self.init(message: error.errorMessage, code: -1)
+    }
+    public init(cancellation: CancellationError) {
+        self.init(message: "cancelled", code: -2)
     }
 }
 EOF
@@ -183,6 +205,16 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
   echo "SWIFT ASYNC TYPECHECK OK [$flags]"
+  # The S12Protos module of the whole Crux IDL has more messages, so it has its own directory.
+  mkdir -p "$build/error"
+  cp "$build"/DjinniSupport.* "$build/error/"
+  swiftc -emit-module -emit-module-path "$build/error/S12Protos.swiftmodule" -module-name S12Protos \
+    -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosErrorStubs.swift" "$work"/*.pb.swift
+  local errcxx=("${cxx[@]/#$build/$build/error}")
+  echo "== [$flags] Crux IDL with --swift-error-type and --swift-async-wrap (generated Swift, $(ls "$out_error"/swift/*.swift | wc -l | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
+  echo "SWIFT ERROR TYPE TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done

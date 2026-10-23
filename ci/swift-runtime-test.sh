@@ -51,13 +51,20 @@ out="$work/out"
   --swift-async-queue RuntimeQueues.blocking \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
-# The error type needs its own IDL, because every method of a C++ interface must return an outcome.
+# The error type has its own IDL: every method that Swift calls into C++ throws it.
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$out/cpp" --cpp-namespace rt \
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-error-type CruxError \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_error.djinni)
+# Without the async wrappers the protocol methods throw the error type.
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out/cpp" --cpp-namespace rt \
+  --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module \
+  --swift-error-type SyncError \
+  --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime_error_sync.djinni)
 
 # Swift calls the make function of a Swift proxy directly, so it needs an exception boundary
 made=0

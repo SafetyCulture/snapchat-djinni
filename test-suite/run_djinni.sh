@@ -662,19 +662,19 @@ if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
     exit 1
 fi
 for expected in \
-    "interface swift_error_bad_service, method plain: --swift-error-type needs a return type outcome<T, CruxError>" \
-    "interface swift_error_bad_service, method nothing: --swift-error-type needs a return type outcome<T, CruxError>" \
     "interface swift_error_bad_service, method wrong_error: the error type of the outcome is OtherError, but --swift-error-type is CruxError" \
-    "interface swift_error_bad_service, method load: --swift-error-type needs a return type outcome<T, CruxError>" \
-    "interface swift_error_bad_service, method future_outcome: --swift-error-type does not support a return type future<outcome<T, CruxError>>" \
-    "interface swift_error_bad_shared, method value: --swift-error-type needs a return type outcome<T, CruxError>"; do
+    "interface swift_error_bad_service, method load: --swift-error-type needs --swift-async-wrap for a return type future<>" \
+    "interface swift_error_bad_service, method future_outcome: --swift-error-type needs --swift-async-wrap for a return type future<>" \
+    "interface swift_error_bad_service, method future_wrong: --swift-error-type needs --swift-async-wrap for a return type future<>" \
+    "interface swift_error_bad_service, method future_wrong: the error type of the outcome is OtherError, but --swift-error-type is CruxError" \
+    "interface swift_error_bad_shared, method wrong_static: the error type of the outcome is OtherError, but --swift-error-type is CruxError"; do
     if ! grep -qF "$expected" "$negative_log"; then
         echo "Missing error message: $expected" 1>&2
         cat "$negative_log" 1>&2
         exit 1
     fi
 done
-if grep -qE "method (fine|on_value)" "$negative_log"; then
+if grep -qE "method (fine|on_value|plain|nothing|value):" "$negative_log"; then
     echo "The generator reported a method that follows the rule." 1>&2
     exit 1
 fi

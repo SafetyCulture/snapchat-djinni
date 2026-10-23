@@ -1,7 +1,7 @@
 @extern "../../support-lib/future.yaml"
 @extern "../../support-lib/outcome.yaml"
 
-# Generated with --swift-error-type CruxError. The record needs no deriving(error).
+# Generated with --swift-error-type CruxError and --swift-async-wrap. The record needs no deriving(error).
 crux_error = record {
   message: string;
   code: i32;
@@ -9,6 +9,24 @@ crux_error = record {
 
 error_service = interface +c {
   static create(): error_service;
+  # A static method throws the error type; a static future is async.
+  static fail_static(): i32;
+  static delayed_static(value: i32): future<i32>;
   divide(a: i32, b: i32): outcome<i32, crux_error>;
   fail(): outcome<i32, crux_error>;
+  add(a: i32, b: i32): i32;
+  fail_plain(): i32;
+  fail_void();
+  delayed(value: i32, millis: i32): future<i32>;
+  divide_later(a: i32, b: i32): future<outcome<i32, crux_error>>;
+  # C++ rejects the future after it exists.
+  fail_future(): future<i32>;
+  # C++ throws before a future exists.
+  throw_future(): future<i32>;
+  # C++ destroys the promise without a value.
+  dropped(): future<i32>;
+  pending(): future<i32>;
+  complete_pending(value: i32);
+  # Calls of pending() that reached C++
+  pending_started(): i32;
 }

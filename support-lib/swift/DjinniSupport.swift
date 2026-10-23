@@ -372,20 +372,33 @@ public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws 
     }
 }
 
-/// The error type of `--swift-error-type` conforms to this protocol. A wrapper method that returns `outcome<T, E>` uses
-/// the initialiser when C++ throws. The `DjinniError` keeps the message and the C++ exception.
+/// The error type of `--swift-error-type` conforms to this protocol. Every method that Swift calls into C++ throws the
+/// error type. The application decides how the error type holds each failure:
+/// - `init(cppException:)`: C++ threw, rejected a future, or dropped a promise. `DjinniError.errorMessage` is the message
+///   of the C++ exception.
+/// - `init(cancellation:)`: the task was cancelled before the C++ call, or while it waited for a C++ future.
 public protocol CppExceptionConvertible: Error {
     init(cppException error: DjinniError)
+    init(cancellation: CancellationError)
 }
 
-// Changes a C++ exception of the call into the error type of --swift-error-type.
-public func cppOutcome<T, E: CppExceptionConvertible>(_ call: () throws -> Result<T, E>) -> Result<T, E> {
+// An error of a C++ call becomes the error type: an error of an outcome stays as it is.
+func djinniTypedError<E: CppExceptionConvertible>(_ error: any Error) -> E {
+    switch error {
+    case let typed as E: return typed
+    case let cancellation as CancellationError: return E(cancellation: cancellation)
+    case let cpp as DjinniError: return E(cppException: cpp)
+    default: return E(cppException: DjinniError(String(describing: error)))
+    }
+}
+
+/// Runs a C++ call on the thread of the caller and throws its errors as `E`.
+public func djinniTyped<T, E: CppExceptionConvertible>(_ type: E.Type, _ call: () throws -> T) throws(E) -> T {
     do {
         return try call()
-    } catch let error as DjinniError {
-        return .failure(E(cppException: error))
     } catch {
-        return .failure(E(cppException: DjinniError(String(describing: error))))
+        let typed: E = djinniTypedError(error)
+        throw typed
     }
 }
 

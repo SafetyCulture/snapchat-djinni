@@ -11,8 +11,13 @@ namespace djinni_generated_swift {
 using SwiftErrorService = djinni::swift::Interface<::testsuite::SwiftErrorService>;
 
 djinni::swift::AnyValue SwiftErrorService_create(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftErrorService_loadStatic(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftErrorService_fetch(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftErrorService_count(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftErrorService_watch(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftErrorService_add(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftErrorService_ping(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftErrorService_load(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftErrorService_fetchLater(const djinni::swift::ParameterList* params);
 
 } // namespace djinni_generated_swift

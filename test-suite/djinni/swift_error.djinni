@@ -18,9 +18,15 @@ swift_error_observer = interface +o +j +sw {
 }
 
 swift_error_service = interface +c {
-  # A static method is exempt.
+  # Static methods throw the error type too.
   static create(): swift_error_service;
+  static load_static(id: string): future<swift_error_item>;
   fetch(id: string): outcome<swift_error_item, crux_error>;
   count(): outcome<i32, crux_error>;
   watch(observer: swift_error_observer): outcome<bool, crux_error>;
+  # Methods without an outcome throw the error type for a C++ exception and a cancellation.
+  add(a: i32, b: i32): i32;
+  ping();
+  load(id: string): future<swift_error_item>;
+  fetch_later(id: string): future<outcome<swift_error_item, crux_error>>;
 }
