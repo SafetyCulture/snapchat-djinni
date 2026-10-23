@@ -719,7 +719,13 @@ the classes with `javap -p -s`. The script checks these items:
 The script has a third pass for the suspend functions of
 `--kotlin-suspend-wrap`. It compiles the generated Kotlin with
 kotlinx-coroutines and runs the same checks. It prints the coroutines jar that
-it selects. `KOTLIN_JNI_CHECK_CRUX=0` skips the Crux assets IDL.
+it selects. Two more passes check `--kotlin-error-type`: the test-suite cases
+`kotlin_error` and `kotlin_error_async`, and the whole Crux IDL (`main.djinni`)
+with `--kotlin-suspend-wrap` and a synthetic `crux_error` record. The natives
+keep their JVM names, so the checks are the same. `KOTLIN_JNI_CHECK_CRUX=0`
+skips the two Crux passes. The Crux passes remove the Kotlin keys from the copy
+of the extern yaml files, because one run with `--java-out` and
+`--kotlin-jni-out` binds one class for each extern type.
 
 A fourth pass checks an extern record with the Kotlin keys (`kotlin_extern`).
 The script generates Java and the Kotlin classes apart. It compares the Java
@@ -759,6 +765,14 @@ It checks these items:
 - calls to one object that run at the same time, and a call that does not wait
   for a blocking call on the same object
 - 1000 concurrent coroutines
+
+Two more programs check `--kotlin-error-type`: one with blocking functions
+(`runtime_sync.djinni`, which has no future) and one with suspend functions.
+They check a value, the error of an outcome, a C++ exception, a failed future, a
+promise that C++ drops, static methods, cancellation before the call and while
+a future waits (`CancellationException`, not the error type), an interface with
+`+c` and `+j` that keeps the raw form, and a Kotlin exception that goes through
+C++ and stays as it is.
 
 The script skips with exit code 77 and a message when one of these parts is
 missing:
