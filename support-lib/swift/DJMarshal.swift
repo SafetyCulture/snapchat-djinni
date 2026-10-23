@@ -40,11 +40,7 @@ public enum SmallIntMarshaller<T: BinaryInteger>: Marshaller {
 public enum I64Marshaller: Marshaller {
     public typealias SwiftType = Int64
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        let raw = try int64Value(v)
-        guard let value = SwiftType(exactly: raw) else {
-            throw DjinniError("\(SwiftType.self) value out of range: \(raw)")
-        }
-        return value
+        return try int64Value(v)
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.I64.fromCpp(s)

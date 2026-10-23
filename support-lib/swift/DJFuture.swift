@@ -66,7 +66,7 @@ public final class Future<Output, Failure> where Failure : Error {
             self.lock.unlock()
 
             // Run the completion handlers in parallel after unlocking:
-            nonisolated(unsafe) let delivered = result // SAFETY: the result is stored once and not changed, and each subscriber gets its own copy
+            nonisolated(unsafe) let delivered = result // SAFETY: the result is stored once and not changed, and the subscribers are @Sendable. A result of a reference type reaches every subscriber at the same time, so it must be safe to read from many threads
             for subscription in copiedSubscriptions.values {
                 DispatchQueue.global(qos: .default).async {
                     subscription(delivered)

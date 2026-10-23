@@ -303,10 +303,12 @@ public func interfaceInfo(_ p: UnsafePointer<djinni.swift.AnyValue>) throws -> d
 }
 
 // A C++ helper that cannot throw gives an error value instead. This turns it into a Swift error.
-func checkedValue(_ v: djinni.swift.AnyValue) throws -> djinni.swift.AnyValue {
-    var value = v
-    if djinni.swift.isError(&value) {
-        throw DjinniError(djinni.swift.getError(&value))
+func checkedValue(_ value: consuming djinni.swift.AnyValue) throws -> djinni.swift.AnyValue {
+    // The check borrows the value, and the result moves it, so a string or a binary is not copied again
+    try withUnsafePointer(to: value) { p in
+        if djinni.swift.isError(p) {
+            throw DjinniError(djinni.swift.getError(p))
+        }
     }
     return value
 }

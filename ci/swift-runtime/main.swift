@@ -200,12 +200,39 @@ func withTimeout<T: Sendable>(_ seconds: Double, _ body: @escaping @Sendable () 
     }
 }
 
+// Waits for a task. A cancel of the caller reaches the task, so a timeout ends the wait.
+func taskValue<T: Sendable>(of task: Task<T, Error>) async throws -> T {
+    try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+}
+
+func waitForPendingCalls(_ service: RuntimeAsync, _ count: Int32) async throws {
+    try await withTimeout(10) {
+        while try await service.pendingCalls() < count {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+}
+
 func runSafetyCases(_ service: RuntimeService) throws {
     // A null C++ interface for an interface that is not optional throws instead of trapping
     if enabled("null_service") {
         do {
             _ = try RuntimeService_statics.nullService()
             check(false, "a null C++ interface must throw")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("non-optional interface"), "null interface error: \(error.errorMessage)")
+        }
+        // The Swift guards, without the C++ check: a null interface value goes straight to each marshaller
+        let nullInterface = djinni.swift.strongify(djinni.swift.WeakSwiftProxy())
+        do {
+            _ = try RuntimeServiceMarshaller.fromCpp(nullInterface)
+            check(false, "a null interface must throw in cppInterfaceToSwift")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("non-optional interface"), "null interface error: \(error.errorMessage)")
+        }
+        do {
+            _ = try RuntimeAsyncMarshaller.fromCpp(nullInterface)
+            check(false, "a null interface must throw in cppWrapperToSwift")
         } catch let error as DjinniError {
             check(error.errorMessage.contains("non-optional interface"), "null interface error: \(error.errorMessage)")
         }
@@ -284,7 +311,9 @@ func runSafetyCases(_ service: RuntimeService) throws {
         do {
             _ = try MapMarshaller<I32Marshaller, I32Marshaller>.fromCpp(composite)
             check(false, "a map with an odd number of members must throw")
-        } catch is DjinniError {}
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("odd number"), "odd map error: \(error.errorMessage)")
+        }
     }
 
     // Two protocols with the same name do not share a proxy
@@ -347,12 +376,14 @@ func runAsyncSafetyCases(_ service: RuntimeAsync) async throws {
 
     // A second call before complete_pending replaces the promise of the first call. The first call fails, and the second works.
     if enabled("pending_overwrite") {
+        // C++ counts the calls of pending(), so the order of the two calls does not depend on a sleep
+        let calls = try await service.pendingCalls()
         let firstCall = Task { try await service.pending() }
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try await waitForPendingCalls(service, calls + 1)
         let secondCall = Task { try await service.pending() }
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try await waitForPendingCalls(service, calls + 2)
         do {
-            _ = try await withTimeout(10) { try await firstCall.value }
+            _ = try await withTimeout(10) { try await taskValue(of: firstCall) }
             check(false, "the first call must fail when a second call replaces its promise")
         } catch let error as DjinniError {
             check(error.errorMessage.contains("broken promise"), "replaced promise error: \(error.errorMessage)")
@@ -360,7 +391,7 @@ func runAsyncSafetyCases(_ service: RuntimeAsync) async throws {
             check(false, "the first call waits for ever when a second call replaces its promise")
         }
         try await service.completePending(7)
-        let value = try await withTimeout(10) { try await secondCall.value }
+        let value = try await withTimeout(10) { try await taskValue(of: secondCall) }
         check(value == 7, "the second call completes: \(value)")
     }
 
