@@ -1,0 +1,27 @@
+@extern "../../support-lib/outcome.yaml"
+
+# Swift's Result needs an error type that conforms to Error. Only a record with deriving(error) does.
+
+swift_outcome_error_plain = record {
+  message: string;
+}
+
+swift_outcome_error_kind = enum {
+  first;
+}
+
+swift_outcome_error_good = record {
+  message: string;
+} deriving(error)
+
+swift_outcome_error_service = interface +c {
+  fine(): outcome<i32, swift_outcome_error_good>;
+  plain_record(): outcome<i32, swift_outcome_error_plain>;
+  an_enum(): outcome<i32, swift_outcome_error_kind>;
+  a_string(): outcome<i32, string>;
+  nested(): list<outcome<i32, i64>>;
+}
+
+swift_outcome_error_holder = record {
+  field: outcome<string, swift_outcome_error_plain>;
+}

@@ -1,0 +1,13 @@
+# String constants. Java escapes that Swift writes in another way.
+
+swift_const_strings = record {
+  const unicode: string = "A\u0041\u00e9";
+  const pair: string = "\uD83D\uDE00";
+  const control: string = "tab\there\nnew \"quoted\" back\\slash \b\f \0 \101";
+  count: i32;
+}
+
+swift_const_strings_service = interface +c {
+  const label: string = "x\u0042y";
+  static create(): swift_const_strings_service;
+}

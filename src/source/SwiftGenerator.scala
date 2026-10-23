@@ -146,7 +146,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       case l: Long => w.w(l.toString)
       case d: Double => w.w(d.toString)
       case b: Boolean => w.w(if (b) "true" else "false")
-      case s: String => w.w(s)
+      // The generator checks the string before it writes a file, so a problem here cannot happen
+      case s: String => w.w(SwiftLiteral.convert(s).fold(message => throw GenerateException(message), literal => literal))
       case e: EnumValue =>  w.w(s"${marshal.typename(ty)}.${idSwift.enum(e)}")
       case v: ConstRef => w.w(idSwift.const(v))
       case z: Map[_, _] => { // Value is record

@@ -310,6 +310,7 @@ swift_options_relative="djinni/swift_options.djinni"
 swift_result_name_relative="djinni/swift_result_name.djinni"
 swift_naming_relative="djinni/swift_naming.djinni"
 swift_deriving_relative="djinni/swift_deriving.djinni"
+swift_const_strings_relative="djinni/swift_const_strings.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -506,8 +507,35 @@ fi
     --swift-module TestSuite \
     --swift-private-in-same-module \
     \
-    --idl "$swift_deriving_relative" \
+    --idl "$swift_deriving_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/const-strings/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/const-strings/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/const-strings/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_const_strings_relative" \
 )
+# A Java escape becomes the Swift escape for the same character.
+const_strings="$temp_out/swift-features/const-strings/swift"
+for expected in \
+    'public static let unicode: String = "A\u{41}\u{E9}"' \
+    'public static let pair: String = "\u{1F600}"' \
+    'public static let control: String = "tab\there\nnew \"quoted\" back\\slash \u{8}\u{C} \0 \u{41}"'; do
+    if ! grep -qF -- "$expected" "$const_strings"/SwiftConstStrings.swift; then
+        echo "Missing Swift string constant: $expected" 1>&2
+        cat "$const_strings"/SwiftConstStrings.swift 1>&2
+        exit 1
+    fi
+done
+if ! grep -qF -- 'public static let label: String = "x\u{42}y"' "$const_strings"/SwiftConstStringsService+Private.swift; then
+    echo "Missing Swift string constant of an interface." 1>&2
+    exit 1
+fi
 # Every +Private.swift file of the options case must import the base library module.
 options_private=("$temp_out"/swift-features/options/swift/*+Private.swift)
 if [ "${#options_private[@]}" -eq 0 ]; then
@@ -927,6 +955,123 @@ if grep -qF "swift_codable_good" "$codable_log" || [ -e "$base_dir/$temp_out_rel
     echo "The generator reported a Codable record, or wrote files for a rejected IDL." 1>&2
     exit 1
 fi
+
+# The Swift/C++ glue of a record copies its fields, and a C++ future cannot be copied. Swift alone accepts the field.
+future_glue_log="$temp_out/swift-future-field-glue.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-future-field-glue/cpp" \
+    --cpp-namespace testsuite \
+    --swift-out "$temp_out_relative/swift-future-field-glue/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-future-field-glue/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    --idl "$swift_future_field_relative") >"$future_glue_log" 2>&1; then
+    echo "The generator accepted a future<> record field with --swiftxx-out." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "record swift_future_field, field value: the Swift/C++ glue of a record cannot copy a future<>. Use a future<> only as the result of a method." "$future_glue_log" || \
+   [ -e "$base_dir/$temp_out_relative/swift-future-field-glue" ]; then
+    echo "Missing error message for a future<> record field with --swiftxx-out, or files were written." 1>&2
+    cat "$future_glue_log" 1>&2
+    exit 1
+fi
+
+# Swift's Result needs an error type that conforms to Error.
+outcome_error_log="$temp_out/swift-outcome-error-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-outcome-error-negative/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_outcome_error_negative.djinni") >"$outcome_error_log" 2>&1; then
+    echo "The generator accepted an outcome<T, E> with an E that is not an Error." 1>&2
+    exit 1
+fi
+for expected in \
+    "interface swift_outcome_error_service, method plain_record: the error type of outcome<T, E> must conform to Error in Swift, but the record swift_outcome_error_plain does not derive error." \
+    "interface swift_outcome_error_service, method an_enum: the error type of outcome<T, E> must conform to Error in Swift, but the enum swift_outcome_error_kind does not conform to Error." \
+    "interface swift_outcome_error_service, method a_string: the error type of outcome<T, E> must conform to Error in Swift, but the type string does not conform to Error." \
+    "interface swift_outcome_error_service, method nested: the error type of outcome<T, E> must conform to Error in Swift, but the type i64 does not conform to Error." \
+    "record swift_outcome_error_holder, field field: the error type of outcome<T, E> must conform to Error in Swift, but the record swift_outcome_error_plain does not derive error."; do
+    if ! grep -qF -- "$expected" "$outcome_error_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$outcome_error_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qF "method fine" "$outcome_error_log" || [ -e "$base_dir/$temp_out_relative/swift-outcome-error-negative" ]; then
+    echo "The generator reported an outcome with an Error type, or wrote files for a rejected IDL." 1>&2
+    cat "$outcome_error_log" 1>&2
+    exit 1
+fi
+
+# A string constant with an escape that Swift cannot write, or a surrogate without its pair.
+escape_log="$temp_out/swift-const-escape-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-const-escape-negative/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_const_escape_negative.djinni") >"$escape_log" 2>&1; then
+    echo "The generator accepted a string constant that Swift cannot write." 1>&2
+    exit 1
+fi
+for expected in \
+    'record swift_const_escape_bad, constant bad_hex: the escape \x is not a Swift escape' \
+    'record swift_const_escape_bad, constant lone: the escape \uD83D is a surrogate without its pair, which Swift cannot write'; do
+    if ! grep -qF -- "$expected" "$escape_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$escape_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qF "constant fine" "$escape_log" || [ -e "$base_dir/$temp_out_relative/swift-const-escape-negative" ]; then
+    echo "The generator reported a constant that Swift can write, or wrote files for a rejected IDL." 1>&2
+    cat "$escape_log" 1>&2
+    exit 1
+fi
+
+# The glue headers have the names of the C++ headers by default. Without an include prefix a glue header includes
+# itself, and in one folder the glue files overwrite the C++ files.
+glue_name_log="$temp_out/swiftxx-file-names.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swiftxx-file-names/cpp" \
+    --cpp-namespace testsuite \
+    --swiftxx-out "$temp_out_relative/swiftxx-file-names/swiftxx" \
+    --idl "$swift_types_relative") >"$glue_name_log" 2>&1; then
+    echo "The generator accepted glue headers that include themselves." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--swiftxx-out writes glue headers with the names of the C++ headers, and --swiftxx-include-cpp-prefix is empty, so a glue header includes itself." "$glue_name_log" || \
+   [ -e "$base_dir/$temp_out_relative/swiftxx-file-names" ]; then
+    echo "Missing error message for glue headers that include themselves, or files were written." 1>&2
+    cat "$glue_name_log" 1>&2
+    exit 1
+fi
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swiftxx-file-names/same" \
+    --cpp-namespace testsuite \
+    --swiftxx-out "$temp_out_relative/swiftxx-file-names/same" \
+    --swiftxx-include-cpp-prefix "./" \
+    --idl "$swift_types_relative") >"$glue_name_log" 2>&1; then
+    echo "The generator accepted glue files that overwrite the C++ files." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--swiftxx-out is the output folder of the C++ code, and the glue files have the names of the C++ files, so they overwrite each other." "$glue_name_log"; then
+    echo "Missing error message for glue files that overwrite the C++ files." 1>&2
+    cat "$glue_name_log" 1>&2
+    exit 1
+fi
+# Other file names for the glue make an empty include prefix safe.
+(cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swiftxx-file-names-ok/cpp" \
+    --cpp-namespace testsuite \
+    --swiftxx-out "$temp_out_relative/swiftxx-file-names-ok/swiftxx" \
+    --ident-swiftxx-file FooBar \
+    --idl "$swift_types_relative") >"$glue_name_log" 2>&1 || {
+    echo "The generator rejected glue file names that differ from the C++ file names." 1>&2
+    cat "$glue_name_log" 1>&2
+    exit 1
+}
 
 # The Swift glue and the Objective-C++ glue define the same helper symbols when they share a namespace.
 # The default namespaces differ. Equal namespaces fail the run before any file is written.

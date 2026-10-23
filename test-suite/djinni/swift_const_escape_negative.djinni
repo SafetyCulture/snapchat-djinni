@@ -1,0 +1,8 @@
+# A Java escape that Swift cannot write, and a surrogate without its pair.
+
+swift_const_escape_bad = record {
+  const bad_hex: string = "a\x41";
+  const lone: string = "\uD83D";
+  const fine: string = "ok";
+  count: i32;
+}
