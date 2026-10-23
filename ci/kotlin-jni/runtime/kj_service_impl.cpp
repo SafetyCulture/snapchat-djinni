@@ -2,6 +2,7 @@
 #include "kj_blob.hpp"
 #include "kj_both.hpp"
 #include "kj_color.hpp"
+#include "kj_future_source.hpp"
 #include "kj_item.hpp"
 #include "kj_listener.hpp"
 #include "kj_message_box.hpp"
@@ -12,6 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <thread>
 
 namespace {
@@ -57,6 +59,15 @@ public:
 
     int32_t call_listener(const std::shared_ptr<kj::KjListener>& listener, int32_t value) override {
         return listener->on_value(value);
+    }
+
+    std::string await_source(const std::shared_ptr<kj::KjFutureSource>& source) override {
+        auto future = source->produce();
+        try {
+            return "value " + std::to_string(future.get());
+        } catch (const std::exception& e) {
+            return e.what();
+        }
     }
 
     djinni::Future<int32_t> delayed(int32_t value, int32_t millis) override { return later(value, millis); }
