@@ -419,7 +419,7 @@ object Main {
     }
 
     // The JNI code binds the classes of one package; a different Kotlin package breaks the binding
-    if (kotlinJniPackage.isDefined && jniOutFolder.isDefined && kotlinJniPackage.get != javaPackage) {
+    if (kotlinJniOutFolder.isDefined && jniOutFolder.isDefined && kotlinJniPackage.exists(p => !javaPackage.contains(p))) {
       System.err.println("Error: --kotlin-jni-package must equal --java-package when the JNI code binds the classes.")
       System.exit(1); return
     }

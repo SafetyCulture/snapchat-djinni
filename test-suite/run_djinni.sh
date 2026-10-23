@@ -725,6 +725,31 @@ fi
     --idl-include-path "djinni/vendor" \
 )
 
+# With --jni-out, --kotlin-jni-package must equal --java-package.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-package-equal/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-package-equal/jni" \
+    --kotlin-jni-package "$java_package" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni" \
+)
+pkg_log="$temp_out/kotlin-jni-package-mismatch.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-package-mismatch/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-package-mismatch/jni" \
+    --kotlin-jni-package "com.dropbox.djinni.test.other" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni") >"$pkg_log" 2>&1; then
+    echo "The generator accepted --kotlin-jni-package that differs from --java-package with --jni-out." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--kotlin-jni-package must equal --java-package when the JNI code binds the classes." "$pkg_log"; then
+    echo "Missing error message for a package mismatch." 1>&2
+    cat "$pkg_log" 1>&2
+    exit 1
+fi
+
 # The JNI code binds one class for an extern record, so it cannot serve --java-out and --kotlin-jni-out.
 extern_log="$temp_out/kotlin-jni-extern-both.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
