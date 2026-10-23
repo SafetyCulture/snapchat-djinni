@@ -16,12 +16,11 @@ AnyValue DataViewAdaptor::fromCpp(DataView c) {
 
 DataRef DataRefAdaptor::toCpp(const AnyValue& s) {
     auto range = std::get<RangeValue>(s);
-    if (range.size > 0) {
-        auto cfmutabledataref = const_cast<CFMutableDataRef>(reinterpret_cast<CFDataRef>(range.bytes));
-        return DataRef(cfmutabledataref);
-    } else {
-        return DataRef(reinterpret_cast<CFDataRef>(range.bytes));
-    }
+    auto cfdata = reinterpret_cast<CFDataRef>(range.bytes);
+    // The Swift side gives one retained reference. The DataRef retains its own, so release the given one.
+    auto result = range.size > 0 ? DataRef(const_cast<CFMutableDataRef>(cfdata)) : DataRef(cfdata);
+    CFRelease(cfdata);
+    return result;
 }
 
 AnyValue DataRefAdaptor::fromCpp(const DataRef& c) {

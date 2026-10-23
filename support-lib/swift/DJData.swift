@@ -28,12 +28,12 @@ public enum DataRefMarshaller: Marshaller {
         return cfdata as NSData
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        // Unretained: the DataRef constructor CFRetains synchronously while the caller still holds s
+        // Retained: DataRefAdaptor::toCpp takes this reference, so the data lives until C++ converts it
         if let nsMutableData = s as? NSMutableData {
-            let cfDataRef = Unmanaged.passUnretained(nsMutableData).toOpaque()
+            let cfDataRef = Unmanaged.passRetained(nsMutableData).toOpaque()
             return djinni.swift.makeRangeValue(cfDataRef, 1)
         } else {
-            let cfDataRef = Unmanaged.passUnretained(s as CFData).toOpaque()
+            let cfDataRef = Unmanaged.passRetained(s as CFData).toOpaque()
             return djinni.swift.makeRangeValue(cfDataRef, 0)
         }
     }
