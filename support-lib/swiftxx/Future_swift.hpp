@@ -106,7 +106,12 @@ public:
                 const auto& e = std::get<ErrorValue>(res);
                 p.setException(e);
             } else {
-                setValue(p, res);
+                // A throwing conversion must not destroy the promise unset; the future would hang
+                try {
+                    setValue(p, res);
+                } catch (...) {
+                    p.setException(std::current_exception());
+                }
             }
         });
         return f;
