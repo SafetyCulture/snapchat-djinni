@@ -160,7 +160,10 @@ if [ "$check_crux" != 0 ]; then
     --kotlin-jni-out "$work/$name/kotlin" --java-package "$crux_kotlin" --ident-java-field mFooBar \
     --java-nonnull-annotation androidx.annotation.NonNull --java-implement-android-os-parcelable true \
     --kotlin-jni-java-bridge-out "$work/$name/bridge" --kotlin-jni-java-bridge-package "$crux_java" \
-    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni) >"$work/$name/run.log" 2>&1
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni) >"$work/$name/run.log" 2>&1 || {
+    cat "$work/$name/run.log" >&2
+    exit 1
+  }
   if ! grep -qxF "bridge: skipped inspection_session_result: field session is a +c interface" "$work/$name/run.log"; then
     echo "FAIL: the Crux bridge pass did not skip inspection_session_result" >&2
     cat "$work/$name/run.log" >&2
