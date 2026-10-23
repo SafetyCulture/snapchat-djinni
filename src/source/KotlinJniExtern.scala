@@ -42,15 +42,22 @@ object KotlinJniExtern {
     incomplete ++ both
   }
 
-  // Two Kotlin classes with the same simple name get the same Parceler name.
+  // Two Kotlin classes with the same simple name get the same Parceler name, and an IDL type can
+  // collide with a Parceler name. Both cases fail here, before any file is written.
   private def parcelerProblems(idl: Seq[TypeDecl], spec: Spec): Seq[String] = {
     val classes = if (!spec.javaImplementAndroidOsParcelable) Seq() else idl.collect {
       case InternTypeDecl(_, _, r: Record, _, _) if r.derivingTypes.contains(DerivingType.AndroidParcelable) => r
     }.flatMap(_.fields.flatMap(f => keyedExterns(f.ty.resolved))).distinct
-    classes.groupBy(parcelerName(spec, _)).toSeq.sortBy(_._1).collect {
+    val duplicate = classes.groupBy(parcelerName(spec, _)).toSeq.sortBy(_._1).collect {
       case (name, fqns) if fqns.size > 1 =>
         s"The classes ${fqns.mkString(" and ")} need a Parceler with the same name $name."
     }
+    val typeNames = idl.map(d => spec.javaIdentStyle.ty(d.ident.name)).toSet
+    val collision = classes.map(parcelerName(spec, _)).distinct.sorted.collect {
+      case name if typeNames.contains(name) =>
+        s"The Parceler name $name collides with an IDL type of the same name."
+    }
+    duplicate ++ collision
   }
 
   // key is "<block>.<name>"

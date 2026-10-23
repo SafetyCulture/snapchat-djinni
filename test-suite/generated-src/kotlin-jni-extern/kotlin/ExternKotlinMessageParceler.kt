@@ -7,7 +7,7 @@ import android.os.Parcel
 import kotlinx.parcelize.Parceler
 
 object ExternKotlinMessageParceler : Parceler<com.dropbox.djinni.testextern.ExternKotlinMessage> {
-    override fun create(parcel: Parcel): com.dropbox.djinni.testextern.ExternKotlinMessage = com.dropbox.djinni.testextern.ExternKotlinMessage.parseFrom(parcel.createByteArray()!!)
+    override fun create(parcel: Parcel): com.dropbox.djinni.testextern.ExternKotlinMessage = com.dropbox.djinni.testextern.ExternKotlinMessage.parseFrom(requireNotNull(parcel.createByteArray()))
 
     override fun com.dropbox.djinni.testextern.ExternKotlinMessage.write(parcel: Parcel, flags: Int) {
         parcel.writeByteArray(toByteArray())

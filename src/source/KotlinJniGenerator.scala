@@ -313,7 +313,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     for ((name, (fqn, origin)) <- parcelers.toSeq.sortBy(_._1)) {
       writeKotlinFile(name, origin, List("android.os.Parcel", "kotlinx.parcelize.Parceler"), w => {
         w.w(s"${accessModifier}object $name : Parceler<$fqn>").braced {
-          w.wl(s"override fun create(parcel: Parcel): $fqn = $fqn.parseFrom(parcel.createByteArray()!!)")
+          w.wl(s"override fun create(parcel: Parcel): $fqn = $fqn.parseFrom(requireNotNull(parcel.createByteArray()))")
           w.wl
           w.w(s"override fun $fqn.write(parcel: Parcel, flags: Int)").braced {
             w.wl("parcel.writeByteArray(toByteArray())")
