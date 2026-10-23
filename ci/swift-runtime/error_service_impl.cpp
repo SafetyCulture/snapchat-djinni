@@ -2,6 +2,7 @@
 #include "crux_error.hpp"
 
 #include <memory>
+#include <stdexcept>
 
 namespace {
 
@@ -13,6 +14,8 @@ public:
         }
         return a / b;
     }
+
+    djinni::expected<int32_t, rt::CruxError> fail() override { throw std::runtime_error("boom"); }
 };
 
 } // namespace

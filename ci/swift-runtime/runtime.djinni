@@ -7,6 +7,7 @@
 runtime_listener = interface +o +j +sw {
   on_value(value: i32): i32;
   make_data(): DataRef;
+  on_fail(): i32;
 }
 
 runtime_service = interface +c +sw {
@@ -39,4 +40,11 @@ runtime_async = interface +c {
   busy(millis: i32);
   fail_future(): future<i32>;
   max_concurrent(): i32;
+  # These methods throw a C++ exception.
+  fail(): i32;
+  fail_void();
+  fail_outcome(): outcome<i32, runtime_error>;
+  fail_unknown(): i32;
+  # C++ catches the exception that the Swift listener throws, and returns its message.
+  describe_listener_failure(listener: runtime_listener): string;
 }

@@ -13,6 +13,9 @@ djinni::swift::AnyValue SwiftSendableService_ping(const djinni::swift::Parameter
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftSendableServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
     return {std::make_shared<SwiftSendableServiceSwiftProxy>(instance, dispatcher)};
 }

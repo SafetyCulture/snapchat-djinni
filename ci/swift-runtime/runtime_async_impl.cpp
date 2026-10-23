@@ -1,5 +1,6 @@
 #include "runtime_async.hpp"
 #include "runtime_error.hpp"
+#include "runtime_listener.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -13,6 +14,15 @@ namespace {
 class RuntimeAsyncImpl : public rt::RuntimeAsync, public std::enable_shared_from_this<RuntimeAsyncImpl> {
 public:
     int32_t add(int32_t a, int32_t b) override { return a + b; }
+
+    std::string describe_listener_failure(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        try {
+            listener->on_fail();
+        } catch (const std::exception& e) {
+            return e.what();
+        }
+        return "";
+    }
 
     djinni::expected<int32_t, rt::RuntimeError> divide(int32_t a, int32_t b) override {
         if (b == 0) {
@@ -34,6 +44,14 @@ public:
     djinni::Future<int32_t> fail_future() override {
         throw std::runtime_error("boom");
     }
+
+    int32_t fail() override { throw std::runtime_error("boom"); }
+
+    void fail_void() override { throw std::runtime_error("boom"); }
+
+    djinni::expected<int32_t, rt::RuntimeError> fail_outcome() override { throw std::runtime_error("boom"); }
+
+    int32_t fail_unknown() override { throw 42; }
 
     djinni::Future<int32_t> pending() override {
         std::lock_guard<std::mutex> lock(_mutex);

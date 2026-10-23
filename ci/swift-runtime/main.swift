@@ -18,6 +18,11 @@ final class Doubler: RuntimeListener {
     deinit { State.liveListeners.add(-1) }
     func onValue(_ value: Int32) throws -> Int32 { value * 2 }
     func makeData() throws -> NSData { Data((0..<256).map { UInt8($0) }) as NSData }
+    func onFail() throws -> Int32 { throw HostFailure.boom }
+}
+
+enum HostFailure: Error {
+    case boom
 }
 
 func check(_ condition: Bool, _ message: String) {
@@ -105,18 +110,41 @@ func runTests() throws {
     withExtendedLifetime(service) {}
 }
 
+func expectCppException(_ name: String, _ call: () async throws -> Void) async {
+    do {
+        try await call()
+        check(false, "\(name) must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("boom"), "DjinniError message of the \(name): \(error.errorMessage)")
+    } catch {
+        check(false, "\(name) must throw DjinniError, not \(error)")
+    }
+}
+
 func runAsyncTests() async throws {
     let service = try RuntimeAsync_statics.create()
-    check(await service.add(2, b: 3) == 5, "async add")
+    check(try await service.add(2, b: 3) == 5, "async add")
 
-    // An outcome is a typed error.
+    // An outcome error is thrown as its own type.
     check(try await service.divide(10, b: 2) == 5, "async divide")
-    do throws(RuntimeError) {
+    do {
         _ = try await service.divide(1, b: 0)
         check(false, "divide by zero must fail")
-    } catch {
-        check(error.code == 1 && error.message == "division by zero", "typed error of an outcome")
+    } catch let error as RuntimeError {
+        check(error.code == 1 && error.message == "division by zero", "error of an outcome")
     }
+
+    // A C++ exception is an error of the call. It does not stop the process.
+    await expectCppException("plain method") { _ = try await service.fail() }
+    await expectCppException("void method") { try await service.failVoid() }
+    await expectCppException("outcome method") { _ = try await service.failOutcome() }
+    do {
+        _ = try await service.failUnknown()
+        check(false, "failUnknown must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("unknown C++ exception"), "DjinniError message of an unknown exception: \(error.errorMessage)")
+    }
+    check(try await service.add(1, b: 1) == 2, "the wrapper works after a C++ exception")
 
     // The error record of --swift-error-type conforms to Error without deriving(error).
     let errors = try ErrorService_statics.create()
@@ -128,24 +156,39 @@ func runAsyncTests() async throws {
         check(error.code == 7 && error.message == "division by zero", "CruxError from the wrapper")
     }
 
+    // With --swift-error-type, a C++ exception is a CruxError of CppExceptionConvertible.
+    do throws(CruxError) {
+        _ = try await errors.fail()
+        check(false, "fail must throw CruxError")
+    } catch {
+        check(error.code == -1 && error.message.contains("boom"), "CruxError of a C++ exception: \(error.message)")
+    }
+    check(try await errors.divide(9, b: 3) == 3, "the typed wrapper works after a C++ exception")
+
+    // A Swift listener throws, C++ catches the exception and returns its message.
+    let hostMessage = try await service.describeListenerFailure(Doubler())
+    check(hostMessage.contains("boom"), "C++ message of a Swift error: \(hostMessage)")
+
     // A legacy record (--swift-legacy-records) crosses the C++ boundary in both directions.
     let legacy = try LegacyService_statics.create()
     var input = LegacyPoint(x: 3, y: -4)
     input.y = 5
-    let point = await legacy.echo(input)
+    let point = try await legacy.echo(input)
     check(point.x == 3 && point.y == 5, "legacy record round trip")
 
     // One C++ object has one wrapper, and the wrapper serialises the calls to the object.
     let first = try RuntimeAsync_statics.shared()
     let second = try RuntimeAsync_statics.shared()
     check(first === second, "the same C++ object has one wrapper")
-    check(await first.same() === first, "a C++ object that returns itself has one wrapper")
-    await withTaskGroup(of: Void.self) { group in
+    check(try await first.same() === first, "a C++ object that returns itself has one wrapper")
+    try await withThrowingTaskGroup(of: Void.self) { group in
         for i in 0..<40 {
-            group.addTask { await (i % 2 == 0 ? first : second).busy(5) }
+            group.addTask { try await (i % 2 == 0 ? first : second).busy(5) }
         }
+        try await group.waitForAll()
     }
-    check(await first.maxConcurrent() == 1, "calls to one C++ object interleave: \(await first.maxConcurrent())")
+    let maxConcurrent = try await first.maxConcurrent()
+    check(maxConcurrent == 1, "calls to one C++ object interleave: \(maxConcurrent)")
 
     // A C++ exception before a future exists is a DjinniError.
     do {
@@ -163,7 +206,7 @@ func runAsyncTests() async throws {
     // Many tasks use one wrapper.
     let sum = try await withThrowingTaskGroup(of: Int32.self) { group in
         for i in 0..<500 {
-            group.addTask { await service.add(Int32(i), b: 1) }
+            group.addTask { try await service.add(Int32(i), b: 1) }
             group.addTask { try await service.delayed(Int32(i), millis: 1) }
         }
         var total: Int32 = 0
@@ -183,7 +226,7 @@ func runAsyncTests() async throws {
     } catch {
         check(false, "a cancelled task must throw CancellationError, not \(error)")
     }
-    await service.completePending(1)
+    try await service.completePending(1)
 
     // A task that is cancelled before it waits throws at once.
     let early = Task {
@@ -198,10 +241,17 @@ func runAsyncTests() async throws {
     } catch {
         check(false, "an early cancelled task must throw CancellationError, not \(error)")
     }
-    await service.completePending(2)
+    try await service.completePending(2)
 
     // The future of a completed call still delivers its value after another task was cancelled.
     check(try await service.delayed(9, millis: 10) == 9, "future after cancellation")
+}
+
+// The error type of --swift-error-type holds the C++ exception as a message.
+extension CruxError: CppExceptionConvertible {
+    public init(cppException error: DjinniError) {
+        self.init(message: error.errorMessage, code: -1)
+    }
 }
 
 // A deadlock fails the test.

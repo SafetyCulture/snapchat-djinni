@@ -8,11 +8,11 @@ import TestSuiteCxx
 
 final class SwiftAsyncChildCppProxy: DjinniSupport.CppProxy, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
-    func name() -> String {
+    func name() throws -> String {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         var ret = djinni_generated.SwiftAsyncChild_name(&_params)
-        handleCppErrorsAsFatal(&ret, "SwiftAsyncChild.name")
+        try handleCppErrors(&ret)
         return StringMarshaller.fromCpp(ret)
     }
 }

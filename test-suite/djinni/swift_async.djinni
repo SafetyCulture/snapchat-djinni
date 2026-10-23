@@ -14,6 +14,11 @@ swift_async_item = record {
   count: i32;
 }
 
+# A record named error shadows the Swift protocol Error in the module.
+error = record {
+  reason: string;
+}
+
 # The host implements this one in Swift, so it is not wrapped.
 swift_async_observer = interface +o +j +sw {
   on_item(item: swift_async_item);

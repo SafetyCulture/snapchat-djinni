@@ -10,4 +10,5 @@ crux_error = record {
 error_service = interface +c {
   static create(): error_service;
   divide(a: i32, b: i32): outcome<i32, crux_error>;
+  fail(): outcome<i32, crux_error>;
 }

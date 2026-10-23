@@ -166,6 +166,9 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
           w.w("catch (const std::exception& e)").braced {
             w.wl("return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};")
           }
+          w.w("catch (...)").braced {
+            w.wl("""return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};""")
+          }
         })
       }
       if (i.ext.swift) {

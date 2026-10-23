@@ -13,7 +13,7 @@ public final class SwiftErrorService: @unchecked Sendable {
     public func fetch(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
         let result: Result<TestSuite.SwiftErrorItem, TestSuite.CruxError> = await withCheckedContinuation { _continuation in
             self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(returning: _proxy.fetch(id))
+                _continuation.resume(returning: DjinniSupport.cppOutcome { try _proxy.fetch(id) })
             }
         }
         return try result.get()
@@ -22,7 +22,7 @@ public final class SwiftErrorService: @unchecked Sendable {
     public func count() async throws(TestSuite.CruxError) -> Int32 {
         let result: Result<Int32, TestSuite.CruxError> = await withCheckedContinuation { _continuation in
             self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(returning: _proxy.count())
+                _continuation.resume(returning: DjinniSupport.cppOutcome { try _proxy.count() })
             }
         }
         return try result.get()
@@ -40,7 +40,7 @@ public final class SwiftErrorService: @unchecked Sendable {
     public func watch(_ observer: TestSuite.SwiftErrorObserver) async throws(TestSuite.CruxError) -> Bool {
         let result: Result<Bool, TestSuite.CruxError> = await withCheckedContinuation { _continuation in
             self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(returning: _proxy.watch(observer))
+                _continuation.resume(returning: DjinniSupport.cppOutcome { try _proxy.watch(observer) })
             }
         }
         return try result.get()
