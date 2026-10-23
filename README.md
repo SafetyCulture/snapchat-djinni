@@ -656,7 +656,14 @@ check scripts select the newest cached jar, and CI pins 1.10.2
   call that it stops. The C++ object must be thread-safe, as it is for the
   calls of the Java classes. An adapter that needs one call at a time must
   serialize the calls itself.
-- Each C++ call that blocks uses one thread of the dispatcher.
+- Each C++ call that blocks uses one thread of the dispatcher. `Dispatchers.IO`
+  runs at most 64 blocking tasks at a time (the system property
+  `kotlinx.coroutines.io.parallelism`, or the number of cores when it is
+  larger). When 64 calls block, the next call waits for a free thread. A
+  `cancel()` call waits too. `--kotlin-suspend-dispatcher` with an executor that
+  has no limit removes the limit, for example
+  `Executors.newCachedThreadPool().asCoroutineDispatcher()`, which the runtime
+  test uses.
 - A method that returns `future<T>` is `suspend fun m(): T`. It uses
   `suspendCancellableCoroutine` over `com.snapchat.djinni.Future.then`.
 - A cancelled coroutine stops waiting and throws `CancellationException`. A
