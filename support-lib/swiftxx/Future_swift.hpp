@@ -3,6 +3,9 @@
 #include "djinni_support.hpp"
 #include "../cpp/Future.hpp"
 
+#include <atomic>
+#include <optional>
+
 namespace djinni::swift {
 
 // Swift function prototypes called by C++
@@ -39,6 +42,12 @@ struct CppFutureHolder: AbstractCppFutureHolder {
     }
 
     void setFutureCb(FutureCb cb, void* ctx) override {
+        // Only one callback can take the future. A second call gets an error, so Swift releases its context.
+        if (!future.isValid()) {
+            AnyValue invalid = ErrorValue("the C++ future was already taken");
+            cb(ctx, &invalid);
+            return;
+        }
         future.then([cb, ctx] (Future<CppResType> f) {
             AnyValue result = makeVoidValue();
             try {
@@ -61,6 +70,7 @@ struct SwiftFutureHolder: OpaqueValue {
     std::shared_ptr<djinni::Future<AnyValue>> future;
     void* subscription = nullptr;
     CleanupCb cleanup;
+    std::atomic<bool> completed{false};
     SwiftFutureHolder(CleanupCb cleanup) {
         this->cleanup = cleanup;
         this->future = std::make_shared<djinni::Future<AnyValue>>(promise.getFuture());
@@ -68,7 +78,11 @@ struct SwiftFutureHolder: OpaqueValue {
     ~SwiftFutureHolder() override {
         cleanup(subscription);
     }
+    // A promise completes once. A second result is dropped.
     void setValue(const AnyValue* futureValue) {
+        if (completed.exchange(true)) {
+            return;
+        }
         promise.setValue(*futureValue);
     }
 };
@@ -77,42 +91,52 @@ template <class RESULT>
 class FutureAdaptor
 {
     using CppResType = typename RESULT::CppType;
-
-    template<typename T>
-    static void setValue(Promise<T>& p, const AnyValue& res) {
-        if constexpr (std::is_void_v<T>) {
+    // The result of the Swift future becomes the result of the C++ promise. The conversion runs inside the try
+    // block, and the promise completes once, outside it.
+    static void complete(Promise<CppResType>& p, Future<AnyValue>& f) {
+        std::exception_ptr error;
+        [[maybe_unused]] std::optional<typename detail::ValueHolder<CppResType>::type> value;
+        try {
+            auto res = f.get();
+            if (std::holds_alternative<ErrorValue>(res)) {
+                const auto& e = std::get<ErrorValue>(res);
+                error = e.cause ? e.cause : std::make_exception_ptr(e);
+            } else if constexpr (std::is_void_v<CppResType>) {
+                value = true;
+            } else {
+                value.emplace(RESULT::toCpp(res));
+            }
+        } catch (...) {
+            error = std::current_exception();
+        }
+        if (error) {
+            p.setException(error);
+        } else if constexpr (std::is_void_v<CppResType>) {
             p.setValue();
         } else {
-            p.setValue(RESULT::toCpp(res));
+            p.setValue(std::move(*value));
         }
     }
 public:
     using CppType = Future<CppResType>;
 
     static CppType toCpp(const AnyValue& o) {
+        auto opaque = std::get<OpaqueValuePtr>(o);
         // If already a C++ future (can this happen?), just return the wrapped future
-        auto holder = std::dynamic_pointer_cast<CppFutureHolder<RESULT>>(std::get<OpaqueValuePtr>(o));
+        auto holder = std::dynamic_pointer_cast<CppFutureHolder<RESULT>>(opaque);
         if (holder) {
             return std::move(holder->future);
         }
         // Acquire the holder for Swift future
-        auto swiftHolder = std::dynamic_pointer_cast<SwiftFutureHolder>(std::get<OpaqueValuePtr>(o));
+        auto swiftHolder = std::dynamic_pointer_cast<SwiftFutureHolder>(opaque);
+        if (!swiftHolder) {
+            throw ErrorValue("the value is not a future");
+        }
         Promise<CppResType> p;
         auto f = p.getFuture();
         // And return a C++ future connected to it
         swiftHolder->future->then([p = std::move(p)] (Future<AnyValue> f) mutable {
-            auto res = f.get();
-            if (std::holds_alternative<ErrorValue>(res)) {
-                const auto& e = std::get<ErrorValue>(res);
-                p.setException(e.cause ? e.cause : std::make_exception_ptr(e));
-            } else {
-                // A throwing conversion must not destroy the promise unset; the future would hang
-                try {
-                    setValue(p, res);
-                } catch (...) {
-                    p.setException(std::current_exception());
-                }
-            }
+            complete(p, f);
         });
         return f;
     }
