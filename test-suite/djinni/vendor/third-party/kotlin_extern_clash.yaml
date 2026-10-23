@@ -1,0 +1,38 @@
+# An extern record whose Kotlin class has the same simple name as the one of extern_kotlin_message. A parcelable
+# record that has both fields needs two Parcelers with one name.
+---
+name: extern_kotlin_clash_message
+typedef: 'record deriving(eq, ord, parcelable)'
+params: []
+prefix: ''
+cpp:
+  typename: 'kotlin_extern::KotlinClashMessage'
+  header: '"kotlin_extern.pb.h"'
+  byValue: false
+objc:
+  typename: 'KEKotlinClashMessage'
+  header: '"KEKotlinClashMessage.pbobjc.h"'
+  boxed: 'KEKotlinClashMessage'
+  pointer: true
+  hash: '%s.hash()'
+objcpp:
+  translator: 'djinni::kotlin_extern::KotlinMessage::Translator'
+  header: '"kotlin_extern.djinni.objc.h"'
+java:
+  typename: 'com.dropbox.djinni.testextern.ExternJavaMessage'
+  boxed: 'com.dropbox.djinni.testextern.ExternJavaMessage'
+  reference: true
+  generic: false
+  hash: '%s.hashCode()'
+jni:
+  translator: 'djinni::kotlin_extern::KotlinMessage::Translator'
+  header: '"kotlin_extern.djinni.jni.h"'
+  typename: jobject
+  typeSignature: 'Lcom/dropbox/djinni/testextern/ExternJavaMessage;'
+  kotlinTranslator: 'djinni::kotlin::kotlin_extern::KotlinMessage::Translator'
+  kotlinHeader: '"kotlin_extern.djinni.kotlin.jni.h"'
+  kotlinTypeSignature: 'Lcom/dropbox/djinni/testextern/other/ExternKotlinMessage;'
+kotlin:
+  typename: 'com.dropbox.djinni.testextern.wire.ExternKotlinClashMessage'
+  isProtobufMessage: true
+  jniTypename: 'com.dropbox.djinni.testextern.other.ExternKotlinMessage'

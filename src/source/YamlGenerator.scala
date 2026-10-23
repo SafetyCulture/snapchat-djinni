@@ -295,10 +295,14 @@ object YamlGenerator {
       nested(td, "jni")("translator").toString,
       nested(td, "jni")("header").toString,
       nested(td, "jni")("typename").toString,
-      nested(td, "jni")("typeSignature").toString),
+      nested(td, "jni")("typeSignature").toString,
+      nested(td, "jni").get("kotlinTranslator").map(_.toString),
+      nested(td, "jni").get("kotlinHeader").map(_.toString),
+      nested(td, "jni").get("kotlinTypeSignature").map(_.toString)),
     MExtern.Kotlin(
       getOptionalField(td, "kotlin", "typename", warnIfMissing = yamlOptions.enableKotlinWarnings),
-      getOptionalFieldWithDefault(td, "kotlin", "isProtobufMessage", false, warnIfMissing = yamlOptions.enableKotlinWarnings)),
+      getOptionalFieldWithDefault(td, "kotlin", "isProtobufMessage", false, warnIfMissing = yamlOptions.enableKotlinWarnings),
+      nested(td, "kotlin").get("jniTypename").map(_.toString)),
     MExtern.Wasm(
       getOptionalField(td, "wasm", "typename"),
       getOptionalField(td, "wasm", "translator"),

@@ -33,8 +33,9 @@ def main() -> None:
         for cls in sorted(node):
             pad = "    " * indent
             static = "static " if nested else ""
-            lines.append(f"{pad}public {static}class {cls} implements android.os.Parcelable {{")
+            lines.append(f"{pad}public {static}class {cls} implements android.os.Parcelable, Comparable<{cls}> {{")
             lines.append(f"{pad}    public {cls}(android.os.Parcel in) {{}}")
+            lines.append(f"{pad}    public int compareTo({cls} other) {{ return 0; }}")
             lines.append(f"{pad}    public int describeContents() {{ return 0; }}")
             lines.append(f"{pad}    public void writeToParcel(android.os.Parcel out, int flags) {{}}")
             lines += emit(node[cls], indent + 1, True)

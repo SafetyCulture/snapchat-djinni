@@ -71,11 +71,16 @@ object MExtern {
     translator: String, // C++ typename containing toCpp/fromCpp methods
     header: String, // Where to find the translator class
     typename: String, // The JNI type to use (e.g. jobject, jstring)
-    typeSignature: String // The mangled Java type signature (e.g. "Ljava/lang/String;")
+    typeSignature: String, // The mangled Java type signature (e.g. "Ljava/lang/String;")
+    // The three keys below replace translator, header and typeSignature when --kotlin-jni-out is set.
+    kotlinTranslator: Option[String] = None,
+    kotlinHeader: Option[String] = None,
+    kotlinTypeSignature: Option[String] = None
   )
   case class Kotlin(
     typename: String,
-    isProtobufMessage: Boolean
+    isProtobufMessage: Boolean,
+    jniTypename: Option[String] = None // The Kotlin class that --kotlin-jni-out uses instead of the Java class.
   )
   case class Wasm(
     typename: String, // The Emscripten type to use (e.g. em::val, int32_t)
