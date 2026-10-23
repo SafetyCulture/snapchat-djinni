@@ -22,7 +22,7 @@ abstract class KotlinSuspendChild {
 
         override suspend fun name(): String {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_name(this.nativeRef) }
+            return withContext(this.dispatcher) { native_name(this@CppProxy.nativeRef) }
         }
         private external fun native_name(_nativeRef: Long): String
 

@@ -258,7 +258,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                   m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
                     case Some((ret, value)) =>
                       // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
-                      w.wl(s"val djinni_future = withContext(this.dispatcher) { $call }")
+                      w.wl(s"val djinni_future = withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
                       w.wl(s"return suspendCancellableCoroutine<$value> { djinni_continuation ->").nested {
                         w.wl("val djinni_target = AtomicReference(djinni_continuation)")
                         w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
@@ -284,7 +284,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                       }
                       w.wl("}")
                     case None =>
-                      w.wl(s"${returnStmt}withContext(this.dispatcher) { $call }")
+                      w.wl(s"${returnStmt}withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
                   }
                 }
               } else {
