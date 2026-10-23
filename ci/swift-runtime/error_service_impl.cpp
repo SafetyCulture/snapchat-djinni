@@ -63,13 +63,15 @@ public:
     }
 
     djinni::Future<int32_t> pending() override {
-        _pendingStarted.fetch_add(1);
         // The old promise is destroyed outside the lock, because its handler runs when it is destroyed.
         std::unique_ptr<djinni::Promise<int32_t>> previous;
         std::lock_guard<std::mutex> lock(_mutex);
         previous = std::move(_pending);
         _pending = std::make_unique<djinni::Promise<int32_t>>();
-        return _pending->getFuture();
+        auto future = _pending->getFuture();
+        // A test waits for this count to know that the future exists.
+        _pendingStarted.fetch_add(1);
+        return future;
     }
 
     void complete_pending(int32_t value) override {

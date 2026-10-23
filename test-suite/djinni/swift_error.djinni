@@ -1,5 +1,6 @@
 @extern "../../support-lib/future.yaml"
 @extern "../../support-lib/outcome.yaml"
+@extern "../../support-lib/dataref.yaml"
 
 # Interfaces for --swift-error-type CruxError. The record needs no deriving(error).
 
@@ -21,6 +22,8 @@ swift_error_service = interface +c {
   # Static methods throw the error type too.
   static create(): swift_error_service;
   static load_static(id: string): future<swift_error_item>;
+  # A parameter that is not Sendable crosses into the queue in a box. A parameter named params must not hide the box.
+  static upload(params: DataRef): future<i32>;
   fetch(id: string): outcome<swift_error_item, crux_error>;
   count(): outcome<i32, crux_error>;
   watch(observer: swift_error_observer): outcome<bool, crux_error>;

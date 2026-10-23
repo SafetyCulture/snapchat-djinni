@@ -243,7 +243,7 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
     }
 }
 
-// Returns the one wrapper of a C++ object, so that all calls to the object use the queue of that wrapper.
+// Returns the one wrapper of a C++ object. The wrapper does not serialize the calls to the object.
 public func cppWrapperToSwift<W: AnyObject>(_ c: djinni.swift.AnyValue,
                                             _ newWrapper: () throws -> W) throws -> W {
     return try withUnsafePointer(to: c) { p in

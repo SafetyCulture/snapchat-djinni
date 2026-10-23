@@ -6,11 +6,13 @@ package com.dropbox.djinni.test.kt
 import com.snapchat.djinni.NativeObjectManager
 import kotlinx.coroutines.withContext
 
+private val djinni_dispatcher: kotlin.coroutines.CoroutineContext = com.dropbox.djinni.test.kt.TestDispatchers.blocking
+
 abstract class KotlinSuspendChild {
     abstract suspend fun name(): String
 
     /**
-     * Each suspend method runs its blocking C++ call on `com.dropbox.djinni.test.kt.TestDispatchers.blocking`. Calls to one object can run at the same time.
+     * Each suspend method runs its blocking C++ call on `com.dropbox.djinni.test.kt.TestDispatchers.blocking`, which this file evaluates once. Calls to one object can run at the same time.
      * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future
      * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.
      */
@@ -21,7 +23,7 @@ abstract class KotlinSuspendChild {
         }
 
         override suspend fun name(): String {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_name(this@CppProxy.nativeRef) }
+            return withContext(djinni_dispatcher) { native_name(this@CppProxy.nativeRef) }
         }
         private external fun native_name(_nativeRef: Long): String
 

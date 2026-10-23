@@ -282,13 +282,16 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  // The body of a method that calls C++: the arguments go into a parameter list, the glue function runs, and a C++
-  // error throws. The locals take other names when an IDL parameter has the same name, and a parameter named inst
-  // does not hide the member that holds the C++ object.
-  private def writeCppCall(w: IndentWriter, glue: String, m: Interface.Method, value: Field => String) {
+  // The boxes of writeSendableBoxes. A local in the same closure must not hide one of them.
+  private def boxNames(m: Interface.Method): Set[String] =
+    m.params.filter(p => !marshal.isSendableArgument(p.ty.resolved)).map(p => s"_${SwiftIdent.plain(p.ident)}").toSet
+
+  // A local takes another name when an IDL parameter or a box has its name. A parameter named inst does not hide the
+  // member that holds the C++ object.
+  private def writeCppCall(w: IndentWriter, glue: String, m: Interface.Method, value: Field => String, boxes: Set[String] = Set()) {
     val params = m.params.map(p => idSwift.local(p.ident)).toSet
-    val list = SwiftIdent.fresh("_params", params)
-    val ret = SwiftIdent.fresh("ret", params)
+    val list = SwiftIdent.fresh("_params", params ++ boxes)
+    val ret = SwiftIdent.fresh("ret", params ++ boxes)
     w.wl(s"var $list = djinni.swift.ParameterList()")
     if (!m.static) {
       w.wl(s"$list.addValue(${if (params.contains("inst")) "self.inst" else "inst"})")
@@ -303,7 +306,21 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  private def asyncQueue = spec.swiftAsyncQueue.getOrElse("DispatchQueue.global(qos: .userInitiated)")
+  // Each file evaluates the queue expression once, in djinniAsyncQueue. The module name in front stops a member or a
+  // parameter with the same name from hiding it.
+  private def queueArguments: Seq[String] = spec.swiftAsyncQueue.map(_ => s"${spec.swiftModule}.djinniAsyncQueue").toSeq
+
+  private def writeQueueConstant(w: IndentWriter) {
+    spec.swiftAsyncQueue.foreach { expression =>
+      w.wl(s"private let djinniAsyncQueue: Dispatch.DispatchQueue = $expression")
+      w.wl
+    }
+  }
+
+  private def helperCall(helper: String): String = {
+    val arguments = errorType.map(e => s"$e.self").toSeq ++ queueArguments
+    if (arguments.isEmpty) s"DjinniSupport.$helper" else s"DjinniSupport.$helper(${arguments.mkString(", ")})"
+  }
 
   // The Swift type of the --swift-error-type record, with its module.
   private var errorType: Option[String] = None
@@ -345,12 +362,13 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   }
   private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
     val name = marshal.typename(ident, i)
-    val queue = asyncQueue
+    val queue = spec.swiftAsyncQueue.fold("a new serial queue (`DjinniSupport.djinniCallQueue()`)")(e => s"`$e`, which this file evaluates once")
     val cancelled = errorType.fold("CancellationError")(e => s"$e(cancellation:)")
     val contract = Seq(
-      s" Each async method runs its blocking C++ call on `$queue`. Calls to one object can run at the same time.",
+      s" Each async method runs its blocking C++ call on $queue. Calls to one object can run at the same time.",
       s" A task that is already cancelled when a method starts throws $cancelled and does not call C++. A task that waits",
       s" for a C++ future resumes once, with the result or with $cancelled. The C++ future is not cancelled; its late result is dropped.")
+    writeQueueConstant(w)
     writeDoc(w, Doc(if (doc.lines.isEmpty) contract else doc.lines ++ Seq("") ++ contract))
     w.w(s"public final class $name: @unchecked Sendable").braced {
       // Prefixed name: an IDL method named proxy must not collide with the storage
@@ -372,15 +390,15 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.braced {
           writeSendableBoxes(w, m)
           val capture = "[djinniProxy = self.djinniProxy] in"
-          val (helper, args) = (returnsFuture(m), errorType) match {
-            case (true, Some(e)) => ("djinniCallFutureTyped", s"$e.self, $queue")
-            case (true, None) => ("djinniCallFuture", queue)
-            case (false, Some(e)) => ("djinniCallTyped", s"$e.self, $queue")
-            case (false, None) => ("djinniCall", queue)
+          val helper = (returnsFuture(m), errorType.isDefined) match {
+            case (true, true) => "djinniCallFutureTyped"
+            case (true, false) => "djinniCallFuture"
+            case (false, true) => "djinniCallTyped"
+            case (false, false) => "djinniCall"
           }
           // Without the error type, the error of a future of an outcome stays in the Result value.
           val get = if (ret.exists(marshal.isOutcome) || (errorType.isDefined && returnsOutcome(m))) ".get()" else ""
-          w.wl(s"return try await DjinniSupport.$helper($args) { $capture try $call }$get")
+          w.wl(s"return try await ${helperCall(helper)} { $capture try $call }$get")
         }
       }
     }
@@ -438,6 +456,9 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       }
     })
     writeSwiftPrivateFile(ident, origin, refs.privateImports, w => {
+      if (i.methods.exists(m => m.static && m.lang.swift && typed(i, m) && returnsFuture(m))) {
+        writeQueueConstant(w)
+      }
       writeDoc(w, doc)
       // Define CppProxy class if interface is implemented in C++
       if (wrap) {
@@ -522,7 +543,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
               // The C++ call blocks, so it runs on the queue of the async wrappers
               w.w(s"@concurrent public static func ${idSwift.method(m.ident)}(${paramList(m)}) async throws(${errorType.get}) -> ${typedReturnType(m)}").braced {
                 writeSendableBoxes(w, m)
-                writeTypedCall(w, m, s"return try await DjinniSupport.djinniCallFutureTyped(${errorType.get}.self, $asyncQueue)", writeCppCall(_, glue, m, sendableValue(m, _)))
+                writeTypedCall(w, m, s"return try await ${helperCall("djinniCallFutureTyped")}", writeCppCall(_, glue, m, sendableValue(m, _), boxNames(m)))
               }
             } else if (typed(i, m)) {
               w.w(s"public static func ${idSwift.method(m.ident)}(${paramList(m)}) throws(${errorType.get}) -> ${typedReturnType(m)}").braced {

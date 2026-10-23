@@ -4,8 +4,10 @@
 import DjinniSupport
 import Foundation
 
+private let djinniAsyncQueue: Dispatch.DispatchQueue = DispatchQueue.global(qos: .utility)
+
 /**
- * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .utility)`. Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .utility)`, which this file evaluates once. Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws TestSuite.CruxError(cancellation:) and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with TestSuite.CruxError(cancellation:). The C++ future is not cancelled; its late result is dropped.
  */
@@ -15,31 +17,31 @@ public final class SwiftErrorService: @unchecked Sendable {
     init(proxy: SwiftErrorServiceCppProxy) { self.djinniProxy = proxy }
 
     @concurrent public func fetch(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
-        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(id) }.get()
+        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(id) }.get()
     }
 
     @concurrent public func count() async throws(TestSuite.CruxError) -> Int32 {
-        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.count() }.get()
+        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.count() }.get()
     }
 
     @concurrent public func watch(_ observer: TestSuite.SwiftErrorObserver) async throws(TestSuite.CruxError) -> Bool {
-        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.watch(observer) }.get()
+        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.watch(observer) }.get()
     }
 
     /** Methods without an outcome throw the error type for a C++ exception and a cancellation. */
     @concurrent public func add(_ a: Int32, b: Int32) async throws(TestSuite.CruxError) -> Int32 {
-        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.add(a, b: b) }
+        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.add(a, b: b) }
     }
 
     @concurrent public func ping() async throws(TestSuite.CruxError) -> Void {
-        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
+        return try await DjinniSupport.djinniCallTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
     }
 
     @concurrent public func load(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
-        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load(id) }
+        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.load(id) }
     }
 
     @concurrent public func fetchLater(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
-        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetchLater(id) }.get()
+        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetchLater(id) }.get()
     }
 }

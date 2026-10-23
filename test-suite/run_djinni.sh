@@ -810,26 +810,28 @@ if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher" ]; then
     exit 1
 fi
 
-# The dispatcher is written in a KDoc comment, so a value that closes the comment is rejected.
-dispatcher_comment_log="$temp_out/dispatcher-comment.log"
-if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
-    --kotlin-jni-out "$temp_out_relative/kotlin-jni-dispatcher-comment" \
-    --kotlin-suspend-wrap \
-    --kotlin-suspend-dispatcher "a */ b" \
-    --java-package $java_package \
-    --idl "djinni/kotlin_suspend.djinni") >"$dispatcher_comment_log" 2>&1; then
-    echo "The generator accepted a --kotlin-suspend-dispatcher value that closes a comment." 1>&2
-    exit 1
-fi
-if ! grep -qF -- "--kotlin-suspend-dispatcher needs a Kotlin expression on one line." "$dispatcher_comment_log"; then
-    echo "Missing error message for a --kotlin-suspend-dispatcher value that closes a comment." 1>&2
-    cat "$dispatcher_comment_log" 1>&2
-    exit 1
-fi
-if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher-comment" ]; then
-    echo "The generator wrote files for a rejected flag." 1>&2
-    exit 1
-fi
+# The dispatcher is written in a KDoc comment. Kotlin comments nest, so a value that opens or closes a comment is rejected.
+for bad_dispatcher in "a */ b" "a /* b"; do
+    dispatcher_comment_log="$temp_out/dispatcher-comment.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --kotlin-jni-out "$temp_out_relative/kotlin-jni-dispatcher-comment" \
+        --kotlin-suspend-wrap \
+        --kotlin-suspend-dispatcher "$bad_dispatcher" \
+        --java-package $java_package \
+        --idl "djinni/kotlin_suspend.djinni") >"$dispatcher_comment_log" 2>&1; then
+        echo "The generator accepted the --kotlin-suspend-dispatcher value \"$bad_dispatcher\"." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "--kotlin-suspend-dispatcher needs a Kotlin expression on one line." "$dispatcher_comment_log"; then
+        echo "Missing error message for the --kotlin-suspend-dispatcher value \"$bad_dispatcher\"." 1>&2
+        cat "$dispatcher_comment_log" 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher-comment" ]; then
+        echo "The generator wrote files for a rejected flag." 1>&2
+        exit 1
+    fi
+done
 
 # The error type flag needs the Kotlin JNI output.
 error_type_log="$temp_out/kotlin-error-type-without-out.log"
@@ -908,27 +910,29 @@ if [ -e "$base_dir/$temp_out_relative/swift-features/queue-without-wrap" ]; then
     exit 1
 fi
 
-# The queue expression goes into a doc comment, so a value that closes the comment is rejected.
-queue_comment_log="$temp_out/queue-comment.log"
-if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
-    --swift-out "$temp_out_relative/swift-features/queue-comment/swift" \
-    --swift-module TestSuite \
-    --swift-private-in-same-module \
-    --swift-async-wrap "djinni.testsuite" \
-    --swift-async-queue "a */ b" \
-    --idl "$swift_async_relative") >"$queue_comment_log" 2>&1; then
-    echo "The generator accepted a --swift-async-queue value that closes a comment." 1>&2
-    exit 1
-fi
-if ! grep -qF -- "--swift-async-queue needs a Swift expression on one line." "$queue_comment_log"; then
-    echo "Missing error message for a bad --swift-async-queue value." 1>&2
-    cat "$queue_comment_log" 1>&2
-    exit 1
-fi
-if [ -e "$base_dir/$temp_out_relative/swift-features/queue-comment" ]; then
-    echo "The generator wrote files for a rejected flag value." 1>&2
-    exit 1
-fi
+# The queue expression goes into a doc comment. Swift comments nest, so a value that opens or closes a comment is rejected.
+for bad_queue in "a */ b" "a /* b"; do
+    queue_comment_log="$temp_out/queue-comment.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --swift-out "$temp_out_relative/swift-features/queue-comment/swift" \
+        --swift-module TestSuite \
+        --swift-private-in-same-module \
+        --swift-async-wrap "djinni.testsuite" \
+        --swift-async-queue "$bad_queue" \
+        --idl "$swift_async_relative") >"$queue_comment_log" 2>&1; then
+        echo "The generator accepted the --swift-async-queue value \"$bad_queue\"." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "--swift-async-queue needs a Swift expression on one line." "$queue_comment_log"; then
+        echo "Missing error message for the --swift-async-queue value \"$bad_queue\"." 1>&2
+        cat "$queue_comment_log" 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$temp_out_relative/swift-features/queue-comment" ]; then
+        echo "The generator wrote files for a rejected flag value." 1>&2
+        exit 1
+    fi
+done
 
 # The async wrappers need the private files in the same module.
 async_log="$temp_out/async-without-module.log"
@@ -1057,6 +1061,31 @@ done
 if grep -qF "method fine" "$outcome_error_log" || [ -e "$base_dir/$temp_out_relative/swift-outcome-error-negative" ]; then
     echo "The generator reported an outcome with an Error type, or wrote files for a rejected IDL." 1>&2
     cat "$outcome_error_log" 1>&2
+    exit 1
+fi
+
+# Swift's Error is Sendable, so a record that conforms to Error cannot hold a DataRef or a DataView.
+error_buffer_log="$temp_out/swift-error-buffer-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-error-buffer-negative/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_error_buffer_negative.djinni") >"$error_buffer_log" 2>&1; then
+    echo "The generator accepted a record that conforms to Error and holds a DataRef or a DataView." 1>&2
+    exit 1
+fi
+for expected in \
+    "record swift_error_buffer_derived, field data: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable." \
+    "record swift_error_buffer_nested, field views: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable."; do
+    if ! grep -qF -- "$expected" "$error_buffer_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$error_buffer_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qF "swift_error_buffer_plain" "$error_buffer_log" || [ -e "$base_dir/$temp_out_relative/swift-error-buffer-negative" ]; then
+    echo "The generator reported a record without deriving(error), or wrote files for a rejected IDL." 1>&2
+    cat "$error_buffer_log" 1>&2
     exit 1
 fi
 

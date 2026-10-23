@@ -275,7 +275,9 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
     val suspendInstance = suspendWrap && i.methods.exists(m => !m.static)
     val suspendFuture = suspendWrap && i.methods.exists(m => !m.static && m.ret.exists(r => marshal.futureValueType(r).isDefined))
-    val dispatcher = spec.kotlinSuspendDispatcher.getOrElse("kotlinx.coroutines.Dispatchers.IO")
+    // The file evaluates the expression once: limitedParallelism(1) must not make a new dispatcher for each call.
+    val dispatcherExpr = spec.kotlinSuspendDispatcher.getOrElse("kotlinx.coroutines.Dispatchers.IO")
+    val dispatcher = if (spec.kotlinSuspendDispatcher.isDefined) "djinni_dispatcher" else dispatcherExpr
     val statics = i.methods.filter(m => m.static && m.lang.java)
     // With --kotlin-error-type, a static method that returns a future is a suspend function too.
     val staticFuture = spec.kotlinErrorType.isDefined && statics.exists(m => m.ret.exists(r => marshal.futureValueType(r).isDefined))
@@ -293,6 +295,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     def typed(m: Interface.Method): Option[String] = spec.kotlinErrorType.filter(_ => KotlinErrorType.affected(i, m))
 
     writeKotlinFile(ident, origin, refs.imports, w => {
+      spec.kotlinSuspendDispatcher.filter(_ => suspendInstance || staticFuture).foreach { expr =>
+        w.wl(s"private val djinni_dispatcher: kotlin.coroutines.CoroutineContext = $expr")
+        w.wl
+      }
       writeDoc(w, doc)
       annotationHeader.foreach(w.wl)
       val kind = if (asInterface) "interface" else "abstract class"
@@ -347,7 +353,8 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           w.wl
           if (suspendInstance) {
             w.wl("/**")
-            w.wl(s" * Each suspend method runs its blocking C++ call on `$dispatcher`. Calls to one object can run at the same time.")
+            val where = if (spec.kotlinSuspendDispatcher.isDefined) s"`$dispatcherExpr`, which this file evaluates once" else s"`$dispatcherExpr`"
+            w.wl(s" * Each suspend method runs its blocking C++ call on $where. Calls to one object can run at the same time.")
             w.wl(" * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future")
             w.wl(" * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.")
             spec.kotlinErrorType.foreach(x => w.wl(s" * A C++ exception or the error of an outcome throws `$x`. CancellationException is not wrapped."))
