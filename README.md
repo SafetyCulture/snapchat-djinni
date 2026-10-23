@@ -254,6 +254,12 @@ underlying data is destroyed by the owner, then it will point to an invalid
 memory location. It is your responsibility to make sure the buffer remains valid
 while you use it.
 
+A `DataView` is valid only during the call that gives it to you. This holds
+also when the `DataView` is a field of a record or the value of a `future<>`:
+the generator accepts such a type, and the buffer behind it is still owned by
+the other side. Copy the bytes when you must keep them. In Swift, a record that
+has a `DataView` field has no `Sendable` conformance.
+
 ### Use DataRef to pass data across language boundary with ownership
 
 `DataRef` is a buffer in Java or Objective-C heap but accessible from C++. It is
