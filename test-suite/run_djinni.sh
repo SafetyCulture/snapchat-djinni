@@ -1075,8 +1075,8 @@ if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
     exit 1
 fi
 for expected in \
-    "record swift_error_buffer_derived, field data: the record conforms to Error in Swift, and Error is Sendable, but the field holds a DataRef or a DataView, which is not Sendable." \
-    "record swift_error_buffer_nested, field views: the record conforms to Error in Swift, and Error is Sendable, but the field holds a DataRef or a DataView, which is not Sendable."; do
+    "record swift_error_buffer_derived, field data: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable." \
+    "record swift_error_buffer_nested, field views: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable."; do
     if ! grep -qF -- "$expected" "$error_buffer_log"; then
         echo "Missing error message: $expected" 1>&2
         cat "$error_buffer_log" 1>&2

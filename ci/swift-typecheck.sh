@@ -3,10 +3,10 @@
 # syntax-checks the generated Swift/C++ glue.
 #
 # The script generates Swift and Swift/C++ glue with the built generator. It compiles the generated Swift to SIL
-# (`swiftc -emit-sil`) in Swift 5 mode, in Swift 6 mode with complete strict concurrency checking, and in Swift 6 mode
-# with NonisolatedNonsendingByDefault (the mode of Approachable Concurrency in the app modules). `-typecheck` is not
-# enough: the region-based isolation checks of Swift 6 ("sending ... risks causing data races") run on SIL, after the
-# type checker. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
+# (`swiftc -emit-sil`) in three modes: Swift 5, Swift 6 with strict concurrency checking set to complete, and Swift 6
+# with NonisolatedNonsendingByDefault (the mode of Approachable Concurrency in the app modules). The data-race checks
+# of Swift 6 run on SIL, after the type checker, so `-typecheck` is not enough. Then the script compiles the glue with
+# `-fsyntax-only`. SwiftProtobuf is the real library. The
 # generated protobuf types (module S12Protos) are the real messages of the assets protos
 # (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
@@ -173,11 +173,11 @@ extension CruxError: CppExceptionConvertible {
 }
 EOF
 
-# One pass compiles DjinniSupport and compiles the generated Swift to SIL with the given swiftc flags, so the
-# diagnostics of the type checker and of the SIL passes (region-based isolation in Swift 6) both run.
+# The data-race checks of Swift 6 run on SIL, after the type checker.
 swift_check() { # <swiftc arguments>
   swiftc -emit-sil -wmo -parse-as-library -o /dev/null "$@"
 }
+# One pass compiles DjinniSupport and compiles the generated Swift to SIL with the given swiftc flags.
 swift_pass() { # <swiftc flags>
   local flags=$1 build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
@@ -230,8 +230,7 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
-  # The data-race checks of Swift 6 run on SIL. A file that shares a value that is not Sendable must fail, or the
-  # passes above do not prove what they say.
+  # This file shares a value that is not Sendable. It must fail, or the data-race checks did not run.
   case "$flags" in
     *swift-version\ 6*)
       echo "== [$flags] negative case: two tasks share the NSData of a wrapper method"

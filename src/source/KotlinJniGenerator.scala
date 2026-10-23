@@ -275,8 +275,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
     val suspendInstance = suspendWrap && i.methods.exists(m => !m.static)
     val suspendFuture = suspendWrap && i.methods.exists(m => !m.static && m.ret.exists(r => marshal.futureValueType(r).isDefined))
-    // A --kotlin-suspend-dispatcher expression runs once for the file, in a private property, so a factory such as
-    // Dispatchers.IO.limitedParallelism(1) does not make a new dispatcher on each call
+    // The file evaluates the expression once: limitedParallelism(1) must not make a new dispatcher for each call.
     val dispatcherExpr = spec.kotlinSuspendDispatcher.getOrElse("kotlinx.coroutines.Dispatchers.IO")
     val dispatcher = if (spec.kotlinSuspendDispatcher.isDefined) "djinni_dispatcher" else dispatcherExpr
     val statics = i.methods.filter(m => m.static && m.lang.java)

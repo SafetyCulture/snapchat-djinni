@@ -1,5 +1,5 @@
-// Checks djinni::Future and djinni::Promise: a dropped promise, a promise that moves, a replaced handler, and handlers
-// that throw exceptions which do not derive from std::exception. Build and run with ci/cpp-future-test.sh.
+// Checks djinni::Future and djinni::Promise: a dropped promise, a moved promise, a replaced handler, and a handler that
+// throws an exception outside std::exception. Build and run the test with ci/cpp-future-test.sh.
 #include "Future.hpp"
 
 #include <atomic>
@@ -34,7 +34,7 @@ void waitReady(F& future, const std::string& what) {
     }
 }
 
-// Runs `scenario` on its own thread. A deadlock fails the test after 10 s, and does not hang it.
+// The scenario runs on its own thread, so a deadlock fails the test after 10 s.
 template <typename F>
 void runWithin(F scenario, const std::string& what) {
     auto done = std::make_shared<std::atomic<bool>>(false);
@@ -134,8 +134,7 @@ int main() {
         check(caught == 42, "a handler that throws an int gives the int to the next future");
     }
 
-    // A then() that replaces the handler of another future of the same promise destroys the old handler after the
-    // unlock. The old handler breaks its next promise, and the handler of that next future can use the shared state.
+    // second.then() replaces the handler of first. The handler of the broken next future locks the shared state again.
     runWithin([] {
         djinni::Promise<int> promise;
         auto first = promise.getFuture();

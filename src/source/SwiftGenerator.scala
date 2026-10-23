@@ -282,13 +282,12 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  // The names of the boxes of writeSendableBoxes. A closure that holds them must not take one of them for a local.
+  // The boxes of writeSendableBoxes. A local in the same closure must not hide one of them.
   private def boxNames(m: Interface.Method): Set[String] =
     m.params.filter(p => !marshal.isSendableArgument(p.ty.resolved)).map(p => s"_${SwiftIdent.plain(p.ident)}").toSet
 
-  // The body of a method that calls C++: the arguments go into a parameter list, the glue function runs, and a C++
-  // error throws. The locals take other names when an IDL parameter or a box of writeSendableBoxes has the same name,
-  // and a parameter named inst does not hide the member that holds the C++ object.
+  // A local takes another name when an IDL parameter or a box has its name. A parameter named inst does not hide the
+  // member that holds the C++ object.
   private def writeCppCall(w: IndentWriter, glue: String, m: Interface.Method, value: Field => String, boxes: Set[String] = Set()) {
     val params = m.params.map(p => idSwift.local(p.ident)).toSet
     val list = SwiftIdent.fresh("_params", params ++ boxes)
@@ -307,9 +306,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  // The queue arguments of the async helpers. Without --swift-async-queue the helpers make a new serial queue for each
-  // call. With it, each file that calls a helper evaluates the expression once, into the private constant
-  // djinniAsyncQueue. The name has the module in front, so a member or a parameter with that name does not hide it.
+  // Each file evaluates the queue expression once, in djinniAsyncQueue. The module name in front stops a member or a
+  // parameter with the same name from hiding it.
   private def queueArguments: Seq[String] = spec.swiftAsyncQueue.map(_ => s"${spec.swiftModule}.djinniAsyncQueue").toSeq
 
   private def writeQueueConstant(w: IndentWriter) {
@@ -319,7 +317,6 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  // A call of an async helper: the error type and the queue come first, and the closure follows.
   private def helperCall(helper: String): String = {
     val arguments = errorType.map(e => s"$e.self").toSeq ++ queueArguments
     if (arguments.isEmpty) s"DjinniSupport.$helper" else s"DjinniSupport.$helper(${arguments.mkString(", ")})"
