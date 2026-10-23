@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Tester for the ability to call two interfaces which might be
@@ -23,21 +22,17 @@ abstract class ListenerCaller {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : ListenerCaller() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun callFirst() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             native_callFirst(this.nativeRef)
         }
         private external fun native_callFirst(_nativeRef: Long)
 
         override fun callSecond() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             native_callSecond(this.nativeRef)
         }
         private external fun native_callSecond(_nativeRef: Long)

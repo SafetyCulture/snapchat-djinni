@@ -36,6 +36,8 @@ kotlin_suspend_service = interface +c {
   flush(): future<void>;
   # Parameters with the names of Kotlin keywords.
   names(in: i32, val: i32): list<string>;
+  # A parameter named destroyed must not collide with the proxy.
+  mark(destroyed: bool): bool;
   send(data: DataRef, tags: list<string>);
   watch(observer: kotlin_suspend_observer);
   child(): kotlin_suspend_child;

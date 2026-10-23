@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * we need to test optional interface
@@ -13,8 +12,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 abstract class SampleInterface {
 
     class CppProxy private constructor(private val nativeRef: Long) : SampleInterface() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)

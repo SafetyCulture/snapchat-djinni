@@ -553,6 +553,10 @@ different from `--kotlin-out`, which writes Kotlin Multiplatform code.
   `@JvmStatic external fun` in a `companion object`. Kotlin compiles it to a
   static native method in the class, so the JNI function name is the one of
   Java.
+- The garbage collector releases the C++ object of a `CppProxy`.
+  `NativeObjectManager` registers each proxy and calls `nativeDestroy` after the
+  proxy is collected. The class has no `destroy()` or `close()`, the same as the
+  Java output. A parameter can have any name, also `destroyed`.
 - A record is a `data class` with `val` properties. A record without fields is a
   `class`. A record with `+j` is an `open class`. A record with a `binary` or an
   `array<>` field compares the content of the arrays, as Java does with

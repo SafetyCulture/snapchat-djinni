@@ -6,7 +6,6 @@ package com.dropbox.djinni.test.kt
 import com.snapchat.djinni.Future
 import com.snapchat.djinni.NativeObjectManager
 import java.util.concurrent.ExecutionException
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -29,6 +28,9 @@ abstract class KotlinSuspendService {
     /** Parameters with the names of Kotlin keywords. */
     abstract suspend fun names(`in`: Int, `val`: Int): ArrayList<String>
 
+    /** A parameter named destroyed must not collide with the proxy. */
+    abstract suspend fun mark(destroyed: Boolean): Boolean
+
     abstract suspend fun send(data: java.nio.ByteBuffer, tags: ArrayList<String>)
 
     abstract suspend fun watch(observer: KotlinSuspendObserver?)
@@ -45,7 +47,6 @@ abstract class KotlinSuspendService {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : KotlinSuspendService() {
-        private val destroyed = AtomicBoolean(false)
         private val dispatcher = Dispatchers.IO.limitedParallelism(1)
 
         init {
@@ -54,31 +55,26 @@ abstract class KotlinSuspendService {
         }
 
         override suspend fun ping() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             withContext(this.dispatcher) { native_ping(this@CppProxy.nativeRef) }
         }
         private external fun native_ping(_nativeRef: Long)
 
         override suspend fun count(): Int {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_count(this@CppProxy.nativeRef) }
         }
         private external fun native_count(_nativeRef: Long): Int
 
         override suspend fun find(id: String, limit: Int?): KotlinSuspendItem? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_find(this@CppProxy.nativeRef, id, limit) }
         }
         private external fun native_find(_nativeRef: Long, id: String, limit: Int?): KotlinSuspendItem?
 
         override suspend fun fetch(id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_fetch(this@CppProxy.nativeRef, id) }
         }
         private external fun native_fetch(_nativeRef: Long, id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError>
 
         override suspend fun load(id: String): KotlinSuspendItem {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             val djinni_future = withContext(this.dispatcher) { native_load(this@CppProxy.nativeRef, id) }
             return suspendCancellableCoroutine<KotlinSuspendItem> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
@@ -98,7 +94,6 @@ abstract class KotlinSuspendService {
         private external fun native_load(_nativeRef: Long, id: String): com.snapchat.djinni.Future<KotlinSuspendItem>
 
         override suspend fun flush() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             val djinni_future = withContext(this.dispatcher) { native_flush(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<kotlin.Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
@@ -119,37 +114,36 @@ abstract class KotlinSuspendService {
         private external fun native_flush(_nativeRef: Long): com.snapchat.djinni.Future<Void>
 
         override suspend fun names(`in`: Int, `val`: Int): ArrayList<String> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_names(this@CppProxy.nativeRef, `in`, `val`) }
         }
         private external fun native_names(_nativeRef: Long, `in`: Int, `val`: Int): ArrayList<String>
 
+        override suspend fun mark(destroyed: Boolean): Boolean {
+            return withContext(this.dispatcher) { native_mark(this@CppProxy.nativeRef, destroyed) }
+        }
+        private external fun native_mark(_nativeRef: Long, destroyed: Boolean): Boolean
+
         override suspend fun send(data: java.nio.ByteBuffer, tags: ArrayList<String>) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             withContext(this.dispatcher) { native_send(this@CppProxy.nativeRef, data, tags) }
         }
         private external fun native_send(_nativeRef: Long, data: java.nio.ByteBuffer, tags: ArrayList<String>)
 
         override suspend fun watch(observer: KotlinSuspendObserver?) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             withContext(this.dispatcher) { native_watch(this@CppProxy.nativeRef, observer) }
         }
         private external fun native_watch(_nativeRef: Long, observer: KotlinSuspendObserver?)
 
         override suspend fun child(): KotlinSuspendChild? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_child(this@CppProxy.nativeRef) }
         }
         private external fun native_child(_nativeRef: Long): KotlinSuspendChild?
 
         override suspend fun attach(child: KotlinSuspendChild?, parent: KotlinSuspendService?) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             withContext(this.dispatcher) { native_attach(this@CppProxy.nativeRef, child, parent) }
         }
         private external fun native_attach(_nativeRef: Long, child: KotlinSuspendChild?, parent: KotlinSuspendService?)
 
         override suspend fun both(both: KotlinSuspendBoth?): KotlinSuspendBoth? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_both(this@CppProxy.nativeRef, both) }
         }
         private external fun native_both(_nativeRef: Long, both: KotlinSuspendBoth?): KotlinSuspendBoth?

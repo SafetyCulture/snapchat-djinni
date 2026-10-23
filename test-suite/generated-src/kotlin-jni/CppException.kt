@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class CppException {
     abstract fun throwAnException(): Int
@@ -19,27 +18,22 @@ abstract class CppException {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : CppException() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun throwAnException(): Int {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_throwAnException(this.nativeRef)
         }
         private external fun native_throwAnException(_nativeRef: Long): Int
 
         override fun callThrowingInterface(cb: ThrowingInterface?): Int {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_callThrowingInterface(this.nativeRef, cb)
         }
         private external fun native_callThrowingInterface(_nativeRef: Long, cb: ThrowingInterface?): Int
 
         override fun callThrowingAndCatch(cb: ThrowingInterface?): String {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_callThrowingAndCatch(this.nativeRef, cb)
         }
         private external fun native_callThrowingAndCatch(_nativeRef: Long, cb: ThrowingInterface?): String

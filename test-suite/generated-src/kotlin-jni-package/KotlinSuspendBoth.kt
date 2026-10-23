@@ -4,22 +4,18 @@
 package com.dropbox.djinni.test.kt
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /** C++ and Kotlin implement this one, so it has no suspend functions. */
 abstract class KotlinSuspendBoth {
     abstract fun value(): Int
 
     class CppProxy private constructor(private val nativeRef: Long) : KotlinSuspendBoth() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun value(): Int {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_value(this.nativeRef)
         }
         private external fun native_value(_nativeRef: Long): Int

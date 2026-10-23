@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class VarnameInterface {
     /**
@@ -17,21 +16,17 @@ abstract class VarnameInterface {
     abstract fun Imethod(IArg: VarnameInterface?): VarnameInterface?
 
     class CppProxy private constructor(private val nativeRef: Long) : VarnameInterface() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun Rmethod(RArg: VarnameRecord): VarnameRecord {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_Rmethod(this.nativeRef, RArg)
         }
         private external fun native_Rmethod(_nativeRef: Long, RArg: VarnameRecord): VarnameRecord
 
         override fun Imethod(IArg: VarnameInterface?): VarnameInterface? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_Imethod(this.nativeRef, IArg)
         }
         private external fun native_Imethod(_nativeRef: Long, IArg: VarnameInterface?): VarnameInterface?
