@@ -8,7 +8,7 @@
 
 namespace testsuite {
 
-/** A record that holds a trusted record is Sendable, because that record conforms. */
+/** A record that holds such a record is not Sendable either. */
 struct SwiftSendableOuter final {
     SwiftSendableWithData inner;
 

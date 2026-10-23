@@ -189,7 +189,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {
     val refs = new SwiftRefs(ident.name)
     r.fields.foreach(f => refs.find(f.ty))
-    val sendable = if (r.fields.forall(f => marshal.isSendable(f.ty.resolved))) "Sendable" else "@unchecked Sendable"
+    // A DataRef or a DataView makes the record not Sendable at all: there is no honest @unchecked claim for it.
+    val sendable =
+      if (r.fields.exists(f => marshal.holdsBuffer(f.ty.resolved))) ""
+      else if (r.fields.forall(f => marshal.isSendable(f.ty.resolved))) "Sendable"
+      else "@unchecked Sendable"
     val deriving = if (spec.swiftErrorType.contains(marshal.typename(ident, r))) r.derivingTypes + DerivingType.Error else r.derivingTypes
     val fieldKeyword = if (spec.swiftLegacyRecords) "var" else "let"
     writeSwiftFile(ident, origin, refs.swiftImports, w => {

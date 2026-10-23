@@ -481,6 +481,24 @@ if [ -n "$options_missing" ]; then
     exit 1
 fi
 
+# A DataRef or a DataView makes a record not Sendable, also inside a container, an outcome or another record.
+# There is no @unchecked claim for it. A record without them stays Sendable.
+for name in WithData WithOptionalData WithViewList WithDataMap WithOutcomeData Outer; do
+    sendable_file="$temp_out/swift-features/sendable/swift/SwiftSendable$name.swift"
+    if grep -qE "^public struct SwiftSendable$name\b.*Sendable" "$sendable_file" || grep -q "@unchecked" "$sendable_file"; then
+        echo "SwiftSendable$name holds a DataRef or a DataView, but its record claims Sendable." 1>&2
+        grep -nE "^public struct|@unchecked" "$sendable_file" 1>&2
+        exit 1
+    fi
+done
+for name in Plain Nested WithOutcome; do
+    sendable_file="$temp_out/swift-features/sendable/swift/SwiftSendable$name.swift"
+    if ! grep -qE "^public struct SwiftSendable$name: .*\bSendable\b" "$sendable_file" || grep -q "@unchecked" "$sendable_file"; then
+        echo "SwiftSendable$name must be Sendable without @unchecked." 1>&2
+        exit 1
+    fi
+done
+
 # A label prefix that would break the generated string literal is rejected.
 prefix_log="$temp_out/swift-async-wrap-prefix.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \

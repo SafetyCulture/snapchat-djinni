@@ -3,7 +3,7 @@
 
 import Foundation
 
-/** An interface is only allowed inside a container. */
+/** An interface is Sendable: the protocol is AnyObject, Sendable. It is only allowed inside a container. */
 public struct SwiftSendableWithOptionalService: Sendable {
     public let service: Optional<TestSuite.SwiftSendableService>
 

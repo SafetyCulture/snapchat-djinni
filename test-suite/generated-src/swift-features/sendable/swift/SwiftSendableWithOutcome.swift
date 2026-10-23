@@ -3,7 +3,7 @@
 
 import Foundation
 
-/** An outcome is Sendable when its arguments are. */
+/** An outcome is Sendable when its arguments are. A DataRef argument makes it not Sendable. */
 public struct SwiftSendableWithOutcome: Sendable {
     public let result: Result<Int32, TestSuite.SwiftSendableError>
 
