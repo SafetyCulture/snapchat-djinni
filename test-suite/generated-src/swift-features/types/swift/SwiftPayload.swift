@@ -3,7 +3,7 @@
 
 import Foundation
 
-public struct SwiftPayload: @unchecked Sendable {
+public struct SwiftPayload {
     public let data: Foundation.NSData
     public let bytes: Data
     public let when: Date

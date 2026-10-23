@@ -9,7 +9,7 @@
 
 namespace testsuite {
 
-/** A trusted type inside a container. */
+/** The same inside a container. */
 struct SwiftSendableWithOptionalData final {
     std::optional<::djinni::DataRef> data;
 

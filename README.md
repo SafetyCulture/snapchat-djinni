@@ -356,13 +356,16 @@ Swift 6 defaults:
 
 - A record is a `public struct` with `public let` fields and a public memberwise
   `init`.
-- Every record is `Sendable`. Swift checks the conformance when every field is
-  `Sendable`: primitives, `String`, `Data`, `Date`, enums, records, protobuf
-  types, interfaces (the generated protocols are `AnyObject, Sendable`),
-  `DJFuture` and `Result` with `Sendable` arguments. The conformance is
-  `@unchecked Sendable` when a field is `DataRef`, `DataView`, or an extern
-  type without a known `Sendable` mapping. This also applies inside
-  `optional<>`, `list<>`, `set<>` and `map<>`.
+- A record is `Sendable` when it has no `DataRef` and no `DataView` field. Swift
+  checks the conformance when every field is `Sendable`: primitives, `String`,
+  `Data`, `Date`, enums, records, interfaces, protobuf types, `DJFuture`, and
+  `Result` with `Sendable` arguments. The conformance is `@unchecked Sendable`
+  when a field is an extern type without a known `Sendable` mapping. This also
+  applies inside `optional<>`, `list<>`, `set<>` and `map<>`. A `DataRef` is
+  shared, mutable memory, and a `DataView` is memory that C++ owns. A record
+  that holds one of them, also inside a container, a `Result`, or another
+  record, has no `Sendable` conformance at all. The generated async wrappers
+  pass such a value across queues through an unchecked box.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
   Every generated proxy class and the shared classes of `DjinniSupport` are `@unchecked Sendable`.
 - A host class that implements a `+sw` interface must be `Sendable`. Make it a

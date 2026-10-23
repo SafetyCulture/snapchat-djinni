@@ -10,7 +10,7 @@
 
 namespace testsuite {
 
-/** An outcome is Sendable when its arguments are. */
+/** An outcome is Sendable when its arguments are. A DataRef argument makes it not Sendable. */
 struct SwiftSendableWithOutcome final {
     djinni::expected<int32_t, SwiftSendableError> result;
 

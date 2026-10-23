@@ -86,8 +86,19 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
     case _ => false
   }
 
+  // True when the type holds a DataRef (shared, mutable memory) or a DataView (memory that C++ owns), also in a
+  // record or in a type argument. No value of such a type is Sendable.
+  def holdsBuffer(tm: MExpr): Boolean = tm.args.exists(holdsBuffer) || (tm.base match {
+    case e: MExtern => e.name == "DataRef" || e.name == "DataView"
+    case d: MDef => d.body match {
+      case r: Record => r.fields.exists(f => holdsBuffer(f.ty.resolved))
+      case _ => false
+    }
+    case _ => false
+  })
+
   // True when a value of the type can cross into a closure that runs on another queue.
-  def isSendableArgument(tm: MExpr): Boolean = tm.base match {
+  def isSendableArgument(tm: MExpr): Boolean = if (holdsBuffer(tm)) false else tm.base match {
     case d: MDef if d.defType == DInterface => true
     case MOptional | MList | MArray | MSet | MMap => tm.args.forall(isSendableArgument)
     case _ => isSendable(tm)

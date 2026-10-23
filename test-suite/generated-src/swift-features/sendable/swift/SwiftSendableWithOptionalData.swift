@@ -3,8 +3,8 @@
 
 import Foundation
 
-/** A trusted type inside a container. */
-public struct SwiftSendableWithOptionalData: @unchecked Sendable {
+/** The same inside a container. */
+public struct SwiftSendableWithOptionalData {
     public let data: Optional<Foundation.NSData>
 
     public init(data: Optional<Foundation.NSData>)
