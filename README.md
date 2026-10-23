@@ -768,8 +768,8 @@ java -jar djinni.jar \
   of the Kotlin leg crosses to the Java leg as a wrapper. C++ then sees a
   JavaProxy, not its own object. One launch of the app uses one leg, so the
   adapter makes this crossing. A record with a field
-  of a `+c` interface, also inside `optional<>`, `list<>`, `set<>` or `map<>`,
-  gets no converter. The same holds for a record that contains such a record.
+  of a `+c` interface (also `+c +j`), also inside `optional<>`, `list<>`,
+  `set<>` or `map<>`, gets no converter. The same holds for a record that contains such a record.
   The generator prints one line for each skipped record:
   `bridge: skipped <record>: field <f> is a +c interface`. When a record holds a
   skipped record, the line says `bridge: skipped <record>: field <f> holds
