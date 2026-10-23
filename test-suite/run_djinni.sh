@@ -694,6 +694,28 @@ if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-both" ]; then
     exit 1
 fi
 
+# Two Kotlin classes with one simple name need two Parcelers with one name. The generator must report it before
+# it writes a file.
+parceler_log="$temp_out/kotlin-jni-extern-parceler.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-parceler/kotlin" \
+    --java-package $java_package \
+    --java-implement-android-os-parcelable true \
+    --idl "djinni/kotlin_extern_clash.djinni" \
+    --idl-include-path "djinni/vendor") >"$parceler_log" 2>&1; then
+    echo "The generator accepted two Kotlin classes that need a Parceler with the same name." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "The classes com.dropbox.djinni.testextern.ExternKotlinMessage and com.dropbox.djinni.testextern.other.ExternKotlinMessage need a Parceler with the same name ExternKotlinMessageParceler." "$parceler_log"; then
+    echo "Missing error message for two Parcelers with one name." 1>&2
+    cat "$parceler_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-parceler" ]; then
+    echo "The generator wrote files for two Parcelers with one name." 1>&2
+    exit 1
+fi
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {

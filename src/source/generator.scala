@@ -302,7 +302,7 @@ package object generatorTools {
       if (spec.swiftOutFolder.isDefined && spec.swiftErrorType.isDefined) {
         SwiftErrorType.check(idl, spec).foreach(message => throw GenerateException(message))
       }
-      if (spec.kotlinJniOutFolder.isDefined && spec.jniOutFolder.isDefined) {
+      if (spec.kotlinJniOutFolder.isDefined) {
         KotlinJniExtern.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       if (spec.cppOutFolder.isDefined) {

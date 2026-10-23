@@ -549,7 +549,7 @@ object Main {
     try {
       val r = generate(idl, outSpec)
       r.foreach(e => System.err.println("Error generating output: " + e))
-      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined || (kotlinJniOutFolder.isDefined && jniOutFolder.isDefined))
+      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined || kotlinJniOutFolder.isDefined)
     }
     finally {
       if (outFileListWriter.isDefined) {
@@ -560,7 +560,7 @@ object Main {
       }
     }
 
-    // A failed generation of the Swift output, or of the Kotlin JNI output with the JNI code, fails the build.
+    // A failed generation of the Swift or the Kotlin JNI output fails the build.
     if (failed) {
       System.exit(1)
     }

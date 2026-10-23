@@ -1,0 +1,7 @@
+@extern "vendor/third-party/kotlin_extern.yaml"
+@extern "vendor/third-party/kotlin_extern_clash.yaml"
+
+kotlin_extern_clash_record = record {
+  first: extern_kotlin_message;
+  second: extern_kotlin_clash_message;
+} deriving(parcelable)

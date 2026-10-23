@@ -303,27 +303,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-  // The Kotlin classes of the extern types with kotlin.jniTypename that tm uses, also as type arguments.
-  private def keyedExterns(tm: MExpr): Seq[String] =
-    (tm.base match {
-      case e: MExtern => e.kotlin.jniTypename.toSeq
-      case _ => Seq()
-    }) ++ tm.args.flatMap(keyedExterns)
-
   // Parceler name -> (class, origin of the first record that needs it)
   private val parcelers = mutable.Map[String, (String, String)]()
 
-  private def parcelerName(fqn: String) = idJava.ty(fqn.split('.').last) + "Parceler"
-
-  private def registerParceler(fqn: String, origin: String) {
-    val name = parcelerName(fqn)
-    parcelers.get(name) match {
-      case Some((other, _)) if other != fqn =>
-        throw GenerateException(s"The classes $other and $fqn need a Parceler with the same name $name.")
-      case Some(_) =>
-      case None => parcelers(name) = (fqn, origin)
-    }
-  }
+  private def parcelerName(fqn: String) = KotlinJniExtern.parcelerName(spec, fqn)
 
   override def generate(idl: Seq[TypeDecl]) {
     super.generate(idl)
@@ -349,8 +332,8 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     val self = marshal.typename(javaName, r)
     val isParcelable = parcelable && r.derivingTypes.contains(DerivingType.AndroidParcelable)
     // Parcelize cannot write a pure Kotlin class of an extern type. A Parceler of the translator contract does.
-    val parcelerTypes = if (isParcelable) r.fields.flatMap(f => keyedExterns(f.ty.resolved)).distinct else Seq()
-    parcelerTypes.foreach(t => registerParceler(t, origin))
+    val parcelerTypes = if (isParcelable) r.fields.flatMap(f => KotlinJniExtern.keyedExterns(f.ty.resolved)).distinct else Seq()
+    parcelerTypes.foreach(t => parcelers.getOrElseUpdate(parcelerName(t), (t, origin)))
     if (isParcelable) {
       refs.imports.add("android.os.Parcelable")
       refs.imports.add("kotlinx.parcelize.Parcelize")
