@@ -116,7 +116,7 @@ echo "domain idl files: $(ls "$domain_dir"/*.djinni | wc -l | tr -d ' ') (all in
 for pass in exact extra; do
   files="$(find "$work/base-out/$pass" -type f | wc -l | tr -d ' ')"
   runs="$(find "$work/base-out/$pass" -name .exit | wc -l | tr -d ' ')"
-  failed="$(grep -L '^0$' "$work"/base-out/"$pass"/*/*/.exit 2>/dev/null | wc -l | tr -d ' ')"
+  failed="$( { grep -L '^0$' "$work"/base-out/"$pass"/*/*/.exit 2>/dev/null || true; } | wc -l | tr -d ' ')"
   echo "pass=$pass runs=$runs files=$files runs-with-nonzero-exit=$failed"
   [ "$failed" = 0 ] || { echo "a generator run failed; see $work" >&2; KEEP_OUT=1; status=1; }
   if diff -r "$work/base-out/$pass" "$work/head-out/$pass"; then
