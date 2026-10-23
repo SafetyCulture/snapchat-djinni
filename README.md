@@ -394,10 +394,8 @@ Async wrappers (`--swift-async-wrap`):
   the label prefix of `--swift-async-wrap`. The method is `async throws`, and it
   returns when C++ returns.
 - Each wrapper method is `@concurrent`. So it runs on the global concurrent
-  executor also when the module uses `NonisolatedNonsendingByDefault`, and a
-  value that is not `Sendable` (for example the `NSData` of `future<DataRef>`)
-  does not cross from the actor of the caller. The attribute needs Swift 6.2
-  (Xcode 26) or later.
+  executor also when the module uses `NonisolatedNonsendingByDefault`, and not
+  on the actor of the caller. The attribute needs Swift 6.2 (Xcode 26) or later.
 - A C++ exception is never fatal. Without `--swift-error-type`, the generated
   proxy throws `DjinniError`, and the wrapper method gives it to the caller.
   `DjinniError.errorMessage` is the message of the exception. The shim catches
@@ -531,9 +529,11 @@ Three scripts check the Swift support. They read the Crux IDL from
   compile next to the Swift files.
   - The `NonisolatedNonsendingByDefault` pass builds `DjinniSupport` without the
     feature, because `DjinniSupport` is a package with its own settings and only
-    the modules that use the generated code turn the feature on. The test-suite
-    files of this pass include callers of the async wrappers on the main actor
-    and on an actor (`ci/swift-typecheck/AsyncCallers.swift`).
+    the modules that use the generated code turn the feature on. The pass proves
+    that the generated code and its callers compile in this mode: the test-suite
+    files include callers of the async wrappers on the main actor and on an
+    actor (`ci/swift-typecheck/AsyncCallers.swift`). It does not prove that
+    `@concurrent` is necessary.
   - One more pass generates the whole Crux IDL (`main.djinni`) with
     `--swift-error-type CruxError` and `--swift-async-wrap`, with a `crux_error`
     record that the fixture adds, and typechecks it with a conformance stub.
