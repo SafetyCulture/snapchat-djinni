@@ -155,6 +155,19 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
     -parse-as-library $flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift
+  # The closure of Future.getResult runs on a global queue. Strict concurrency must reject a main-actor closure there.
+  case "$flags" in
+    *strict-concurrency*)
+      echo "== [$flags] negative case: a main-actor closure in Future.getResult"
+      # shellcheck disable=SC2086
+      if negative="$(swiftc -typecheck -parse-as-library -module-name Negative $flags "${cxx[@]}" -I "$mods" "$repo_root/ci/swift-negative/future_get_result_main_actor.swift" 2>&1)"; then
+        echo "FAIL: the main-actor closure typechecks, so Future.getResult is not @Sendable" >&2
+        exit 1
+      fi
+      printf '%s\n' "$negative" | grep -q "main actor-isolated" || { echo "FAIL: the negative case failed for another reason:" >&2; printf '%s\n' "$negative" >&2; exit 1; }
+      echo "NEGATIVE CASE REJECTED [$flags]"
+      ;;
+  esac
   echo "== [$flags] Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
