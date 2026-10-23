@@ -118,6 +118,16 @@ func runAsyncTests() async throws {
         check(error.code == 1 && error.message == "division by zero", "typed error of an outcome")
     }
 
+    // The error record of --swift-error-type conforms to Error without deriving(error).
+    let errors = try ErrorService_statics.create()
+    check(try await errors.divide(8, b: 2) == 4, "divide with the error type")
+    do throws(CruxError) {
+        _ = try await errors.divide(1, b: 0)
+        check(false, "divide by zero must fail with CruxError")
+    } catch {
+        check(error.code == 7 && error.message == "division by zero", "CruxError from the wrapper")
+    }
+
     // One C++ object has one wrapper, and the wrapper serialises the calls to the object.
     let first = try RuntimeAsync_statics.shared()
     let second = try RuntimeAsync_statics.shared()

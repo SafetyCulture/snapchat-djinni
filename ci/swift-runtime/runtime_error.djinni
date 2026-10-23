@@ -1,0 +1,13 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Generated with --swift-error-type CruxError. The record needs no deriving(error).
+crux_error = record {
+  message: string;
+  code: i32;
+}
+
+error_service = interface +c {
+  static create(): error_service;
+  divide(a: i32, b: i32): outcome<i32, crux_error>;
+}

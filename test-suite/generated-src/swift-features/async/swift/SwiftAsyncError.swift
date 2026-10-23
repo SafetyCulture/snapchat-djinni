@@ -4,7 +4,7 @@
 import Foundation
 
 /** Interfaces for --swift-async-wrap. */
-public struct SwiftAsyncError: Equatable, Error, Sendable {
+public struct SwiftAsyncError: Equatable, Swift.Error, Sendable {
     public let message: String
     public let code: Int32
 

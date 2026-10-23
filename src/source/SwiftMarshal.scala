@@ -67,6 +67,20 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
     case _ => false
   }
 
+  // True when the type is a record with the Swift name of the error record.
+  def isErrorRecord(tm: MExpr, name: String): Boolean = tm.base match {
+    case d: MDef => d.defType == DRecord && idSwift.ty(d.name) == name
+    case e: MExtern => e.defType == DRecord && e.swift.typename == name
+    case _ => false
+  }
+
+  // True when the type has the Swift name of the error record, whatever kind of type it is.
+  def hasErrorName(tm: MExpr, name: String): Boolean = tm.base match {
+    case d: MDef => idSwift.ty(d.name) == name
+    case e: MExtern => e.swift.typename == name
+    case _ => false
+  }
+
   def isFuture(tm: MExpr): Boolean = tm.base match {
     case e: MExtern => e.name == "future" && tm.args.size == 1
     case _ => false

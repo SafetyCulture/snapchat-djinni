@@ -124,6 +124,7 @@ package object generatorTools {
                    swiftxxBaseLibIncludePrefix: String,
                    swiftLegacyRecords: Boolean,
                    swiftAsyncWrap: Option[String],
+                   swiftErrorType: Option[String],
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
@@ -293,6 +294,10 @@ package object generatorTools {
     try {
       if (spec.swiftOutFolder.isDefined || spec.swiftxxOutFolder.isDefined) {
         SwiftProtobuf.check(idl).foreach(message => throw GenerateException(message))
+      }
+      // Check before any generator writes a file.
+      if (spec.swiftOutFolder.isDefined && spec.swiftErrorType.isDefined) {
+        SwiftErrorType.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       if (spec.cppOutFolder.isDefined) {
         if (!spec.skipGeneration) {
