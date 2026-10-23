@@ -37,7 +37,7 @@ ts:
   module: '@djinni_support/Outcome'
   generic: true
 swift:
-  typename: 'Result'
+  typename: 'Swift.Result'
   generic: true
   translator: 'OutcomeMarshaller'
   translator.module: 'DjinniSupport'

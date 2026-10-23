@@ -8,7 +8,7 @@ import TestSuiteCxx
 
 final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
-    func fetch(_ id: String) throws -> Result<TestSuite.SwiftErrorItem, TestSuite.CruxError> {
+    func fetch(_ id: String) throws -> Swift.Result<TestSuite.SwiftErrorItem, TestSuite.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try StringMarshaller.toCpp(id))
@@ -16,14 +16,14 @@ final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<SwiftErrorItemMarshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
-    func count() throws -> Result<Int32, TestSuite.CruxError> {
+    func count() throws -> Swift.Result<Int32, TestSuite.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         var ret = djinni_generated_swift.SwiftErrorService_count(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<I32Marshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
-    func watch(_ observer: TestSuite.SwiftErrorObserver) throws -> Result<Bool, TestSuite.CruxError> {
+    func watch(_ observer: TestSuite.SwiftErrorObserver) throws -> Swift.Result<Bool, TestSuite.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try SwiftErrorObserverMarshaller.toCpp(observer))

@@ -10,7 +10,7 @@ import TestSuiteCxx
 /** The error type is an extern record with the Swift name CruxError. */
 final class SwiftErrorExternServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftErrorExternService, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
-    func f() throws -> Result<Int32, Models.CruxError> {
+    func f() throws -> Swift.Result<Int32, Models.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         var ret = djinni_generated_swift.SwiftErrorExternService_f(&_params)

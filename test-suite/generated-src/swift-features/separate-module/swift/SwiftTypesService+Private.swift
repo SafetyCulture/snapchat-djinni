@@ -9,7 +9,7 @@ import TestSuiteCxx
 
 final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTypesService, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
-    func compute(_ value: Int32) throws -> Result<Int32, TestSuite.SwiftError> {
+    func compute(_ value: Int32) throws -> Swift.Result<Int32, TestSuite.SwiftError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try I32Marshaller.toCpp(value))

@@ -5,9 +5,9 @@ import Foundation
 
 /** An outcome is Sendable when its arguments are. A DataRef argument makes it not Sendable. */
 public struct SwiftSendableWithOutcome: Sendable {
-    public let result: Result<Int32, TestSuite.SwiftSendableError>
+    public let result: Swift.Result<Int32, TestSuite.SwiftSendableError>
 
-    public init(result: Result<Int32, TestSuite.SwiftSendableError>)
+    public init(result: Swift.Result<Int32, TestSuite.SwiftSendableError>)
     {
         self.result = result
     }

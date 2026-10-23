@@ -6,5 +6,5 @@ import Models
 
 /** The error type is an extern record with the Swift name CruxError. */
 public protocol SwiftErrorExternService: AnyObject, Sendable {
-    func f() throws -> Result<Int32, Models.CruxError>
+    func f() throws -> Swift.Result<Int32, Models.CruxError>
 }

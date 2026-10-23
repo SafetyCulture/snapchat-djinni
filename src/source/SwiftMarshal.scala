@@ -114,7 +114,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
     case e: MExtern =>
       if (e.defType == DInterface) false
       else if (e.swift.translator.startsWith("ProtobufMarshaller")) true
-      else if (e.swift.typename == "Result") tm.args.forall(isSendable)
+      else if (e.swift.typename == "Result" || e.swift.typename == "Swift.Result") tm.args.forall(isSendable)
       else if (e.swift.typename == "DJFuture") tm.args.forall(isSendable)
       else false
     case _: MParam => false
