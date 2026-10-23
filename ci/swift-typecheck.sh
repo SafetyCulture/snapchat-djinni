@@ -10,8 +10,12 @@
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
 # because they come from other build steps.
 #
+# It also compiles the Java, JNI C++ and Objective-C++ output of the +sw host case of the test suite, so the
+# other languages still compile next to the Swift files. That needs javac and the JNI headers of a JDK.
+#
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
+#   JAVA_HOME          JDK with include/jni.h (default: derived from javac)
 #   IDL_FILES          comma separated files of crux/djinni/domain to import
 #                      (default: common.djinni,media.djinni,assets.djinni)
 #   DJINNI_FLAGS       extra generator flags

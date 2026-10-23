@@ -8,4 +8,4 @@ kotlin_extern_ord_bad_record = record {
 # An extern type without Kotlin keys keeps the Java class, and the generator does not judge it.
 kotlin_extern_ord_plain_record = record {
   plain: extern_plain_message;
-} deriving(eq)
+} deriving(eq, ord)

@@ -547,6 +547,9 @@ Three scripts check the Swift support. They read the Crux IDL from
   `swiftc -typecheck` in Swift 5 mode and in Swift 6 mode with strict
   concurrency checking, and compiles the C++ glue with `-fsyntax-only`. It does
   the same for the Swift cases of the test suite (`test-suite/djinni/swift_*.djinni`).
+  It also compiles the Java, the JNI C++ and the Objective-C++ output of the `+sw`
+  host case (`javac`, `clang++ -fsyntax-only`), so the other languages still
+  compile next to the Swift files.
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces, and runs it in both Swift modes. The program checks
   calls in both directions, the identity of proxies and the release of host
@@ -624,6 +627,10 @@ kotlin:
 - The four keys go together. With `--jni-out`, the generator reports an extern
   type that has only some of them, and names the missing keys. With
   `--kotlin-jni-out` alone, no JNI code is written, so it does not check them.
+- `jni.kotlinTypeSignature` must name the class of `kotlin.jniTypename`, with
+  `/` and `$` read as `.`. The JNI code looks the class up by the signature, and
+  the Kotlin classes use the type name, so a mismatch binds two classes. With
+  `--jni-out`, the generator reports it before it writes a file.
 - The JNI code binds one class for each extern type. A `--jni-out` run binds the
   Kotlin class only when the same run has `--kotlin-jni-out`. Otherwise it binds
   the Java class. So the generator refuses `--java-out`, `--kotlin-jni-out` and
@@ -639,8 +646,10 @@ kotlin:
   without a byte array throws `android.os.BadParcelableException`. Two classes
   with the same simple name need different Parceler names. The generator
   reports them before it writes a file. The Java output does not change.
-- `deriving(ord)` on a record with such a field needs a Kotlin class that is
-  `Comparable`, as the Java class must be.
+- The generator rejects `deriving(ord)` on a record with such a field, because a
+  message has no order and its Kotlin class is not `Comparable`. It exits with
+  code 1 before it writes a file. (For the other fields, the resolver already
+  rejects `deriving(ord)` over an `optional<>` or a collection.)
 - A yaml without the keys gives the same output as before.
 
 ### Kotlin coroutines
@@ -814,8 +823,13 @@ changes.
 `--kotlin-suspend-dispatcher` without `--kotlin-suspend-wrap`, `--java-out`
 with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys,
 two Kotlin classes with one simple name in a parcelable record, and a Protobuf
-message without a `swift` block with `--swift-out` or `--swiftxx-out`. It checks
-that the options case imports `--swiftxx-base-lib-module`.
+message without a `swift` block with `--swift-out` or `--swiftxx-out`, equal
+`--swiftxx-namespace` and `--objcpp-namespace` with both outputs on, `deriving(ord)`
+over the Kotlin class of an extern type with Kotlin keys, and an extern type whose
+`jni.kotlinTypeSignature` and `kotlin.jniTypename` name two classes. It checks
+that every `+Private.swift` file of the options case imports
+`--swiftxx-base-lib-module`, and that the warning for an interface with `+o` and
+without `+sw` appears once.
 
 These combinations have no test beyond the checked-in output:
 
