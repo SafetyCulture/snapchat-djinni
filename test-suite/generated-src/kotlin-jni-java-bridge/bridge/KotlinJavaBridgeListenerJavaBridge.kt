@@ -27,6 +27,8 @@ class KotlinJavaBridgeListenerJavaBridge(private val impl: com.dropbox.djinni.br
     override fun outcomeValue(value: Int): com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError> {
         return this.impl.outcomeValue(value).match(com.snapchat.djinni.Outcome.ResultHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf> { djinni_value -> com.snapchat.djinni.Outcome.fromResult<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>(djinni_value.toJava()) }, com.snapchat.djinni.Outcome.ErrorHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError> { djinni_error -> com.snapchat.djinni.Outcome.fromError<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>(djinni_error.toJava()) })
     }
+
+    internal fun djinniBridgeImpl(): com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener = this.impl
 }
 
 class KotlinJavaBridgeListenerKotlinBridge(private val impl: com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener) : com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener() {
@@ -53,8 +55,64 @@ class KotlinJavaBridgeListenerKotlinBridge(private val impl: com.dropbox.djinni.
     override fun outcomeValue(value: Int): com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError> {
         return this.impl.outcomeValue(value).match(com.snapchat.djinni.Outcome.ResultHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf> { djinni_value -> com.snapchat.djinni.Outcome.fromResult<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>(djinni_value.toKotlinJni()) }, com.snapchat.djinni.Outcome.ErrorHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError> { djinni_error -> com.snapchat.djinni.Outcome.fromError<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>(djinni_error.toKotlinJni()) })
     }
+
+    internal fun djinniBridgeImpl(): com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener = this.impl
 }
 
-fun com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener.toKotlinJni(): com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener = KotlinJavaBridgeListenerKotlinBridge(this)
+private object KotlinJavaBridgeListenerJavaBridgeCache {
+    private val entries = HashMap<Key, java.lang.ref.WeakReference<KotlinJavaBridgeListenerJavaBridge>>()
+    private val queue = java.lang.ref.ReferenceQueue<Any>()
 
-fun com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener.toJava(): com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener = KotlinJavaBridgeListenerJavaBridge(this)
+    @Synchronized
+    fun get(impl: com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener): KotlinJavaBridgeListenerJavaBridge {
+        while (true) {
+            val reference = queue.poll() ?: break
+            if (reference is Key) entries.remove(reference)
+        }
+        val probe = Key(impl, null)
+        entries[probe]?.get()?.let { return it }
+        val wrapper = KotlinJavaBridgeListenerJavaBridge(impl)
+        entries[Key(impl, queue)] = java.lang.ref.WeakReference(wrapper)
+        return wrapper
+    }
+
+    private class Key(impl: Any, queue: java.lang.ref.ReferenceQueue<Any>?) :
+        java.lang.ref.WeakReference<Any>(impl, queue) {
+            private val hash = System.identityHashCode(impl)
+
+            override fun hashCode(): Int = this.hash
+
+            override fun equals(other: Any?): Boolean = other is Key && this.get() === other.get()
+        }
+}
+
+private object KotlinJavaBridgeListenerKotlinBridgeCache {
+    private val entries = HashMap<Key, java.lang.ref.WeakReference<KotlinJavaBridgeListenerKotlinBridge>>()
+    private val queue = java.lang.ref.ReferenceQueue<Any>()
+
+    @Synchronized
+    fun get(impl: com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener): KotlinJavaBridgeListenerKotlinBridge {
+        while (true) {
+            val reference = queue.poll() ?: break
+            if (reference is Key) entries.remove(reference)
+        }
+        val probe = Key(impl, null)
+        entries[probe]?.get()?.let { return it }
+        val wrapper = KotlinJavaBridgeListenerKotlinBridge(impl)
+        entries[Key(impl, queue)] = java.lang.ref.WeakReference(wrapper)
+        return wrapper
+    }
+
+    private class Key(impl: Any, queue: java.lang.ref.ReferenceQueue<Any>?) :
+        java.lang.ref.WeakReference<Any>(impl, queue) {
+            private val hash = System.identityHashCode(impl)
+
+            override fun hashCode(): Int = this.hash
+
+            override fun equals(other: Any?): Boolean = other is Key && this.get() === other.get()
+        }
+}
+
+fun com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener.toKotlinJni(): com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener = if (this is KotlinJavaBridgeListenerJavaBridge) this.djinniBridgeImpl() else KotlinJavaBridgeListenerKotlinBridgeCache.get(this)
+
+fun com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener.toJava(): com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener = if (this is KotlinJavaBridgeListenerKotlinBridge) this.djinniBridgeImpl() else KotlinJavaBridgeListenerJavaBridgeCache.get(this)

@@ -132,7 +132,10 @@ fun main() {
     check(JavaFlags.FIRST.toKotlinJni() == KotlinFlags.FIRST, "flags back")
 
     // A Kotlin +j implementation behind the Java abstract class: every call is forwarded and converted.
-    val javaListener = KotlinListenerImpl().toJava()
+    val kotlinImpl = KotlinListenerImpl()
+    val javaListener = kotlinImpl.toJava()
+    check(javaListener === kotlinImpl.toJava(), "one wrapper for one Kotlin object")
+    check(javaListener.toKotlinJni() === kotlinImpl, "a wrapper round trip returns the Kotlin object")
     check(javaListener.value(1) == 2, "value")
     check(javaListener.optional(null) == null, "optional null")
     check(javaListener.optional(javaLeaf()) == "seven", "optional")
@@ -143,7 +146,10 @@ fun main() {
     check(javaListener.outcomeValue(0).errorOrNull()?.code == 9, "outcome error")
 
     // A Java +j implementation behind the Kotlin abstract class.
-    val kotlinListener = JavaListenerImpl().toKotlinJni()
+    val javaImpl = JavaListenerImpl()
+    val kotlinListener = javaImpl.toKotlinJni()
+    check(kotlinListener === javaImpl.toKotlinJni(), "one wrapper for one Java object")
+    check(kotlinListener.toJava() === javaImpl, "a wrapper round trip returns the Java object")
     check(kotlinListener.value(1) == 3, "reverse value")
     check(kotlinListener.optional(kotlinLeaf()) == "seven", "reverse optional")
     check(kotlinListener.list(ArrayList(listOf(kotlinLeaf()))) == ArrayList(listOf("seven")), "reverse list")
