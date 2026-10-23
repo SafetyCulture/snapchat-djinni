@@ -161,4 +161,30 @@ if ! grep -q "com.dropbox.djinni.testextern.ExternKotlinMessage" "$work/$name/ko
 fi
 compile_and_compare "$name" "$package" "$work/$name/yaml" "$repo_root/ci/kotlin-jni/extern" com.dropbox.djinni.testextern \
   "Lcom/dropbox/djinni/testextern/ExternJavaMessage;=Lcom/dropbox/djinni/testextern/ExternKotlinMessage;"
+# The compare tool must reject a JNI lookup that it cannot parse, so a change in the shape of the generated C++
+# cannot turn a lookup into a silent skip. The mutant has one lookup split over two lines.
+mutant="$work/compare-mutant"
+mkdir -p "$mutant"
+cp -R "$work/suite/jni" "$mutant/jni"
+python3 - "$mutant/jni" <<'PY'
+import glob, sys
+for path in sorted(glob.glob(sys.argv[1] + "/*")):
+    text = open(path).read()
+    if "jniGetFieldID(clazz.get(), " in text:
+        open(path, "w").write(text.replace("jniGetFieldID(clazz.get(), ", "jniGetFieldID(\n    clazz.get(), ", 1))
+        break
+else:
+    sys.exit("no jniGetFieldID lookup to mutate")
+PY
+if python3 "$repo_root/ci/kotlin_jni_compare.py" "$work/suite/java-classes" "$work/suite/kotlin-classes" "$mutant/jni" "$package" >"$mutant/out.log" 2>&1; then
+  echo "FAIL: the compare tool accepted a JNI lookup that it cannot parse" >&2
+  cat "$mutant/out.log" >&2
+  exit 1
+fi
+if ! grep -qF "JNI lookups are not parsed" "$mutant/out.log"; then
+  echo "FAIL: the compare tool failed for another reason than the unparsed lookup" >&2
+  cat "$mutant/out.log" >&2
+  exit 1
+fi
+echo "compare tool: an unparsed JNI lookup is rejected"
 echo "KOTLIN JNI CHECK OK"

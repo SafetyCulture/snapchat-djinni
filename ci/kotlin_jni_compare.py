@@ -82,14 +82,19 @@ def jni_name(cls: str, method: str) -> str:
     return "Java_" + mangle(cls) + "_" + mangle(method)
 
 
-def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]]]:
-    """Returns the exported function names and the lookups: (class, kind, name, descriptor)."""
-    exported, lookups = set(), set()
+def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]], list[str]]:
+    """Returns the exported function names, the lookups (class, kind, name, descriptor) and the unparsed lookups.
+
+    A line that calls jniGetFieldID, jniGetMethodID or jniGetStaticMethodID counts as one lookup. Every one of
+    them must match the parser and follow a jniFindClass, so a change in the shape of the generated C++ cannot
+    turn a lookup into a silent skip."""
+    exported, lookups, unparsed = set(), set(), []
+    call = re.compile(r"\bjni(?:GetFieldID|GetMethodID|GetStaticMethodID)\(")
     for path in sorted(glob.glob(os.path.join(jni_dir, "*"))):
         if not path.endswith((".cc", ".cpp", ".h", ".hpp")):
             continue
         current = None
-        for line in open(path):
+        for number, line in enumerate(open(path), 1):
             exported.update(re.findall(r"JNICALL (Java_\w+)\(", line))
             m = re.search(r'jniFindClass\("([^"]+)"\)', line)
             if m:
@@ -97,7 +102,9 @@ def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]]]
             m = re.search(r'jni(GetFieldID|GetMethodID|GetStaticMethodID)\(clazz\.get\(\), "([^"]+)", "([^"]+)"\)', line)
             if m and current:
                 lookups.add((current, m.group(1), m.group(2), m.group(3)))
-    return exported, lookups
+            elif call.search(line):
+                unparsed.append(f"{os.path.basename(path)}:{number}: {line.strip()}")
+    return exported, lookups, unparsed
 
 
 def native_tables(jni_dir: str) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
@@ -155,10 +162,12 @@ def main() -> None:
         failures.append(f"natives in classes that Java does not have: {extra}")
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")
 
-    exported, lookups = jni_lookups(jni_dir)
+    exported, lookups, unparsed = jni_lookups(jni_dir)
     # With no parsed lookups, checks 4-6 check nothing
     if not lookups:
         failures.append("no JNI field or method lookups found in the generated C++")
+    if unparsed:
+        failures.append(f"{len(unparsed)} JNI lookups are not parsed, for example {unparsed[:3]}")
     registrations, table_problems = native_tables(jni_dir)
     failures.extend(table_problems)
     derived = {jni_name(n, m) for n in kotlin for (m, _, _) in natives(kotlin[n])}
