@@ -9,6 +9,12 @@ kj_error = record {
   code: i32;
 }
 
+kj_constants = record {
+  # Integer literals for float constants must become float literals in Kotlin.
+  const f32_one: f32 = 1;
+  const f64_minus_two: f64 = -2;
+}
+
 kj_color = enum {
   red;
   green;

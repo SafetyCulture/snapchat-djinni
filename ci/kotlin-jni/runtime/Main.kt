@@ -70,6 +70,10 @@ fun main(args: Array<String>) {
     check(service.flagsOpt(null) == null, "flagsOpt(null) stays null")
     check(service.flagsOpt(EnumSet.of(KjFlags.FLAG_A, KjFlags.FLAG_B)) == EnumSet.of(KjFlags.FLAG_A, KjFlags.FLAG_B), "flagsOpt keeps the set")
 
+    // Integer literals for float constants compile and read as floats.
+    check(KjConstants.F32_ONE == 1.0f, "f32 constant from an integer literal")
+    check(KjConstants.F64_MINUS_TWO == -2.0, "f64 constant from an integer literal")
+
     // Many threads call one object.
     val pool = Executors.newFixedThreadPool(8)
     val sum = AtomicInteger()
