@@ -21,8 +21,8 @@ import djinni.generatorTools._
 import djinni.meta._
 
 object SwiftIdent {
-  // Swift cannot escape these with backticks in member position, so they get a trailing underscore.
-  val unescapable = Set("Type", "Protocol", "self", "Self", "init", "deinit", "subscript")
+  // Swift cannot escape these with backticks in member or type position, so they get a trailing underscore.
+  val unescapable = Set("Any", "Type", "Protocol", "self", "Self", "init", "deinit", "subscript")
 
   val keywords = Set(
     "associatedtype", "class", "enum", "extension", "fileprivate", "func", "import", "inout", "internal", "let",
