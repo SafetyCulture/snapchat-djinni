@@ -370,8 +370,7 @@ public:
             }
         };
         detail::SharedStatePtr<T> sharedStateForReadyFuture;
-        // A handler that this call replaces is destroyed after the unlock: its next promise breaks when it is destroyed,
-        // and that runs the handlers of the next future, which can take this lock
+        // Destroy a replaced handler after the unlock: its broken next promise runs handlers that can take this lock.
         decltype(sharedState->handler) replaced;
         {
             std::unique_lock lk(sharedState->mutex);

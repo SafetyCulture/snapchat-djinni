@@ -130,8 +130,7 @@ object SwiftChecks {
     } yield s"interface ${td.ident.name}, method ${m.ident.name}: the $kind name $name is $swiftName in Swift. --swift-async-wrap uses names that start with djinni and a capital letter inside the wrapper, so rename it."
   }
 
-  // Swift's Error refines Sendable. A record that conforms to Error (deriving(error), or the record of --swift-error-type)
-  // cannot hold a DataRef or a DataView, which are not Sendable: Swift 6 rejects the conformance.
+  // Swift's Error is Sendable, and a DataRef or a DataView is not, so Swift 6 rejects such an Error record.
   private def errorBufferProblems(interns: Seq[InternTypeDecl], spec: Spec): Seq[String] = {
     val marshal = new SwiftMarshal(spec)
     for {
@@ -139,7 +138,7 @@ object SwiftChecks {
       r <- Seq(td.body).collect { case r: Record => r }
       if r.derivingTypes.contains(DerivingType.Error) || spec.swiftErrorType.contains(spec.swiftIdentStyle.ty(td.ident.name))
       f <- r.fields if marshal.holdsBuffer(f.ty.resolved)
-    } yield s"record ${td.ident.name}, field ${f.ident.name}: the record conforms to Error in Swift, and Error is Sendable, but the field holds a DataRef or a DataView, which is not Sendable. Use binary for the field, or remove deriving(error)."
+    } yield s"record ${td.ident.name}, field ${f.ident.name}: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable. Use binary for the field, or remove deriving(error)."
   }
 
   // A Swift string literal has other escapes than a Java one.

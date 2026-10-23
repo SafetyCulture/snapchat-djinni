@@ -85,8 +85,7 @@ public:
         previous = std::move(_pending);
         _pending = std::make_unique<djinni::Promise<int32_t>>();
         auto future = _pending->getFuture();
-        // The count moves after the new promise is stored, so a test that waits for the count knows that this call
-        // stored its promise
+        // A test waits for this count to know that the promise is stored.
         pendingStarted.fetch_add(1);
         return future;
     }

@@ -375,7 +375,7 @@ Swift 6 defaults:
   pass such a value across queues through an unchecked box.
 - Known limit: the generator sees the fields of the records of its own IDL only.
   A record of another Djinni module (an extern record of a yaml file) is an
-  extern type, so a record that holds it is `@unchecked Sendable`, also when that
+  extern type. So a record that holds it is `@unchecked Sendable`, also when the
   extern record holds a `DataRef` or a `DataView`. Do not put such a record in a
   record of another module.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
@@ -394,20 +394,21 @@ Async wrappers (`--swift-async-wrap`):
   has `+sw` stays a protocol, because the host implements it.
 - Every instance method runs its blocking C++ call on a queue of its own: a new
   serial `DispatchQueue` for each call (`DjinniSupport.djinniCallQueue()`, QoS
-  `.userInitiated`). libdispatch runs a serial queue on its overcommit threads,
-  so a call that blocks does not hold one of the limited threads of
-  `DispatchQueue.global()`, and the delivery of Swift futures keeps its threads.
-  Each call that blocks holds one thread. The method is `async throws`, and it
-  returns when C++ returns.
+  `.userInitiated`). libdispatch runs a serial queue on its overcommit threads.
+  So a blocked call does not use one of the limited threads of
+  `DispatchQueue.global()`, and those threads stay free for the delivery of Swift
+  futures. Each blocked call holds one thread. The method is `async throws`, and
+  it returns when C++ returns.
 - `--swift-async-queue <expression>` sets another `DispatchQueue`, for example a
-  queue of the application. The flag needs `--swift-async-wrap`, and the
-  expression is on one line without `/*` or `*/`. Each generated file evaluates
-  the expression once, into a private constant: `DispatchQueue(label: "cpp")`
-  gives one serial queue for the instance methods of the wrapper of an interface,
-  and one for its static methods. A global or a concurrent queue uses the limited
-  threads of libdispatch. When C++ blocks on all of them, the global queues stop,
-  also the delivery of Swift futures, so a C++ call that waits for a Swift future
-  never returns. The generator does not use the label prefix of
+  queue of the application. The flag needs `--swift-async-wrap`. Write the
+  expression on one line, without `/*` or `*/`. Each generated file evaluates the
+  expression once, into a private constant. Thus `DispatchQueue(label: "cpp")`
+  gives one serial queue for the instance methods of the wrapper of an interface.
+  It gives one more serial queue for the static methods of the interface.
+- A global queue or a concurrent queue uses the limited threads of libdispatch.
+  When C++ blocks on all of these threads, the global queues stop. The delivery
+  of Swift futures stops too, so a C++ call that waits for a Swift future does
+  not return. The generator does not use the label prefix of
   `--swift-async-wrap`.
 - Each wrapper method is `@concurrent`. So it runs on the global concurrent
   executor also when the module uses `NonisolatedNonsendingByDefault`, and not
@@ -435,8 +436,8 @@ Async wrappers (`--swift-async-wrap`):
   call that it stops. With `--swift-async-queue`, it waits when the queue has no
   free thread. The C++ object must be thread-safe, as it is for the calls of the
   other languages. An adapter that needs one call at a time must serialize the
-  calls itself, or use `--swift-async-queue` with a serial queue, which
-  serializes the calls to all objects of the interface.
+  calls itself. Another option is `--swift-async-queue` with a serial queue. That
+  queue serializes the calls to all objects of the interface.
 - A task that is already cancelled when the method starts throws
   `CancellationError` (with `--swift-error-type`, the `cancellation` value of the
   error type) and does not call C++. A cancel that comes later does not stop the
@@ -501,9 +502,9 @@ Runtime safety (Swift):
   modules do not share a proxy.
 - The closure of `Future.getResult` is `@Sendable`, because it runs on a global
   queue when the result comes later. When the future already has its result,
-  the closure runs before `getResult` returns, on the thread of the caller, so it
-  must not take a lock that the caller holds. A promise that is called twice
-  keeps its first result.
+  the closure runs on the thread of the caller, before `getResult` returns. So
+  the closure must not take a lock that the caller holds. A promise that is
+  called twice keeps its first result.
 - Known limit: Swift compares strings by canonical equivalence. A `Set` or a
   `Dictionary` with a string key merges two keys that Swift treats as equal,
   such as `"é"` (U+00E9) and `"e\u{301}"`, although C++ treats the byte
@@ -541,14 +542,14 @@ Three scripts check the Swift support. They read the Crux IDL from
 `MITTI_MOBILE_ROOT`, except for the runtime test.
 
 - `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It compiles
-  the generated Swift to SIL (`swiftc -emit-sil`) in Swift 5 mode, in Swift 6
-  mode with strict concurrency checking, and in Swift 6 mode with
-  `NonisolatedNonsendingByDefault`, and compiles the C++ glue with
+  the generated Swift to SIL (`swiftc -emit-sil`) in three modes: Swift 5,
+  Swift 6 with strict concurrency checking, and Swift 6 with
+  `NonisolatedNonsendingByDefault`. Then it compiles the C++ glue with
   `-fsyntax-only`. `swiftc -typecheck` is not enough: the region-based isolation
   checks of Swift 6 ("sending … risks causing data races") run on SIL. A
   negative case proves that the check runs: two tasks that share the `NSData` of
-  a wrapper method must fail. It does the same for the Swift cases of the test
-  suite (`test-suite/djinni/swift_*.djinni`).
+  a wrapper method must fail. The script does the same for the Swift cases of the
+  test suite (`test-suite/djinni/swift_*.djinni`).
   It also compiles the Java, the JNI C++ and the Objective-C++ output of the `+sw`
   host case (`javac`, `clang++ -fsyntax-only`), so the other languages still
   compile next to the Swift files.
@@ -563,8 +564,9 @@ Three scripts check the Swift support. They read the Crux IDL from
     `--swift-error-type CruxError` and `--swift-async-wrap`, with a `crux_error`
     record that the fixture adds, and typechecks it with a conformance stub.
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
-  of generated interfaces, and runs it in both Swift modes, in Swift 6 mode with
-  the optimizer, and once with ThreadSanitizer. The program checks
+  of generated interfaces. It runs the program in Swift 5 mode, in Swift 6 mode,
+  and in Swift 6 mode with the optimizer. It also runs the program once with
+  ThreadSanitizer. The program checks
   calls in both directions, the identity of proxies and the release of host
   objects. It also checks the async wrappers, typed errors, C++ exceptions of
   wrapped methods, Swift errors that C++ catches, task cancellation, the queue of
@@ -573,8 +575,8 @@ Three scripts check the Swift support. They read the Crux IDL from
   - The program runs twice: with `--swift-async-queue` and with the default
     queue. Each run checks the label of the queue that runs the C++ calls. The
     run with the default queue also starts more blocking calls than the global
-    queues of libdispatch have threads (`kern.wq_max_constrained_threads`), and
-    each call waits for a Swift future.
+    queues of libdispatch have threads (`kern.wq_max_constrained_threads`). Each
+    of these calls waits for a Swift future.
   - The typed errors come from two IDL files: `runtime_error.djinni` with
     `--swift-error-type CruxError` and the async wrappers, and
     `runtime_error_sync.djinni` with `--swift-error-type SyncError` and without
@@ -690,11 +692,11 @@ check scripts select the newest cached jar, and CI pins 1.10.2
 - The generated class `CppProxy` runs the blocking native call in
   `withContext(<dispatcher>)`. The dispatcher is `Dispatchers.IO`.
   `--kotlin-suspend-dispatcher <expression>` sets another dispatcher, for
-  example the pool of the application. Write the expression with qualified
-  names, because the generator adds no import for it, on one line without `/*`
-  or `*/`. Each generated file evaluates the expression once, into a private
-  property: `kotlinx.coroutines.Dispatchers.IO.limitedParallelism(1)` gives one
-  serial lane for all objects of the interface. The flag needs
+  example the pool of the application. Write the expression on one line, with
+  qualified names, and without `/*` or `*/`. The generator adds no import for
+  it. Each generated file evaluates the expression once, into a private
+  property. Thus `kotlinx.coroutines.Dispatchers.IO.limitedParallelism(1)` runs
+  one call at a time for all objects of the interface. The flag needs
   `--kotlin-suspend-wrap`.
 - The calls to one C++ object are not serialized. Two calls to the same object
   can run at the same time, so a `cancel()` call does not wait for the blocking
@@ -705,11 +707,11 @@ check scripts select the newest cached jar, and CI pins 1.10.2
   runs at most 64 blocking tasks at a time (the system property
   `kotlinx.coroutines.io.parallelism`, or the number of cores when it is
   larger). When 64 calls block, the next call waits for a free thread. A
-  `cancel()` call waits too. `--kotlin-suspend-dispatcher` with an executor that
-  has no limit removes the limit, for example
-  `java.util.concurrent.Executors.newCachedThreadPool().asCoroutineDispatcher()`
-  (one pool for each generated file), or a dispatcher of the application, which
-  the runtime test uses.
+  `cancel()` call waits too. A `--kotlin-suspend-dispatcher` with an executor
+  that has no limit removes the limit. An example is
+  `java.util.concurrent.Executors.newCachedThreadPool().asCoroutineDispatcher()`,
+  which gives one pool for each generated file. The runtime test uses a
+  dispatcher of the application.
 - A method that returns `future<T>` is `suspend fun m(): T`. It uses
   `suspendCancellableCoroutine` over `com.snapchat.djinni.Future.then`.
 - A cancelled coroutine stops waiting and throws `CancellationException`. A
@@ -853,10 +855,10 @@ error type:
   For the IDL record `crux_error`, the name is `CruxError`. The record conforms
   to `Error`; it does not need `deriving(error)`. An extern record with the
   Swift name `<name>` is accepted; it must conform to `Error` itself. The check
-  runs only with `--swift-out`. A record that conforms to `Error` (this record,
-  or a record with `deriving(error)`) cannot hold a `DataRef` or a `DataView`:
-  `Error` is `Sendable` in Swift, and those types are not. The generator stops
-  with an error that names the field.
+  runs only with `--swift-out`. A record that conforms to `Error` cannot hold a
+  `DataRef` or a `DataView`. This applies to this record and to a record with
+  `deriving(error)`: `Error` is `Sendable` in Swift, and those types are not.
+  The generator stops with an error that names the field.
 - `--kotlin-error-type <qualified class>`: the class `X` is an `Exception`
   subclass with two constructors, `(error: E)` and
   `(cause: DjinniCppException)`. The flag needs `--kotlin-jni-out`.
@@ -1064,8 +1066,8 @@ with a `DjinniCppException` as its cause. Keep the promise alive until you
 complete it. When a second call replaces a stored promise, the future of the
 first call breaks. A broken promise runs the handlers of its future on the
 thread that destroys it, as `setValue` does. So destroy or replace a promise
-outside any lock that a handler can take: move the old promise into a local that
-is declared before the lock, as `ci/swift-runtime/runtime_async_impl.cpp` does. A
+outside any lock that a handler can take. Move the old promise into a local that
+you declare before the lock, as `ci/swift-runtime/runtime_async_impl.cpp` does. A
 handler that `Future::then` runs can throw any type. The future that `then`
 returns gets the exception, and the completion of the first future does not fail.
 

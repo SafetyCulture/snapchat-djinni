@@ -27,9 +27,8 @@ private struct WeakReference<Object: AnyObject> {
 }
 
 public final class Future<Output, Failure> where Failure : Error {
-    // A subscriber runs on a global queue when the result comes later, and before getResult returns, on the thread of
-    // the caller, when the future already has its result. So it must be `@Sendable`, and it must not take a lock that
-    // the caller of getResult holds.
+    // A subscriber runs on a global queue, or before getResult returns when the future already has its result.
+    // It must be `@Sendable`, and it must not take a lock that the caller of getResult holds.
     public typealias Promise = @Sendable (Result<Output, Failure>) -> Void
 
     // The token only needs to be unique within the scope of the Future object

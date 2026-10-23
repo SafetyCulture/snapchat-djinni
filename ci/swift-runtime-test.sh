@@ -3,8 +3,8 @@
 #
 # The program checks the runtime: calls from Swift into C++, calls from C++ into a Swift object,
 # the identity of proxies, and many threads that create and release proxies and host objects.
-# It runs in Swift 5 mode, in Swift 6 mode, in Swift 6 mode with the optimizer (-O, and -O2 for C++), and once with
-# ThreadSanitizer for Swift and C++. A watchdog fails the program when it deadlocks. macOS only.
+# It runs in Swift 5 mode, in Swift 6 mode, and in Swift 6 mode with the optimizer (-O, and -O2 for C++). It also runs
+# once with ThreadSanitizer for Swift and C++. A watchdog fails the program when it deadlocks. macOS only.
 #
 # Environment:
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
@@ -117,7 +117,7 @@ module RuntimeTestCxx {
 }
 EOF
 
-# C++: the support library, the generated glue and the implementation. Each set of C++ flags has its own objects.
+# C++: the support library, the generated glue and the implementation
 cxxflags=(-std=c++20 -Wno-deprecated-declarations -DDATAREF_OBJC=1 -I "$out/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib")
 build_objs() { # <object folder> [C++ flags]
   local dir=$1 f
@@ -142,8 +142,7 @@ run_guarded() { # <command> [arguments]
 }
 
 # Swift: DjinniSupport as a static library, then the program. Each mode has its own build.
-# RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni. RT_DEFAULT_QUEUE runs the
-# check that only the default queue passes: more blocking calls than the global queues of libdispatch have threads.
+# RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni.
 run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   local flags=$1 objs=${2:-$work/objs} mode_runs=${3:-$runs} build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
@@ -166,16 +165,16 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   done
   echo "== [$flags] default queue"
   for i in $(seq 1 "$mode_runs"); do
+    # Only the default queue passes the check of RT_DEFAULT_QUEUE: it has a thread for each blocking call.
     run_guarded env RT_QUEUE_LABEL=djinni.call RT_DEFAULT_QUEUE=1 "$build/runtime-test-swift-default"
   done
 }
 run_mode "-swift-version 5"
 run_mode "-swift-version 6 -strict-concurrency=complete"
-# The optimizer shortens lifetimes, so a lifetime bug that -Onone hides can show here
+# The optimizer shortens object lifetimes, and it can show a lifetime bug that -Onone hides.
 build_objs "$work/objs-O" -O2
 run_mode "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"
-# ThreadSanitizer reports a race in the locks and atomics of the runtime, in Swift and in C++. One run is enough: the
-# sanitizer finds a race between two accesses that are not ordered, also when they do not collide in that run.
+# One run is enough: ThreadSanitizer reports two accesses without an order also when they do not collide.
 if [ "${RUNTIME_TSAN:-1}" = 1 ]; then
   build_objs "$work/objs-tsan" -fsanitize=thread
   TSAN_OPTIONS="halt_on_error=1 ${TSAN_OPTIONS:-}" run_mode "-swift-version 6 -strict-concurrency=complete -sanitize=thread" "$work/objs-tsan" 1

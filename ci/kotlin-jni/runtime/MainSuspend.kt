@@ -168,9 +168,8 @@ fun main(args: Array<String>) {
             check(false, "the call on an unknown rejection never returns")
         }
 
-        // A second call before complete_pending replaces the promise of the first call. The first call fails, and the
-        // second call is not blocked. The count of C++ orders the calls: the second call starts when the first one has
-        // stored its promise, also when the first call reaches C++ late.
+        // A second call before complete_pending replaces the promise of the first call. The first call fails.
+        // The second call starts after the C++ count shows that the first call stored its promise.
         val replacedBefore = service.pendingStarted()
         val firstCall = async(Dispatchers.Default) { runCatching { service.pending() } }
         check(withTimeoutOrNull(10_000) { while (service.pendingStarted() == replacedBefore) delay(5) } != null, "the first call of pending() reaches C++")

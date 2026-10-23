@@ -3,9 +3,8 @@ import Dispatch
 // The async wrappers of --swift-async-wrap call these functions. A blocking C++ call that runs is not stopped.
 
 /// The queue of one blocking C++ call when the generator has no `--swift-async-queue`. libdispatch runs a serial queue
-/// on its overcommit threads, so a call that blocks does not hold one of the limited threads of the global queues: the
-/// delivery of a Swift future and the `DispatchQueue.global()` work of the application keep their threads. Each call
-/// has its own queue, so calls to one object still run at the same time, and each call that blocks holds one thread.
+/// on its overcommit threads, so a blocked call does not use a thread of the global queues. Those threads stay free for
+/// the delivery of Swift futures. Each call has its own queue, so calls to one object can run at the same time.
 public func djinniCallQueue() -> DispatchQueue {
     DispatchQueue(label: "djinni.call", qos: .userInitiated)
 }

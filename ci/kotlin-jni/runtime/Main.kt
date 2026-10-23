@@ -22,7 +22,7 @@ fun check(condition: Boolean, message: String) {
     }
 }
 
-// Future.get(timeout) of djinni waits without a limit, so a test polls isDone() against a deadline
+// The Future.get(timeout) of djinni ignores the timeout.
 fun <T> Future<T>.getWithin(seconds: Long): T {
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds)
     while (!isDone()) {
@@ -127,7 +127,7 @@ fun main(args: Array<String>) {
         check(false, "the future of an unknown rejection never completes")
     }
 
-    // A C++ exception whose message is not valid UTF-8 has no Java string. The future fails all the same.
+    // A message that is not valid UTF-8 cannot become a Java string, but the future must still fail.
     try {
         service.badMessageFuture().getWithin(10)
         check(false, "a rejection with a message that is not UTF-8 must fail the future")

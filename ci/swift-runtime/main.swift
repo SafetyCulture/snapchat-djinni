@@ -209,7 +209,7 @@ func withTimeout<T: Sendable>(_ seconds: Double, _ body: @escaping @Sendable () 
     }
 }
 
-// The number of threads of the global queues of libdispatch (kern.wq_max_constrained_threads)
+// The thread limit of the global queues of libdispatch.
 func constrainedThreadLimit() -> Int {
     var value: Int32 = 0
     var size = MemoryLayout<Int32>.size
@@ -511,9 +511,8 @@ func runAsyncTests() async throws {
     check(elapsedMs < 1500, "a call waits for a blocking call on the same object: \(elapsedMs) ms")
     try await blocking.value
 
-    // The default queue runs each blocking call on a serial queue of its own, on the overcommit threads of libdispatch.
-    // More blocking calls than the global queues have threads must not stop those queues: each C++ call waits for a
-    // Swift future that DispatchQueue.global() completes and delivers.
+    // Each C++ call waits for a Swift future that DispatchQueue.global() completes. More calls than the global queues
+    // have threads must not stop those queues.
     if ProcessInfo.processInfo.environment["RT_DEFAULT_QUEUE"] == "1" {
         let calls = constrainedThreadLimit() + 8
         let finished = Counter()
@@ -664,7 +663,7 @@ func runTypedErrorTests() async throws {
     // A task that is cancelled while it waits for a future throws init(cancellation:) once. The late value is dropped.
     let waiting = Task { () async throws(CruxError) -> Int32 in try await errors.pending() }
     while try await errors.pendingStarted() == startedAfter { await Task.yield() }
-    // The count moves when the future exists. The pause lets the task reach the wait for the future before the cancel.
+    // The pause lets the task reach the wait for the future before the cancel.
     try await Task.sleep(nanoseconds: 100_000_000)
     waiting.cancel()
     await expectCruxError("cancellation while waiting", code: -2) { () async throws(CruxError) in _ = try await typedValue(waiting) }
