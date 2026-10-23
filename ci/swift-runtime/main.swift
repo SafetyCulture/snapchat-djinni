@@ -91,7 +91,7 @@ func runTests() throws {
 
     // A date outside the millisecond range throws instead of trapping
     do {
-        _ = try service.dateRoundtrip(Date.distantFuture)
+        _ = try service.dateRoundtrip(Date(timeIntervalSince1970: .infinity))
         check(false, "an out-of-range date must throw")
     } catch let error as DjinniError {
         check(error.errorMessage.contains("Date out of range"), "date range error: \(error.errorMessage)")
