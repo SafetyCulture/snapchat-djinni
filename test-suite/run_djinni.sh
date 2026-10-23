@@ -724,6 +724,27 @@ if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher" ]; then
     exit 1
 fi
 
+# The dispatcher is written in a KDoc comment, so a value that closes the comment is rejected.
+dispatcher_comment_log="$temp_out/dispatcher-comment.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-dispatcher-comment" \
+    --kotlin-suspend-wrap \
+    --kotlin-suspend-dispatcher "a */ b" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni") >"$dispatcher_comment_log" 2>&1; then
+    echo "The generator accepted a --kotlin-suspend-dispatcher value that closes a comment." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--kotlin-suspend-dispatcher needs a Kotlin expression on one line." "$dispatcher_comment_log"; then
+    echo "Missing error message for a --kotlin-suspend-dispatcher value that closes a comment." 1>&2
+    cat "$dispatcher_comment_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher-comment" ]; then
+    echo "The generator wrote files for a rejected flag." 1>&2
+    exit 1
+fi
+
 # The error type flag needs the Kotlin JNI output.
 error_type_log="$temp_out/kotlin-error-type-without-out.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
