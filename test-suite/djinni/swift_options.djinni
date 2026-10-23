@@ -8,6 +8,8 @@ swift_options_item = record {
 
 swift_options_service = interface +c +sw {
   compute(value: i32): i32;
+  # An interface constant is emitted on the _statics class
+  const max_count: i32 = 64;
   load(id: string): future<swift_options_item>;
   static create(): swift_options_service;
 }

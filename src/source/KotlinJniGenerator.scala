@@ -254,7 +254,6 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
               if (suspendWrap) {
                 w.w(s"override suspend fun ${kt(meth)}(${paramList(m)})${suspendReturnClause(m.ret)}").braced {
                   w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                  val call = s"native_$meth(this.nativeRef${preComma(args)})"
                   m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
                     case Some((ret, value)) =>
                       // Prefixed locals cannot shadow an IDL parameter or a type of the IDL

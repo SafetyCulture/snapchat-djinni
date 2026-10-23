@@ -367,6 +367,8 @@ Swift 6 defaults:
   `final` class with immutable state, or mark it `@unchecked Sendable`.
 - `deriving(sendable)` adds no Swift conformance. The resolver still requires it
   on field records.
+- A record with `deriving(eq)` is `Equatable` and `Hashable` in Swift, so each
+  extern field type must be `Hashable` in Swift. SwiftProtobuf messages are.
 
 Async wrappers (`--swift-async-wrap`):
 

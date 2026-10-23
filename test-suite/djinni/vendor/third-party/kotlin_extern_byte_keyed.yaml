@@ -1,0 +1,40 @@
+# An extern whose Java type is the primitive byte and whose Kotlin JNI type is a class,
+# for the array<extern> precedence case: the Kotlin key wins over the Java primitive.
+---
+name: extern_byte_keyed
+typedef: 'record'
+params: []
+prefix: ''
+cpp:
+  typename: 'kotlin_extern::ByteMessage'
+  header: '"kotlin_extern.pb.h"'
+  byValue: false
+objc:
+  typename: 'KEByteMessage'
+  header: '"KEByteMessage.pbobjc.h"'
+  boxed: 'KEByteMessage'
+  pointer: true
+  hash: '%s.hash()'
+objcpp:
+  translator: 'djinni::kotlin_extern::ByteMessage::Translator'
+  header: '"kotlin_extern.djinni.objc.h"'
+java:
+  typename: 'byte'
+  boxed: 'java.lang.Byte'
+  reference: false
+  generic: false
+  hash: 'Byte.valueOf(%s).hashCode()'
+  writeToParcel: 'out.writeByte(%s)'
+  readFromParcel: 'in.readByte()'
+jni:
+  translator: 'djinni::kotlin_extern::ByteMessage::Translator'
+  header: '"kotlin_extern.djinni.jni.h"'
+  typename: jbyte
+  typeSignature: 'B'
+  kotlinTranslator: 'djinni::kotlin::kotlin_extern::ByteMessage::Translator'
+  kotlinHeader: '"kotlin_extern.djinni.kotlin.jni.h"'
+  kotlinTypeSignature: 'Lcom/dropbox/djinni/testextern/ExternByteMessage;'
+kotlin:
+  typename: 'com.dropbox.djinni.testextern.wire.ExternByteMessage'
+  isProtobufMessage: true
+  jniTypename: 'com.dropbox.djinni.testextern.ExternByteMessage'
