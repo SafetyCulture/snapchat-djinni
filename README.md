@@ -502,7 +502,8 @@ different from `--kotlin-out`, which writes Kotlin Multiplatform code.
 
 `--kotlin-suspend-wrap` makes the instance methods of an interface `suspend`
 functions. It needs `--kotlin-jni-out` and kotlinx-coroutines in the consumer
-module. The classes are tested with kotlinx-coroutines 1.10.
+module. The classes are tested with kotlinx-coroutines 1.10; the check scripts
+select the newest cached jar, and CI pins 1.10.2 (`ci/kotlin-ci.sh`).
 
 - It applies to an interface with `+c` and without `+j`. The JNI code calls only
   the native methods of such an interface. It calls the methods of an interface
