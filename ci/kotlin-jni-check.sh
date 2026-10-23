@@ -82,10 +82,27 @@ compile_and_compare() {
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package" "$@"
 }
 
+# strip_kotlin_keys <extern dir>: removes the Kotlin keys (jni.kotlin*, kotlin.jniTypename) from the yaml files.
+# The Crux passes generate Java, Kotlin and JNI in one run, which binds one class for each extern type, and the
+# committed s12 asset yaml has the Kotlin keys; pass 4 checks the extern types with the Kotlin keys.
+strip_kotlin_keys() {
+  python3 - "$1" <<'EOF'
+import glob, os, re, sys
+for path in glob.glob(os.path.join(sys.argv[1], "**", "*.yaml"), recursive=True):
+    text = open(path).read()
+    stripped = re.sub(r"^  (kotlinTranslator|kotlinHeader|kotlinTypeSignature|jniTypename): .*\n", "", text, flags=re.M)
+    # A kotlin block that had only jniTypename is now empty
+    stripped = re.sub(r"^kotlin:\n(?!  )", "", stripped, flags=re.M)
+    if stripped != text:
+        open(path, "w").write(stripped)
+EOF
+}
+
 # 1. Crux assets IDL, with the flags of crux/tools/generate_code.sh. The names of the fields are the Java names (mFooBar).
 if [ "$check_crux" != 0 ]; then
   package=com.safetyculture.crux.domain
   python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx" "$repo_root" "common.djinni,media.djinni,assets.djinni"
+  strip_kotlin_keys "$work/fx/extern"
   (cd "$work/fx" && java -jar "$jar" \
     --java-out "$work/crux/java" --java-package "$package" --ident-java-field mFooBar \
     --cpp-out "$work/crux/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
