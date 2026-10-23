@@ -77,6 +77,12 @@ kotlin_java_bridge_listener = interface +j {
   both(value: kotlin_java_bridge_both): kotlin_java_bridge_both;
 }
 
+# Records with the containers of an interface that Kotlin implements.
+kotlin_java_bridge_listener_fields = record {
+  listeners: list<kotlin_java_bridge_listener>;
+  maybe_listener: optional<kotlin_java_bridge_listener>;
+}
+
 # C++ and Kotlin can implement this one.
 kotlin_java_bridge_both = interface +c +j {
   ping(leaf: kotlin_java_bridge_leaf): kotlin_java_bridge_leaf;
