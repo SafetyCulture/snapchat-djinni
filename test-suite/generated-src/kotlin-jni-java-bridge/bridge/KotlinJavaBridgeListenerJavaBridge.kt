@@ -9,11 +9,11 @@ class KotlinJavaBridgeListenerJavaBridge(private val impl: com.dropbox.djinni.br
     }
 
     override fun optional(leaf: com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf?): String? {
-        return this.impl.optional(leaf?.let { djinni_value -> djinni_value.toKotlinJni() })
+        return this.impl.optional(leaf?.let { djinni_value0 -> djinni_value0.toKotlinJni() })
     }
 
     override fun list(items: ArrayList<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf>): ArrayList<String> {
-        return this.impl.list(ArrayList(items.map { djinni_item -> djinni_item.toKotlinJni() }))
+        return this.impl.list(ArrayList(items.map { djinni_item0 -> djinni_item0.toKotlinJni() }))
     }
 
     override fun futureValue(value: Int): com.snapchat.djinni.Future<Int> {
@@ -37,11 +37,11 @@ class KotlinJavaBridgeListenerKotlinBridge(private val impl: com.dropbox.djinni.
     }
 
     override fun optional(leaf: com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf?): String? {
-        return this.impl.optional(leaf?.let { djinni_value -> djinni_value.toJava() })
+        return this.impl.optional(leaf?.let { djinni_value0 -> djinni_value0.toJava() })
     }
 
     override fun list(items: ArrayList<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf>): ArrayList<String> {
-        return this.impl.list(ArrayList(items.map { djinni_item -> djinni_item.toJava() }))
+        return this.impl.list(ArrayList(items.map { djinni_item0 -> djinni_item0.toJava() }))
     }
 
     override fun futureValue(value: Int): com.snapchat.djinni.Future<Int> {

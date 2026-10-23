@@ -1383,6 +1383,42 @@ check_bridge_flag missing-package "Error: --kotlin-jni-java-bridge-out needs --k
 check_bridge_flag package-only "Error: --kotlin-jni-java-bridge-package needs --kotlin-jni-java-bridge-out." \
     --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags/package-only/kotlin" \
     --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava"
+
+# A +j method cannot take a record that holds a +c interface: that record has no converter.
+bridge_skipped_log="$temp_out/kotlin-jni-java-bridge-skipped.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-skipped/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-skipped/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_skipped.djinni") >"$bridge_skipped_log" 2>&1; then
+    echo "The generator accepted a +j method that takes a record without a converter." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "interface bridge_negative_listener, method take_it, parameter value: the record bridge_negative_skipped has no converter, because it holds a +c interface." "$bridge_skipped_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-skipped" ]; then
+    echo "Missing error message for a +j method that takes a record without a converter, or files were written." 1>&2
+    cat "$bridge_skipped_log" 1>&2
+    exit 1
+fi
+
+# A flags type inside a list is a single option in Java and an EnumSet in Kotlin, so there is no converter.
+bridge_flags_log="$temp_out/kotlin-jni-java-bridge-flags-nested.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags-nested/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-flags-nested/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_flags.djinni") >"$bridge_flags_log" 2>&1; then
+    echo "The generator accepted a flags type inside a list." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "record bridge_negative_flag_list, field values: a flags type inside a container is com.dropbox.djinni.bridgejava.BridgeNegativeFlags in Java and EnumSet<com.dropbox.djinni.bridgekt.BridgeNegativeFlags> in Kotlin, so the bridge cannot convert it." "$bridge_flags_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-flags-nested" ]; then
+    echo "Missing error message for a flags type inside a list, or files were written." 1>&2
+    cat "$bridge_flags_log" 1>&2
+    exit 1
+fi
 if ! grep -qF -- "val bytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
    ! grep -qF -- "val keyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
     echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2
