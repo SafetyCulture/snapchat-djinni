@@ -259,7 +259,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                     case Some((ret, value)) =>
                       // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
                       w.wl(s"val djinni_future = withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
-                      w.wl(s"return suspendCancellableCoroutine<$value> { djinni_continuation ->").nested {
+                      w.wl(s"return suspendCancellableCoroutine<${if (value == "Unit") "kotlin.Unit" else value}> { djinni_continuation ->").nested {
                         w.wl("val djinni_target = AtomicReference(djinni_continuation)")
                         w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
                         w.wl(s"djinni_future.then(Future.FutureHandler<${futureArg(ret)}> { djinni_result ->").nested {
@@ -267,7 +267,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                           w.wl("djinni_waiting.resumeWith(try {").nested {
                             if (value == "Unit") {
                               w.wl("djinni_result.get()")
-                              w.wl("kotlin.Result.success(Unit)")
+                              w.wl("kotlin.Result.success(kotlin.Unit)")
                             } else {
                               w.wl("kotlin.Result.success(djinni_result.get())")
                             }
@@ -356,7 +356,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       if (isParcelable) supertypes += "Parcelable"
       val inherits = if (supertypes.isEmpty) "" else " : " + supertypes.mkString(", ")
       // A data class needs a field, and an extended record needs a base class that can be open.
-      val kind = if (r.fields.isEmpty) "class" else if (extended) "open class" else "data class"
+      val kind = if (extended) "open class" else if (r.fields.isEmpty) "class" else "data class"
       w.w(s"$accessModifier$kind $self${typeParams(params)}")
       if (r.fields.nonEmpty) {
         w.wl("(")
@@ -397,7 +397,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"if (other !is $self$star) return false")
             val tests = r.fields.map { f =>
               val name = kt(idJava.field(f.ident))
-              if (isArray(f)) s"$name.contentEquals(other.$name)" else s"$name == other.$name"
+              if (isArray(f)) s"this.$name.contentEquals(other.$name)" else s"this.$name == other.$name"
             }
             w.wl("return " + tests.mkString(" && "))
           }
