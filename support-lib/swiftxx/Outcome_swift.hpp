@@ -13,13 +13,12 @@ public:
     using CppType = expected<ResultCppType, ErrorCppType>;
     static CppType toCpp(const AnyValue& s) {
         auto comp = std::get<CompositeValuePtr>(s);
-        auto val = comp->getValue(0);
-        if (!std::holds_alternative<VoidValue>(val)) {
-            return { RESULT::toCpp(val) }; 
-        } else {
-            auto err = comp->getValue(1);
-            return make_unexpected(ERROR::toCpp(err));
+        // success is one element, failure is two; a void first element can be a
+        // success value (outcome<optional<T>, E> with nil)
+        if (comp->getSize() == 1) {
+            return { RESULT::toCpp(comp->getValue(0)) };
         }
+        return make_unexpected(ERROR::toCpp(comp->getValue(1)));
     }
     static AnyValue fromCpp(const CppType& c) {
         auto ret = std::make_shared<CompositeValue>();
