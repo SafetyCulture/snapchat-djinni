@@ -12,7 +12,7 @@ public final class SwiftAsyncService: @unchecked Sendable {
     init(proxy: SwiftAsyncServiceCppProxy) { self.proxy = proxy }
 
     public func ping() async throws -> Void {
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Error>) in
+        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
             self.queue.async { [_proxy = self.proxy] in
                 _continuation.resume(with: Result { try _proxy.ping() })
             }
@@ -73,7 +73,7 @@ public final class SwiftAsyncService: @unchecked Sendable {
 
     public func send(_ data: Foundation.NSData, tags: Array<String>) async throws -> Void {
         let _data = DjinniSupport.UncheckedSendable(data)
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Error>) in
+        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
             self.queue.async { [_proxy = self.proxy] in
                 _continuation.resume(with: Result { try _proxy.send(_data.value, tags: tags) })
             }
@@ -81,7 +81,7 @@ public final class SwiftAsyncService: @unchecked Sendable {
     }
 
     public func watch(_ observer: TestSuite.SwiftAsyncObserver) async throws -> Void {
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Error>) in
+        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
             self.queue.async { [_proxy = self.proxy] in
                 _continuation.resume(with: Result { try _proxy.watch(observer) })
             }
@@ -116,7 +116,7 @@ public final class SwiftAsyncService: @unchecked Sendable {
     }
 
     public func attach(_ child: TestSuite.SwiftAsyncChild, parent: Optional<TestSuite.SwiftAsyncService>) async throws -> Void {
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Error>) in
+        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
             self.queue.async { [_proxy = self.proxy] in
                 _continuation.resume(with: Result { try _proxy.attach(child, parent: parent) })
             }

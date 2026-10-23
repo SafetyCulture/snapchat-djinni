@@ -301,7 +301,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl("}")
             w.wl("return try await future.value")
           } else if (m.ret.isEmpty) {
-            w.wl("try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Error>) in").nested {
+            w.wl("try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in").nested {
               w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
                 w.wl(s"_continuation.resume(with: Result { try $call })")
               }
