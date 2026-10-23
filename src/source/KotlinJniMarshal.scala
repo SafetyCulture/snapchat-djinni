@@ -102,8 +102,9 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
           val elem = tm.args.head
           elem.base match {
             case p: MPrimitive => p.kName + "Array"
-            // An extern whose Java name is a primitive also stays a primitive array
-            case e: MExtern if javaPrimitiveArrayName(e).nonEmpty => javaPrimitiveArrayName(e).get
+            // A primitive array only when the Kotlin JNI name is the Java primitive; a distinct
+            // kotlin.jniTypename wins over the Java name
+            case e: MExtern if e.kotlin.jniTypename.isEmpty && javaPrimitiveArrayName(e).nonEmpty => javaPrimitiveArrayName(e).get
             case _ => "Array<" + f(elem, true) + ">"
           }
         case e: MExtern =>
