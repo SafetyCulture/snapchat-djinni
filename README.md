@@ -580,7 +580,8 @@ kotlin:
 
 `--kotlin-suspend-wrap` makes the instance methods of an interface `suspend`
 functions. It needs `--kotlin-jni-out` and kotlinx-coroutines in the consumer
-module. The classes are tested with kotlinx-coroutines 1.10 and 1.11.
+module. The classes are tested with kotlinx-coroutines 1.10; the check scripts
+select the newest cached jar, and CI pins 1.10.2 (`ci/kotlin-ci.sh`).
 
 - It applies to an interface with `+c` and without `+j`. The JNI code calls only
   the native methods of such an interface. It calls the methods of an interface
@@ -590,9 +591,11 @@ module. The classes are tested with kotlinx-coroutines 1.10 and 1.11.
   `withContext(dispatcher)`. The dispatcher is
   `Dispatchers.IO.limitedParallelism(1)`. Each `CppProxy` has its own
   dispatcher, and one C++ object has one `CppProxy`.
-- Each C++ object runs one call at a time. The thread can change between calls.
-  The calls to different objects run in parallel. This is the same as the queue
-  of the Swift async wrapper.
+- Each C++ object runs one native call at a time. The thread can change between
+  calls. The calls to different objects run in parallel. This is the same as the
+  queue of the Swift async wrapper. For a `future<T>` method, only the native
+  call is serialized: the wait for the result runs outside the dispatcher, so a
+  second call can start while the first future is pending.
 - Each object that is in a C++ call uses one thread. The 64-thread limit of
   `Dispatchers.IO` does not apply to these views, so N objects that block use
   N threads.
