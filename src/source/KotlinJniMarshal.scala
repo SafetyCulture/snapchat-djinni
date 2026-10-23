@@ -93,11 +93,20 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
     case _ => None
   }
 
-  // The Kotlin types of the value and the error of an outcome<T, E>, if the type is an outcome. The value of outcome<void, E> is Unit.
+  // The Kotlin types of the value and the error of an outcome<T, E>, if the type is an outcome. The value of
+  // outcome<void, E> is voidFutureValue.
   def outcomeTypes(tm: MExpr): Option[(String, String)] = tm.base match {
     case e: MExtern if e.name == "outcome" && tm.args.size == 2 =>
-      Some((if (tm.args.head.base == MVoid) "Unit" else valueType(tm.args.head, None), valueType(tm.args(1), None)))
+      Some((if (tm.args.head.base == MVoid) voidFutureValue else valueType(tm.args.head, None), valueType(tm.args(1), None)))
     case _ => None
+  }
+
+  // The type T that a method of --kotlin-error-type returns for T, outcome<T, E>, future<T> and future<outcome<T, E>>.
+  def typedValue(ret: Option[TypeRef]): String = ret.map(_.resolved) match {
+    case None => voidFutureValue
+    case Some(tm) =>
+      val inner = futureArg(tm).getOrElse(tm)
+      outcomeTypes(inner).map(_._1).getOrElse(if (inner.base == MVoid) voidFutureValue else valueType(inner, None))
   }
 
   private def isInterface(tm: MExpr): Boolean = tm.base match {

@@ -86,15 +86,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   // `future` is the argument of a future, and `outcome` is true when the value is an outcome<T, E>.
   private case class TypedReturn(value: String, future: Option[MExpr], outcome: Boolean)
 
-  private def typedReturn(ret: Option[TypeRef]): TypedReturn = ret.map(_.resolved) match {
-    case None => TypedReturn(marshal.voidFutureValue, None, outcome = false)
-    case Some(tm) =>
-      val future = marshal.futureArg(tm)
-      val inner = future.getOrElse(tm)
-      marshal.outcomeTypes(inner) match {
-        case Some((value, _)) => TypedReturn(value, future, outcome = true)
-        case None => TypedReturn(if (inner.base == MVoid) marshal.voidFutureValue else marshal.paramType(inner), future, outcome = false)
-      }
+  private def typedReturn(ret: Option[TypeRef]): TypedReturn = {
+    val future = ret.flatMap(r => marshal.futureArg(r.resolved))
+    val inner = ret.map(r => future.getOrElse(r.resolved))
+    TypedReturn(marshal.typedValue(ret), future, inner.exists(tm => marshal.outcomeTypes(tm).isDefined))
   }
 
   private def typedClause(t: TypedReturn): String = if (t.value == marshal.voidFutureValue) "" else ": " + t.value
@@ -135,9 +130,8 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     w.wl("}")
   }
 
-  // The body of a method of --kotlin-error-type. `call` calls the native method. A C++ exception throws the class
-  // with the constructor (cause: DjinniCppException), and the error of an outcome throws it with (error: E).
-  // A suspend function calls C++ on `dispatcher`.
+  // The body of a method of --kotlin-error-type: a C++ exception throws the class with (cause: DjinniCppException),
+  // and the error of an outcome throws it with (error: E). A suspend function calls C++ on `dispatcher`.
   private def writeTypedBody(w: IndentWriter, t: TypedReturn, ret: Option[TypeRef], call: String, suspend: Boolean,
                              dispatcher: String, errorType: String) {
     def guarded(prefix: String) {

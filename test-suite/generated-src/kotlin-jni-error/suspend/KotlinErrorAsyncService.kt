@@ -33,6 +33,15 @@ abstract class KotlinErrorAsyncService {
     @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
     abstract suspend fun flush()
 
+    @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
+    abstract suspend fun loadUnit(): Unit
+
+    @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
+    abstract suspend fun done()
+
+    @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
+    abstract suspend fun doneLater()
+
     companion object {
 
         @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
@@ -259,6 +268,74 @@ abstract class KotlinErrorAsyncService {
             }
         }
         private external fun native_flush(_nativeRef: Long): com.snapchat.djinni.Future<Void>
+
+        @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
+        override suspend fun loadUnit(): Unit {
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    native_loadUnit(this@CppProxy.nativeRef)
+                } catch (djinni_e: com.snapchat.djinni.DjinniCppException) {
+                    throw com.dropbox.djinni.test.KotlinErrorException(djinni_e)
+                }
+            }
+            return suspendCancellableCoroutine<Unit> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<Unit> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        val djinni_cause = djinni_e.cause ?: djinni_e
+                        kotlin.Result.failure(if (djinni_cause is com.snapchat.djinni.DjinniCppException) com.dropbox.djinni.test.KotlinErrorException(djinni_cause) else djinni_cause)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
+                    })
+                })
+            }
+        }
+        private external fun native_loadUnit(_nativeRef: Long): com.snapchat.djinni.Future<Unit>
+
+        @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
+        override suspend fun done() {
+            val djinni_outcome = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    native_done(this@CppProxy.nativeRef)
+                } catch (djinni_e: com.snapchat.djinni.DjinniCppException) {
+                    throw com.dropbox.djinni.test.KotlinErrorException(djinni_e)
+                }
+            }
+            djinni_outcome.match({ }, { throw com.dropbox.djinni.test.KotlinErrorException(it) })
+        }
+        private external fun native_done(_nativeRef: Long): com.snapchat.djinni.Outcome<Void, KotlinErrorError>
+
+        @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
+        override suspend fun doneLater() {
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    native_doneLater(this@CppProxy.nativeRef)
+                } catch (djinni_e: com.snapchat.djinni.DjinniCppException) {
+                    throw com.dropbox.djinni.test.KotlinErrorException(djinni_e)
+                }
+            }
+            val djinni_outcome = suspendCancellableCoroutine<com.snapchat.djinni.Outcome<Void, KotlinErrorError>> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<com.snapchat.djinni.Outcome<Void, KotlinErrorError>> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        val djinni_cause = djinni_e.cause ?: djinni_e
+                        kotlin.Result.failure(if (djinni_cause is com.snapchat.djinni.DjinniCppException) com.dropbox.djinni.test.KotlinErrorException(djinni_cause) else djinni_cause)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
+                    })
+                })
+            }
+            djinni_outcome.match({ }, { throw com.dropbox.djinni.test.KotlinErrorException(it) })
+        }
+        private external fun native_doneLater(_nativeRef: Long): com.snapchat.djinni.Future<com.snapchat.djinni.Outcome<Void, KotlinErrorError>>
 
         companion object {
             @JvmStatic external fun nativeDestroy(nativeRef: Long)
