@@ -1,0 +1,4 @@
+# Without a package, the module initializer must load the module class by its simple name.
+kotlin_jni_module_probe = interface +c {
+  static create(): kotlin_jni_module_probe;
+}
