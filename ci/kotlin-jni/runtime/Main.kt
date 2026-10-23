@@ -74,6 +74,18 @@ fun main(args: Array<String>) {
     check(KjConstants.F32_ONE == 1.0f, "f32 constant from an integer literal")
     check(KjConstants.F64_MINUS_TWO == -2.0, "f64 constant from an integer literal")
 
+    // Float fields compare as in Java and C++ (IEEE), not by total order.
+    check(KjFloats(0.0f, 0.0, null) == KjFloats(-0.0f, -0.0, null), "-0.0 equals 0.0")
+    check(KjFloats(0.0f, 0.0, null).hashCode() == KjFloats(-0.0f, -0.0, null).hashCode(), "equal floats have equal hash codes")
+    val nanFloats = KjFloats(Float.NaN, Double.NaN, null)
+    check(nanFloats != nanFloats.copy(), "NaN is not equal to NaN")
+    check(KjFloats(1.0f, 1.0, Double.NaN) == KjFloats(1.0f, 1.0, Double.NaN), "an optional float compares by equals, as in Java")
+    check(KjOrderedFloats(0.0f, 0.0).compareTo(KjOrderedFloats(-0.0f, -0.0)) == 0, "-0.0 and 0.0 are equal in the order")
+    check(KjOrderedFloats(Float.NaN, 0.0).compareTo(KjOrderedFloats(1.0f, 0.0)) == 0, "NaN compares equal in the order")
+    check(KjOrderedFloats(1.0f, Double.NaN).compareTo(KjOrderedFloats(1.0f, 5.0)) == 0, "NaN compares equal in the second field")
+    check(KjOrderedFloats(1.0f, 0.0).compareTo(KjOrderedFloats(2.0f, 0.0)) < 0, "smaller float first")
+    check(KjOrderedFloats(2.0f, 0.0).compareTo(KjOrderedFloats(1.0f, 9.0)) > 0, "larger float first")
+
     // Many threads call one object.
     val pool = Executors.newFixedThreadPool(8)
     val sum = AtomicInteger()
