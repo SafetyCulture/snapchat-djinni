@@ -296,7 +296,7 @@ package object generatorTools {
   def generate(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     try {
       if (spec.swiftOutFolder.isDefined || spec.swiftxxOutFolder.isDefined) {
-        SwiftProtobuf.check(idl).foreach(message => throw GenerateException(message))
+        SwiftProtobuf.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       // Check before any generator writes a file.
       if (spec.swiftOutFolder.isDefined && spec.swiftErrorType.isDefined) {

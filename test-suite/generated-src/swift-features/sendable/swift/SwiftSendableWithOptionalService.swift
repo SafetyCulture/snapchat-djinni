@@ -4,7 +4,7 @@
 import Foundation
 
 /** An interface is only allowed inside a container. */
-public struct SwiftSendableWithOptionalService: @unchecked Sendable {
+public struct SwiftSendableWithOptionalService: Sendable {
     public let service: Optional<TestSuite.SwiftSendableService>
 
     public init(service: Optional<TestSuite.SwiftSendableService>)

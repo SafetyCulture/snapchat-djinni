@@ -17,7 +17,7 @@ data class KotlinJniArrays(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is KotlinJniArrays) return false
-        return mBin.contentEquals(other.mBin) && mNums.contentEquals(other.mNums) && mName == other.mName
+        return this.mBin.contentEquals(other.mBin) && this.mNums.contentEquals(other.mNums) && this.mName == other.mName
     }
 
     override fun hashCode(): Int {

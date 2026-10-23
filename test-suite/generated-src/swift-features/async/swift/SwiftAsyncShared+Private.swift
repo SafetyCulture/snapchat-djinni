@@ -14,7 +14,7 @@ final class SwiftAsyncSharedCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftAsy
         _params.addValue(inst)
         var ret = djinni_generated.SwiftAsyncShared_value(&_params)
         try handleCppErrors(&ret)
-        return I32Marshaller.fromCpp(ret)
+        return try I32Marshaller.fromCpp(ret)
     }
 }
 let swiftAsyncSharedMethods: Vtbl<SwiftAsyncShared> = [
@@ -25,10 +25,10 @@ let swiftAsyncSharedMethods: Vtbl<SwiftAsyncShared> = [
 
 public enum SwiftAsyncSharedMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncShared
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftAsyncSharedCppProxy(c) as SwiftType })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppInterfaceToSwift(c, { SwiftAsyncSharedCppProxy(c) as SwiftType })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncSharedSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncSharedMethods), dispatcherProtocalCall)})
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncSharedSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncSharedMethods), dispatcherProtocalCall)})
     }
 }

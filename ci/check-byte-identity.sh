@@ -17,7 +17,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
-mitti_root="${MITTI_MOBILE_ROOT:-$HOME/Desktop/safetyculture/mitti-mobile}"
+mitti_root="${MITTI_MOBILE_ROOT:?set MITTI_MOBILE_ROOT to a mitti-mobile checkout}"
 base_ref="${BASE_REF:-origin/main}"
 bazel="${BAZEL:-bazel}"
 jobs="${JOBS:-4}"
@@ -50,7 +50,7 @@ if [ -n "${HEAD_JAR:-}" ]; then cp "$HEAD_JAR" "$work/head.jar"; else build_jar 
 if [ -n "${BASE_JAR:-}" ]; then
   cp "$BASE_JAR" "$work/base.jar"
 else
-  git -C "$repo_root" worktree add --detach "$base_tree" "$base_ref" >&2
+  git -C "$repo_root" worktree add --detach "$base_tree" -- "$base_ref" >&2
   build_jar "$base_tree" "$work/base.jar"
 fi
 
@@ -109,15 +109,18 @@ xargs -P "$jobs" -L 1 bash -c '
 status=0
 # main.djinni imports every other file, as in crux/tools/generate_code.sh. Fail if a file is missing.
 for f in "$domain_dir"/*.djinni; do
-  grep -qx "$f" "$work/head-out/exact/domain/main/.in-files" || {
+  grep -qxF "$f" "$work/head-out/exact/domain/main/.in-files" || {
     echo "not covered by main.djinni: $f" >&2; status=1; }
 done
 echo "domain idl files: $(ls "$domain_dir"/*.djinni | wc -l | tr -d ' ') (all in the import closure of main.djinni unless listed above)"
 for pass in exact extra; do
   files="$(find "$work/base-out/$pass" -type f | wc -l | tr -d ' ')"
   runs="$(find "$work/base-out/$pass" -name .exit | wc -l | tr -d ' ')"
-  failed="$(grep -L '^0$' "$work"/base-out/"$pass"/*/*/.exit 2>/dev/null | wc -l | tr -d ' ')"
+  # grep -L exits 1 for "no failures" and 2 for a read error; only 1 is acceptable
+  failed="$(grep -L '^0$' "$work"/base-out/"$pass"/*/*/.exit 2>/dev/null)" || [ $? = 1 ] || { echo "cannot read the exit markers in $work/base-out/$pass" >&2; KEEP_OUT=1; exit 1; }
+  failed="$(printf '%s' "$failed" | { grep -c . || true; })"
   echo "pass=$pass runs=$runs files=$files runs-with-nonzero-exit=$failed"
+  [ "$runs" -gt 0 ] || { echo "no generator runs recorded in $work/base-out/$pass" >&2; KEEP_OUT=1; status=1; }
   [ "$failed" = 0 ] || { echo "a generator run failed; see $work" >&2; KEEP_OUT=1; status=1; }
   if diff -r "$work/base-out/$pass" "$work/head-out/$pass"; then
     echo "pass=$pass: diff -r base head is empty"

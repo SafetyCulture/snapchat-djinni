@@ -64,7 +64,7 @@ abstract class ConstantsInterface {
 
         override fun dummy() {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_dummy(nativeRef)
+            native_dummy(this.nativeRef)
         }
         private external fun native_dummy(_nativeRef: Long)
 

@@ -9,17 +9,17 @@ import TestSuiteCxx
 /** The host implements this one, so it is exempt. */
 let swiftErrorObserverMethods: Vtbl<SwiftErrorObserver> = [
     { inst, params, ret in
-        let _item = SwiftErrorItemMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _item = try SwiftErrorItemMarshaller.fromCpp(djinni.swift.getMember(params, 0))
         try inst.onItem(_item)
     },
 ]
 
 public enum SwiftErrorObserverMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftErrorObserver
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { fatalError("SwiftErrorObserver has no C++ implementation: add +c to the interface") })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppInterfaceToSwift(c, { throw DjinniError("SwiftErrorObserver has no C++ implementation: add +c to the interface") })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftErrorObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftErrorObserverMethods), dispatcherProtocalCall)})
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftErrorObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftErrorObserverMethods), dispatcherProtocalCall)})
     }
 }

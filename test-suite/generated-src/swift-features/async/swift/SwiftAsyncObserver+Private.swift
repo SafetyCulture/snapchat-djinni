@@ -9,17 +9,17 @@ import TestSuiteCxx
 /** The host implements this one in Swift, so it is not wrapped. */
 let swiftAsyncObserverMethods: Vtbl<SwiftAsyncObserver> = [
     { inst, params, ret in
-        let _item = SwiftAsyncItemMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _item = try SwiftAsyncItemMarshaller.fromCpp(djinni.swift.getMember(params, 0))
         try inst.onItem(_item)
     },
 ]
 
 public enum SwiftAsyncObserverMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncObserver
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { fatalError("SwiftAsyncObserver has no C++ implementation: add +c to the interface") })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppInterfaceToSwift(c, { throw DjinniError("SwiftAsyncObserver has no C++ implementation: add +c to the interface") })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
     }
 }

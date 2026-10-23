@@ -22,6 +22,5 @@ swift_error_service = interface +c {
   static create(): swift_error_service;
   fetch(id: string): outcome<swift_error_item, crux_error>;
   count(): outcome<i32, crux_error>;
-  load(id: string): future<outcome<swift_error_item, crux_error>>;
   watch(observer: swift_error_observer): outcome<bool, crux_error>;
 }

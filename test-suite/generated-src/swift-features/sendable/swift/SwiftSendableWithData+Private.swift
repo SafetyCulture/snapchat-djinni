@@ -8,15 +8,15 @@ import TestSuiteCxx
 
 public enum SwiftSendableWithDataMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithData
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return withUnsafePointer(to: c) { p in
-            let data = DjinniSupport.DataRefMarshaller.fromCpp(djinni.swift.getMember(p, 0))
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try withUnsafePointer(to: c) { p in
+            let data = try DjinniSupport.DataRefMarshaller.fromCpp(djinni.swift.getMember(p, 0))
             return SwiftType(data: data)
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, DjinniSupport.DataRefMarshaller.toCpp(s.data))
+        djinni.swift.addMember(&ret, try DjinniSupport.DataRefMarshaller.toCpp(s.data))
         return ret
     }
 }

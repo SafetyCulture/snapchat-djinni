@@ -21,7 +21,7 @@ public final class Cancellable: @unchecked Sendable {
 public typealias Lock = NSLock
 
 
-public final class Future<Output, Failure>: @unchecked Sendable where Failure : Error {
+public final class Future<Output, Failure> where Failure : Error {
     public typealias Promise = (Result<Output, Failure>) -> Void
 
     // The token only needs to be unique within the scope of the Future object
@@ -73,22 +73,24 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
         get async throws {
             let token = generateToken()
             let waiter = Waiter<Output, Failure>()
+            // The future is thread-safe through its lock, so the closures can hold it across domains
+            let box = UncheckedSendable(self)
             return try await withTaskCancellationHandler {
                 return try await withCheckedThrowingContinuation { continuation in
                     if waiter.install(continuation) {
-                        self.subscribe(token: token) { result in
+                        box.value.subscribe(token: token) { result in
                             waiter.fulfill(result)
                         }
                         // onCancel can run before the subscription exists.
                         if waiter.isCancelled {
-                            self.cancel(token: token)
+                            box.value.cancel(token: token)
                         }
                     }
                 }
             } onCancel: {
                 // Cancel the waiter first. Then a body that is between install and subscribe sees isCancelled.
                 waiter.cancel()
-                self.cancel(token: token)
+                box.value.cancel(token: token)
             }
         }
     }
@@ -121,6 +123,9 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
         self.lock.unlock()
     }
 }
+
+// A future crosses concurrency domains only when its value is Sendable
+extension Future: @unchecked Sendable where Output: Sendable {}
 
 // Resumes the continuation of `Future.value` exactly once, with a result or with CancellationError.
 private final class Waiter<Output, Failure: Error>: @unchecked Sendable {
@@ -192,7 +197,12 @@ final class PromiseHolder<T: Marshaller>: AbstractPromiseHolder, @unchecked Send
     }
     func fulfillPromise(value: UnsafePointer<djinni.swift.AnyValue>) {
         if (!djinni.swift.isError(value)) {
-            promise(.success(T.fromCpp(value.pointee)))
+            do {
+                promise(.success(try T.fromCpp(value.pointee)))
+            } catch {
+                // An inner DjinniError keeps its message (for example the protobuf type name)
+                promise(.failure(error as? DjinniError ?? DjinniError(String(describing: error))))
+            }
         } else {
             promise(.failure(DjinniError(djinni.swift.getError(value))))
         }
@@ -205,20 +215,22 @@ public func futureCb(
   ptr: UnsafeMutableRawPointer?,
   result: UnsafeMutablePointer<djinni.swift.AnyValue>?)
   -> Void {
-    let ctx = Unmanaged<AnyObject>.fromOpaque(ptr!).takeRetainedValue()
-    let promiseHolder = ctx as! AbstractPromiseHolder
-    promiseHolder.fulfillPromise(value:result!)
+    guard let ptr, let result else { return }
+    let ctx = Unmanaged<AnyObject>.fromOpaque(ptr).takeRetainedValue()
+    guard let promiseHolder = ctx as? AbstractPromiseHolder else { return }
+    promiseHolder.fulfillPromise(value: result)
 }
 
 // A C++ friendly function to release the subscription token stored with the C++
 // future value.
 public func cleanupCb(psubscription: UnsafeMutableRawPointer?) -> Void {
-    let _ = Unmanaged<Cancellable>.fromOpaque(psubscription!).takeRetainedValue()
+    guard let psubscription else { return }
+    let _ = Unmanaged<Cancellable>.fromOpaque(psubscription).takeRetainedValue()
 }
 
 public enum FutureMarshaller<T: Marshaller>: Marshaller {
     public typealias SwiftType = DJFuture<T.SwiftType>
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         return Future() { promise in
             // Allocate the Swift future wrapper
             let promiseHolder = PromiseHolder(marshaller: T.self, promise: promise)
@@ -229,15 +241,22 @@ public enum FutureMarshaller<T: Marshaller>: Marshaller {
             }
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         // Create a C++ future
         var futureValue = djinni.swift.makeFutureValue(cleanupCb)
         // Connect it with the Swift future
         let cancellable = s.getResult { result in
             switch result {
             case .success(let value):
-                var cppValue = T.toCpp(value)
-                djinni.swift.setFutureResult(&futureValue, &cppValue)
+                do {
+                    var cppValue = try T.toCpp(value)
+                    djinni.swift.setFutureResult(&futureValue, &cppValue)
+                } catch {
+                    // A failed conversion becomes the error of the C++ future
+                    var errorValue = djinni.swift.makeVoidValue()
+                    djinni.swift.setErrorValue(&errorValue, (error as? DjinniError ?? DjinniError(String(describing: error))).wrapped)
+                    djinni.swift.setFutureResult(&futureValue, &errorValue)
+                }
             case .failure(let error):
                 var errorValue = djinni.swift.makeVoidValue()
                 djinni.swift.setErrorValue(&errorValue, error.wrapped)

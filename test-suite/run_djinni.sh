@@ -464,6 +464,23 @@ if ! grep -qx "import OptionsSupport" "$temp_out"/swift-features/options/swift/*
     exit 1
 fi
 
+# A label prefix that would break the generated string literal is rejected.
+prefix_log="$temp_out/swift-async-wrap-prefix.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-async-wrap-prefix/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap 'bad"prefix' \
+    --idl "$swift_async_relative") >"$prefix_log" 2>&1; then
+    echo "The generator accepted a --swift-async-wrap prefix with a quote." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--swift-async-wrap accepts only letters, digits, dot, underscore and hyphen." "$prefix_log"; then
+    echo "Missing error message for a bad --swift-async-wrap prefix." 1>&2
+    cat "$prefix_log" 1>&2
+    exit 1
+fi
+
 # A protobuf message without a swift block must fail the run before any file is written.
 swift_protobuf_negative_relative="djinni/swift_protobuf_negative.djinni"
 for swift_flag in --swift-out --swiftxx-out; do
@@ -489,6 +506,31 @@ for swift_flag in --swift-out --swiftxx-out; do
     rm -f "$protobuf_negative_out.log"
 done
 
+# An extern yaml without the swift/swiftxx blocks must fail the run before any file is written.
+swift_extern_negative_relative="djinni/swift_extern_negative.djinni"
+for swift_flag in --swift-out --swiftxx-out; do
+    extern_negative_out="$temp_out/swift-extern-negative-${swift_flag#--}"
+    rm -rf "$extern_negative_out"
+    set +e
+    (cd "$base_dir" && \
+    "$base_dir/../src/run-assume-built" \
+        --cpp-out "$extern_negative_out/cpp" \
+        --cpp-namespace testsuite \
+        "$swift_flag" "$extern_negative_out/swift" \
+        --swift-module TestSuite \
+        --idl "$swift_extern_negative_relative") > "$extern_negative_out.log" 2>&1
+    extern_negative_status=$?
+    set -e
+    if [ "$extern_negative_status" -ne 1 ] || \
+       ! grep -q "Extern type extern_no_swift has no 'swift'/'swiftxx' blocks in its manifest, but Swift output is enabled." "$extern_negative_out.log" || \
+       [ -e "$extern_negative_out" ]; then
+        echo "The generator accepted an extern yaml without swift blocks, or wrote files ($swift_flag, exit $extern_negative_status)." 1>&2
+        cat "$extern_negative_out.log" 1>&2
+        exit 1
+    fi
+    rm -f "$extern_negative_out.log"
+done
+
 # The generator must reject methods without outcome<> and write no file.
 negative_out="$temp_out_relative/swift-features/error-negative"
 negative_log="$temp_out/error-negative.log"
@@ -508,6 +550,7 @@ for expected in \
     "interface swift_error_bad_service, method nothing: --swift-error-type needs a return type outcome<T, CruxError>" \
     "interface swift_error_bad_service, method wrong_error: the error type of the outcome is OtherError, but --swift-error-type is CruxError" \
     "interface swift_error_bad_service, method load: --swift-error-type needs a return type outcome<T, CruxError>" \
+    "interface swift_error_bad_service, method future_outcome: --swift-error-type does not support a return type future<outcome<T, CruxError>>" \
     "interface swift_error_bad_shared, method value: --swift-error-type needs a return type outcome<T, CruxError>"; do
     if ! grep -qF "$expected" "$negative_log"; then
         echo "Missing error message: $expected" 1>&2
@@ -672,6 +715,41 @@ fi
     --idl-include-path "djinni/vendor" \
 )
 
+# An extern type may carry the name of a Parceler; it writes no Kotlin file, so it cannot collide.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-parceler-name/kotlin" \
+    --java-package $java_package \
+    --java-implement-android-os-parcelable true \
+    --idl "djinni/kotlin_extern.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+
+# With --jni-out, --kotlin-jni-package must equal --java-package.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-package-equal/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-package-equal/jni" \
+    --kotlin-jni-package "$java_package" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni" \
+)
+pkg_log="$temp_out/kotlin-jni-package-mismatch.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-package-mismatch/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-package-mismatch/jni" \
+    --kotlin-jni-package "com.dropbox.djinni.test.other" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni") >"$pkg_log" 2>&1; then
+    echo "The generator accepted --kotlin-jni-package that differs from --java-package with --jni-out." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--kotlin-jni-package must equal --java-package when the JNI code binds the classes." "$pkg_log"; then
+    echo "Missing error message for a package mismatch." 1>&2
+    cat "$pkg_log" 1>&2
+    exit 1
+fi
+
 # The JNI code binds one class for an extern record, so it cannot serve --java-out and --kotlin-jni-out.
 extern_log="$temp_out/kotlin-jni-extern-both.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
@@ -713,6 +791,23 @@ if ! grep -qF -- "The classes com.dropbox.djinni.testextern.ExternKotlinMessage 
 fi
 if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-parceler" ]; then
     echo "The generator wrote files for two Parcelers with one name." 1>&2
+    exit 1
+fi
+
+# An extern type with only some of the Kotlin keys is rejected before any file is written.
+partial_log="$temp_out/kotlin-jni-extern-partial.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-partial/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern-partial/jni" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_extern_partial.djinni" \
+    --idl-include-path "djinni/vendor") >"$partial_log" 2>&1; then
+    echo "The generator accepted an extern type with a partial set of Kotlin keys." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Set all four Kotlin keys or none." "$partial_log"; then
+    echo "Missing error message for a partial set of Kotlin keys." 1>&2
+    cat "$partial_log" 1>&2
     exit 1
 fi
 

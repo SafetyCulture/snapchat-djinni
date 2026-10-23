@@ -16,6 +16,7 @@ swift_error_bad_service = interface +c {
   nothing();
   wrong_error(): outcome<i32, other_error>;
   load(): future<i32>;
+  future_outcome(): future<outcome<i32, crux_error>>;
   fine(): outcome<i32, crux_error>;
 }
 

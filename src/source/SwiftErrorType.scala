@@ -40,18 +40,21 @@ object SwiftErrorType {
 
   private def methodProblem(marshal: SwiftMarshal, interface: String, m: Interface.Method, name: String): Option[String] = {
     val where = s"interface $interface, method ${m.ident.name}"
-    val outcome = m.ret.map(_.resolved).flatMap { tm =>
-      if (marshal.isOutcome(tm)) Some(tm)
-      else if (marshal.isFuture(tm) && marshal.isOutcome(tm.args.head)) Some(tm.args.head)
-      else None
-    }
-    outcome match {
-      case None => Some(s"$where: --swift-error-type needs a return type outcome<T, $name>")
-      case Some(tm) if marshal.isErrorRecord(tm.args(1), name) => None
-      case Some(tm) if marshal.hasErrorName(tm.args(1), name) =>
-        Some(s"$where: the error type $name is not a record")
+    m.ret.map(_.resolved) match {
+      // A future of an outcome has two error channels and no place for a cancellation; reject it
+      case Some(tm) if marshal.isFuture(tm) && marshal.isOutcome(tm.args.head) =>
+        Some(s"$where: --swift-error-type does not support a return type future<outcome<T, ${found(marshal, tm.args.head.args(1))}>>")
       case Some(tm) =>
-        Some(s"$where: the error type of the outcome is ${found(marshal, tm.args(1))}, but --swift-error-type is $name")
+        val outcome = if (marshal.isOutcome(tm)) Some(tm) else None
+        outcome match {
+          case None => Some(s"$where: --swift-error-type needs a return type outcome<T, $name>")
+          case Some(o) if marshal.isErrorRecord(o.args(1), name) => None
+          case Some(o) if marshal.hasErrorName(o.args(1), name) =>
+            Some(s"$where: the error type $name is not a record")
+          case Some(o) =>
+            Some(s"$where: the error type of the outcome is ${found(marshal, o.args(1))}, but --swift-error-type is $name")
+        }
+      case None => Some(s"$where: --swift-error-type needs a return type outcome<T, $name>")
     }
   }
 }

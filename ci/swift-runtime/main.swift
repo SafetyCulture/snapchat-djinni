@@ -19,6 +19,7 @@ final class Doubler: RuntimeListener {
     func onValue(_ value: Int32) throws -> Int32 { value * 2 }
     func makeData() throws -> NSData { Data((0..<256).map { UInt8($0) }) as NSData }
     func onFail() throws -> Int32 { throw HostFailure.boom }
+    func onMaybe(_ flag: Bool) throws -> Result<Int32?, RuntimeError> { .success(flag ? 42 : nil) }
 }
 
 enum HostFailure: Error {
@@ -68,6 +69,44 @@ func runTests() throws {
     // A Swift host returns a DataRef. C++ reads it while it is alive.
     for _ in 0..<10 {
         check(try service.listenerDataSum(Doubler()) == 32640, "listenerDataSum")
+    }
+
+    // nil success of outcome<optional<i32>> decodes as success in both directions
+    switch try service.maybe(false) {
+    case .success(let value): check(value == nil, "maybe(false) is a nil success")
+    case .failure(let error): check(false, "maybe(false) failed: \(error)")
+    }
+    switch try service.maybe(true) {
+    case .success(let value): check(value == 42, "maybe(true) carries the value")
+    case .failure(let error): check(false, "maybe(true) failed: \(error)")
+    }
+
+    // nil success from the Swift host reads as success on the C++ side
+    do {
+        check(try service.listenerMaybe(Doubler(), flag: false) == -2, "listenerMaybe(false) is a nil success")
+        check(try service.listenerMaybe(Doubler(), flag: true) == 42, "listenerMaybe(true) carries the value")
+    } catch {
+        check(false, "listenerMaybe threw: \(error)")
+    }
+
+    // A date keeps one millisecond across the boundary; 2 ms tells rounding from truncation
+    let epochMs = Date(timeIntervalSince1970: 0.002)
+    check(try service.dateRoundtrip(epochMs) == epochMs, "date round trip keeps 1 ms")
+
+    // A date outside the millisecond range throws instead of trapping
+    do {
+        _ = try service.dateRoundtrip(Date(timeIntervalSince1970: .infinity))
+        check(false, "an out-of-range date must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("Date out of range"), "date range error: \(error.errorMessage)")
+    }
+
+    // An enum value that Swift does not know throws instead of trapping
+    do {
+        _ = try service.unknownColor()
+        check(false, "unknown enum value must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("RuntimeColor"), "unknown enum error names the type: \(error.errorMessage)")
     }
 
     // Many threads create, pass and release host objects.

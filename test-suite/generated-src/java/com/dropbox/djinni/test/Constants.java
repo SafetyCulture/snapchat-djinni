@@ -29,6 +29,11 @@ public class Constants {
      */
     public static final double F64_CONSTANT = 5.0;
 
+    /** An integer literal for a float constant must become a float literal in Kotlin. */
+    public static final float F32_INT_CONSTANT = 1;
+
+    public static final double F64_INT_CONSTANT = -2;
+
     @CheckForNull
     public static final Boolean OPT_BOOL_CONSTANT = true;
 

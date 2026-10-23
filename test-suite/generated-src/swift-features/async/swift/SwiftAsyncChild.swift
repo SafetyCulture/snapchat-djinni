@@ -5,15 +5,15 @@ import DjinniSupport
 import Foundation
 
 public final class SwiftAsyncChild: @unchecked Sendable {
-    let proxy: SwiftAsyncChildCppProxy
-    private let queue = DispatchQueue(label: "djinni.testsuite.swiftAsyncChild")
+    let djinniProxy: SwiftAsyncChildCppProxy
+    private let djinniQueue = DispatchQueue(label: "djinni.testsuite.swiftAsyncChild")
 
-    init(proxy: SwiftAsyncChildCppProxy) { self.proxy = proxy }
+    init(proxy: SwiftAsyncChildCppProxy) { self.djinniProxy = proxy }
 
     public func name() async throws -> String {
-        return try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.name() })
+        return try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.name() })
             }
         }
     }

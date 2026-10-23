@@ -356,12 +356,13 @@ Swift 6 defaults:
   `init`.
 - Every record is `Sendable`. Swift checks the conformance when every field is
   `Sendable`: primitives, `String`, `Data`, `Date`, enums, records, protobuf
-  types, `DJFuture`, and `Result` with `Sendable` arguments. The conformance is
-  `@unchecked Sendable` when a field is an interface, `DataRef`, `DataView`, or
-  an extern type without a known `Sendable` mapping. This also applies inside
+  types, interfaces (the generated protocols are `AnyObject, Sendable`),
+  `DJFuture` and `Result` with `Sendable` arguments. The conformance is
+  `@unchecked Sendable` when a field is `DataRef`, `DataView`, or an extern
+  type without a known `Sendable` mapping. This also applies inside
   `optional<>`, `list<>`, `set<>` and `map<>`.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
-  Every generated class and every class of `DjinniSupport` is `@unchecked Sendable`.
+  Every generated proxy class and the shared classes of `DjinniSupport` are `@unchecked Sendable`.
 - A host class that implements a `+sw` interface must be `Sendable`. Make it a
   `final` class with immutable state, or mark it `@unchecked Sendable`.
 - `deriving(sendable)` adds no Swift conformance. The resolver still requires it
@@ -384,25 +385,37 @@ Async wrappers (`--swift-async-wrap`):
   `DjinniError` when C++ throws.
 - A method that returns `future<T>` is `async throws -> T`. It awaits
   `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
-  The C++ future is not cancelled. A C++ exception that is thrown before the
-  future exists is thrown as `DjinniError`. A promise that C++ rejects later
-  also throws `DjinniError`.
+  The C++ future is not cancelled. Without `--swift-error-type`, a C++ exception
+  that is thrown before the future exists is thrown as `DjinniError`, and a
+  promise that C++ rejects later also throws `DjinniError`. With
+  `--swift-error-type`, `future<outcome<T, E>>` is rejected at generation.
 - Any other method is `async throws -> T`, or `async throws` for a method with no
   return value. It throws `DjinniError` when C++ throws.
-- A C++ object has one wrapper, so its calls run one after another on one queue.
-  Two values from C++ that name the same object are the same Swift object.
+- A C++ object has one wrapper, so its calls run one after another on one queue
+  (first in, first out). Two values from C++ that name the same object are the
+  same Swift object. The callback of a future runs on the queue of the wrapper
+  that started the call, not on the actor of the caller. A cancelled task stops
+  waiting at once, but a C++ call that already runs on the queue cannot be
+  stopped: the queue slot is occupied until C++ returns.
 - Static methods stay synchronous, in `<Interface>_statics`.
 - The wrapper needs `--swift-private-in-same-module`. The generator stops with an
   error without it.
+- A host object that implements a generated protocol must be `Sendable` (the
+  protocols are `AnyObject, Sendable`). A host object that lives on the main
+  actor conforms with `@MainActor` on the class and `nonisolated` on the
+  protocol methods that C++ calls from its own thread; such a method hops to
+  the main actor with `await MainActor.run` around its body.
 
 Error type (`--swift-error-type <name>`):
 
 - `<name>` is the Swift name of the error record. For the IDL record
   `crux_error`, the name is `CruxError`.
-- Each instance method of an interface with `+c` must return `outcome<T, E>`,
-  or `future<outcome<T, E>>`. The Swift name of `E` must be `<name>`. If not,
-  the generator stops before it writes a file. It names the interface, the
-  method and the error type it found, and it exits with code 1.
+- Each instance method of an interface with `+c` must return `outcome<T, E>`.
+  The Swift name of `E` must be `<name>`. `future<outcome<T, E>>` is not
+  allowed: it has two error channels, and a cancelled wait has no `E` to throw.
+  If a method breaks the rule, the generator stops before it writes a file. It
+  names the interface, the method and the error type it found, and it exits
+  with code 1.
 - The error record conforms to `Error`. It does not need `deriving(error)`.
 - With `--swift-async-wrap`, a method that returns `outcome<T, E>` is
   `async throws(<name>) -> T`. A C++ exception of this method becomes a
@@ -428,8 +441,6 @@ Error type (`--swift-error-type <name>`):
   help. If the conformance is missing, `swiftc` stops in the generated wrapper
   with the message `global function 'cppOutcome' requires that '<name>' conform
   to 'CppExceptionConvertible'`.
-- A method that returns `future<outcome<T, E>>` throws `DjinniError`, as with
-  the flag off.
 - A static method is exempt, for example a factory. A host interface without
   `+c` is exempt.
 - An interface with `+c +sw` is checked, although `--swift-async-wrap` does not
@@ -459,10 +470,10 @@ Extern yaml files have two new blocks. A type without them cannot be used in Swi
 
 ```yaml
 swift:
-  typename: 'S12_Assets_V1_Asset'
+  typename: 'S12ASSETSAsset'
   module: 'S12Protos'
   generic: false
-  translator: 'ProtobufMarshaller<S12_Assets_V1_Asset>'
+  translator: 'ProtobufMarshaller<S12ASSETSAsset>'
   translator.module: 'DjinniSupport'
 swiftxx:
   translator: 'djinni::swift::s12::assets::v1::Asset::Translator'
@@ -470,6 +481,10 @@ swiftxx:
 ```
 
 Extra keys in the `swift:` block, such as `prefix`, are ignored.
+
+An extern yaml without the `swift:` and `swiftxx:` blocks stops the generator
+before it writes a file when `--swift-out` or `--swiftxx-out` is set. The
+error names the extern type.
 
 A Protobuf manifest also needs a `swift` block (`module` and `prefix`) when the IDL
 uses one of its messages with `--swift-out` or `--swiftxx-out`. If the block is
@@ -639,7 +654,7 @@ A fourth pass checks an extern record with the Kotlin keys (`kotlin_extern`).
 The script generates Java and the Kotlin classes apart. It compares the Java
 classes with the Kotlin classes, with the Kotlin class of the extern type in
 place of its Java class. The lookups of the translator of the extern type,
-`parseFrom`, `toByteArray` and `getSerializedSize`, must bind to the stub class
+`parseFrom` and `toByteArray`, must bind to the stub class
 `ci/kotlin-jni/extern/ExternKotlinMessage.kt`. The pass also compiles parcelable
 records with the extern type, alone, in a list, as an optional and in a map,
 with the Parcelize plugin.

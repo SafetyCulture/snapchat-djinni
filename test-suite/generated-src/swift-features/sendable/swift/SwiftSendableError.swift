@@ -3,7 +3,7 @@
 
 import Foundation
 
-public struct SwiftSendableError: Equatable, Swift.Error, Sendable {
+public struct SwiftSendableError: Equatable, Hashable, Swift.Error, Sendable {
     public let message: String
 
     public init(message: String)

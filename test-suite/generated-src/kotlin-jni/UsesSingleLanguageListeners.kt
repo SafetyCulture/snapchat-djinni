@@ -29,25 +29,25 @@ abstract class UsesSingleLanguageListeners {
 
         override fun callForObjC(l: ObjcOnlyListener?) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_callForObjC(nativeRef, l)
+            native_callForObjC(this.nativeRef, l)
         }
         private external fun native_callForObjC(_nativeRef: Long, l: ObjcOnlyListener?)
 
         override fun returnForObjC(): ObjcOnlyListener? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_returnForObjC(nativeRef)
+            return native_returnForObjC(this.nativeRef)
         }
         private external fun native_returnForObjC(_nativeRef: Long): ObjcOnlyListener?
 
         override fun callForJava(l: JavaOnlyListener?) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_callForJava(nativeRef, l)
+            native_callForJava(this.nativeRef, l)
         }
         private external fun native_callForJava(_nativeRef: Long, l: JavaOnlyListener?)
 
         override fun returnForJava(): JavaOnlyListener? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_returnForJava(nativeRef)
+            return native_returnForJava(this.nativeRef)
         }
         private external fun native_returnForJava(_nativeRef: Long): JavaOnlyListener?
 

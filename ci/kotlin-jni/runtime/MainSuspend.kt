@@ -38,7 +38,7 @@ fun main(args: Array<String>) {
     watchdog.start()
 
     runBlocking {
-        val service = KjService.create()!!
+        val service = requireNotNull(KjService.create()) { "KjService.create() returned null" }
         check(service.add(2, 3) == 5, "add")
 
         val item = KjItem("a", 3, arrayListOf("x"), null)
@@ -58,7 +58,7 @@ fun main(args: Array<String>) {
             service.fail()
             check(false, "a C++ exception must throw")
         } catch (e: RuntimeException) {
-            check(e.message!!.contains("boom"), "exception message: ${e.message}")
+            check(e.message?.contains("boom") == true, "exception message: ${e.message}")
         }
 
         check(service.invert(KjColor.RED) == KjColor.GREEN, "enum")
@@ -66,7 +66,7 @@ fun main(args: Array<String>) {
 
         // An interface that Kotlin can implement is not a suspend interface.
         check(service.callBoth(object : KjBoth() { override fun value(): Int = 5 }) == 5, "+c +j interface")
-        check(service.callBoth(service.makeBoth()!!) == 11, "C++ implementation of +c +j")
+        check(service.callBoth(requireNotNull(service.makeBoth()) { "makeBoth() returned null" }) == 11, "C++ implementation of +c +j")
 
         // A cancelled coroutine stops waiting. The C++ future is not cancelled.
         val waiting = launch(Dispatchers.Default) { service.pending() }
@@ -77,13 +77,15 @@ fun main(args: Array<String>) {
         service.completePending(1)
         delay(100)
 
-        // A cancelled coroutine does not call C++.
+        // A cancelled coroutine does not call C++: the counter of pending() calls must not move.
+        val startedBefore = service.pendingStarted()
         val early = launch(Dispatchers.Default) {
             coroutineContext.job.cancel()
             service.pending()
         }
         early.join()
         check(early.isCancelled, "an early cancelled coroutine is cancelled")
+        check(service.pendingStarted() == startedBefore, "a coroutine cancelled before the call does not call C++")
 
         // A cancelled coroutine is released before the C++ future completes.
         val published = CompletableDeferred<WeakReference<ByteArray>>()

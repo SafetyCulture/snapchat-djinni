@@ -13,15 +13,15 @@ final class SwiftAsyncChildCppProxy: DjinniSupport.CppProxy, @unchecked Sendable
         _params.addValue(inst)
         var ret = djinni_generated.SwiftAsyncChild_name(&_params)
         try handleCppErrors(&ret)
-        return StringMarshaller.fromCpp(ret)
+        return try StringMarshaller.fromCpp(ret)
     }
 }
 public enum SwiftAsyncChildMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncChild
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppWrapperToSwift(c, { SwiftAsyncChild(proxy: SwiftAsyncChildCppProxy(c)) })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppWrapperToSwift(c, { SwiftAsyncChild(proxy: SwiftAsyncChildCppProxy(c)) })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return s.proxy.inst
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return s.djinniProxy.inst
     }
 }

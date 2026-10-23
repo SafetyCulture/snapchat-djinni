@@ -6,119 +6,119 @@ import Foundation
 
 /** C++ implements this one, so it is wrapped. Its methods cover each kind of return type. */
 public final class SwiftAsyncService: @unchecked Sendable {
-    let proxy: SwiftAsyncServiceCppProxy
-    private let queue = DispatchQueue(label: "djinni.testsuite.swiftAsyncService")
+    let djinniProxy: SwiftAsyncServiceCppProxy
+    private let djinniQueue = DispatchQueue(label: "djinni.testsuite.swiftAsyncService")
 
-    init(proxy: SwiftAsyncServiceCppProxy) { self.proxy = proxy }
+    init(proxy: SwiftAsyncServiceCppProxy) { self.djinniProxy = proxy }
 
     public func ping() async throws -> Void {
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.ping() })
+        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.ping() })
             }
         }
     }
 
     public func count() async throws -> Int32 {
-        return try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.count() })
+        return try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.count() })
             }
         }
     }
 
     public func find(_ id: String, limit: Optional<Int32>) async throws -> TestSuite.SwiftAsyncItem {
-        return try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.find(id, limit: limit) })
+        return try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.find(id, limit: limit) })
             }
         }
     }
 
     public func fetch(_ id: String) async throws -> TestSuite.SwiftAsyncItem {
-        let result: Result<TestSuite.SwiftAsyncItem, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.fetch(id) })
+        let djinniResult: Result<TestSuite.SwiftAsyncItem, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.fetch(id) })
             }
         }
-        return try result.get()
+        return try djinniResult.get()
     }
 
     public func stopWatching() async throws -> Int32 {
-        let result: Result<Int32, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.stopWatching() })
+        let djinniResult: Result<Int32, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.stopWatching() })
             }
         }
-        return try result.get()
+        return try djinniResult.get()
     }
 
     public func load(_ id: String) async throws -> TestSuite.SwiftAsyncItem {
-        let future: DjinniSupport.DJFuture<TestSuite.SwiftAsyncItem> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.load(id) })
+        let djinniFuture: DjinniSupport.DJFuture<TestSuite.SwiftAsyncItem> = try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.load(id) })
             }
         }
-        return try await future.value
+        return try await djinniFuture.value
     }
 
     public func flush() async throws -> Void {
-        let future: DjinniSupport.DJFuture<Void> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.flush() })
+        let djinniFuture: DjinniSupport.DJFuture<Void> = try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.flush() })
             }
         }
-        return try await future.value
+        return try await djinniFuture.value
     }
 
     public func send(_ data: Foundation.NSData, tags: Array<String>) async throws -> Void {
         let _data = DjinniSupport.UncheckedSendable(data)
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.send(_data.value, tags: tags) })
+        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.send(_data.value, tags: tags) })
             }
         }
     }
 
     public func watch(_ observer: TestSuite.SwiftAsyncObserver) async throws -> Void {
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.watch(observer) })
+        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.watch(observer) })
             }
         }
     }
 
     public func child() async throws -> TestSuite.SwiftAsyncChild {
-        return try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.child() })
+        return try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.child() })
             }
         }
     }
 
     /** Parameters with the names of members of the wrapper. */
     public func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) async throws -> Int32 {
-        let result: Result<Int32, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future) })
+        let djinniResult: Result<Int32, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future) })
             }
         }
-        return try result.get()
+        return try djinniResult.get()
     }
 
     public func futureNames(_ future: Int32, result: Int32) async throws -> Int32 {
-        let future: DjinniSupport.DJFuture<Int32> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.futureNames(future, result: result) })
+        let djinniFuture: DjinniSupport.DJFuture<Int32> = try await withCheckedThrowingContinuation { djinniContinuation in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.futureNames(future, result: result) })
             }
         }
-        return try await future.value
+        return try await djinniFuture.value
     }
 
     public func attach(_ child: TestSuite.SwiftAsyncChild, parent: Optional<TestSuite.SwiftAsyncService>) async throws -> Void {
-        try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.attach(child, parent: parent) })
+        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
+            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
+                djinniContinuation.resume(with: Result { try djinniProxy.attach(child, parent: parent) })
             }
         }
     }

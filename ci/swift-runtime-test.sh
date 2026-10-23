@@ -28,12 +28,18 @@ else
 fi
 
 # SwiftProtobuf is a dependency of DjinniSupport. It is built once per compiler.
-spb_mod="$cache/spb-1.28.2-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
+spb_mod="$cache/spb-1.38.1-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/libSwiftProtobuf.a" ]; then
   mkdir -p "$cache" "$spb_mod"
-  [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch 1.28.2 https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
+  # The sources of one tag stay in their own directory; a tag bump never reuses stale sources
+  if [ ! -d "$cache/swift-protobuf-1.38.1" ]; then
+    # Pinned archive: a moved tag cannot change the sources
+    curl -fsSL --retry 3 -o "$cache/swift-protobuf-1.38.1.tar.gz" https://github.com/apple/swift-protobuf/archive/refs/tags/1.38.1.tar.gz
+    [ "$(shasum -a 256 "$cache/swift-protobuf-1.38.1.tar.gz" | cut -d' ' -f1)" = "7e35c119afe8f16fe4de45c2143b0f50a205db83738092336562d610469283ac" ] || { echo "SHA-256 of the SwiftProtobuf archive differs" >&2; exit 1; }
+    tar -xzf "$cache/swift-protobuf-1.38.1.tar.gz" -C "$cache"
+  fi
   swiftc -emit-library -static -emit-module -emit-module-path "$spb_mod/SwiftProtobuf.swiftmodule" -o "$spb_mod/libSwiftProtobuf.a" \
-    -module-name SwiftProtobuf -parse-as-library -swift-version 5 -wmo -Onone "$cache"/swift-protobuf/Sources/SwiftProtobuf/*.swift
+    -module-name SwiftProtobuf -parse-as-library -swift-version 5 -package-name SwiftProtobuf -wmo -Onone "$cache"/swift-protobuf-1.38.1/Sources/SwiftProtobuf/*.swift
 fi
 
 out="$work/out"
@@ -77,7 +83,6 @@ module RuntimeTestCxx {
   export *
 }
 EOF
-cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
 
 # C++: the support library, the generated glue and the implementation
 objs="$work/objs"

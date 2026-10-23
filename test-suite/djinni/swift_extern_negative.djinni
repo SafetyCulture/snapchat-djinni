@@ -1,0 +1,5 @@
+@extern "vendor/third-party/swift_extern_negative.yaml"
+
+record_with_extern_no_swift = record {
+    text: extern_no_swift;
+}

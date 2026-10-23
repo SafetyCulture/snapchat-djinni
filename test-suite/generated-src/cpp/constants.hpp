@@ -34,6 +34,11 @@ struct Constants final {
      */
     static constexpr double F64_CONSTANT = 5.0;
 
+    /** An integer literal for a float constant must become a float literal in Kotlin. */
+    static constexpr float F32_INT_CONSTANT = 1;
+
+    static constexpr double F64_INT_CONSTANT = -2;
+
     static std::experimental::optional<bool> const OPT_BOOL_CONSTANT;
 
     static std::experimental::optional<int8_t> const OPT_I8_CONSTANT;

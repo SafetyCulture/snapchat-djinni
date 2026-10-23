@@ -20,7 +20,7 @@ abstract class KotlinSuspendBoth {
 
         override fun value(): Int {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_value(nativeRef)
+            return native_value(this.nativeRef)
         }
         private external fun native_value(_nativeRef: Long): Int
 

@@ -12,13 +12,11 @@ import shutil
 import sys
 
 
-def swift_names(cpp_typename: str) -> tuple[str, str, str, str]:
+def swift_names(cpp_typename: str) -> tuple[str, str]:
     parts = cpp_typename.split("::")
     ns = [p for p in parts if not p[:1].isupper()]
     msgs = [p for p in parts if p[:1].isupper()]
-    prefix = "_".join(p[:1].upper() + p[1:] for p in ns) + "_"
-    typename = prefix + ".".join(msgs)
-    return prefix, typename, "::".join(ns), "::".join(msgs)
+    return "::".join(ns), "::".join(msgs)
 
 
 def add_blocks(doc: str) -> str:
@@ -27,12 +25,18 @@ def add_blocks(doc: str) -> str:
     h = re.search(r"^  header: '\"([^\"]+)\.pb\.h\"'", m.group(0), re.M) if m else None
     if not t or not h or "\nswift:" in doc:
         return doc
-    prefix, typename, ns, msg = swift_names(t.group(1))
+    ns, msg = swift_names(t.group(1))
+    # The Swift name of a message is its Objective-C name (the Crux prefix); a yaml without an
+    # objc block cannot name the message
+    o = re.search(r"^objc:\n(?:  .*\n)+", doc, re.M)
+    ot = re.search(r"^  typename: '([^']+)'", o.group(0), re.M) if o else None
+    if not ot:
+        raise SystemExit(f"cannot derive the Swift name: the yaml has no objc block ({t.group(1)})")
+    typename = ot.group(1)
     block = (
         "swift:\n"
         f"  typename: '{typename}'\n"
         "  module: 'S12Protos'\n"
-        f"  prefix: '{prefix}'\n"
         "  generic: false\n"
         f"  translator: 'ProtobufMarshaller<{typename}>'\n"
         "  translator.module: 'DjinniSupport'\n"
@@ -73,6 +77,10 @@ def main() -> None:
         src = os.path.join(extern_src, rel)
         dst = os.path.join(extern_dir, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
+        # The assets yaml is the committed real sample; the others get the synthesised blocks
+        if os.path.basename(rel) == "asset.djinni.yaml":
+            shutil.copy(os.path.join(djinni_root, "ci", "fixtures", "s12", "asset.djinni.yaml"), dst)
+            continue
         docs = open(src).read().split("\n---\n")
         with open(dst, "w") as f:
             f.write("\n---\n".join(add_blocks(d) for d in docs))

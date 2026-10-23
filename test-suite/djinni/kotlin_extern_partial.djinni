@@ -1,0 +1,5 @@
+@extern "vendor/third-party/kotlin_extern_partial.yaml"
+
+record_with_partial_extern = record {
+    text: extern_kotlin_partial;
+}

@@ -4,17 +4,26 @@ import Foundation
 
 public enum ProtobufMarshaller<T: SwiftProtobuf.Message>: Marshaller {
     public typealias SwiftType = T
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         let range = djinni.swift.getBinaryRange(v)
         if (range.size > 0) {
             let bin = Data(bytesNoCopy:UnsafeMutableRawPointer(mutating: range.bytes), count:range.size, deallocator:.none)
-            return try! T(serializedBytes: bin)
+            do {
+                return try T(serializedBytes: bin)
+            } catch {
+                throw DjinniError("\(T.self): \(error)")
+            }
         } else {
             return T()
         }
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        let bin: Data = try! s.serializedBytes()
-        return BinaryMarshaller.toCpp(bin)
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        let bin: Data
+        do {
+            bin = try s.serializedBytes()
+        } catch {
+            throw DjinniError("\(T.self): \(error)")
+        }
+        return try BinaryMarshaller.toCpp(bin)
     }
 }

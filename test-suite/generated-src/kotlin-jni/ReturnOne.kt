@@ -25,7 +25,7 @@ abstract class ReturnOne {
 
         override fun returnOne(): Byte {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_returnOne(nativeRef)
+            return native_returnOne(this.nativeRef)
         }
         private external fun native_returnOne(_nativeRef: Long): Byte
 

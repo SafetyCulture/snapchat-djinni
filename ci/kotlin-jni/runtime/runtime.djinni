@@ -9,10 +9,29 @@ kj_error = record {
   code: i32;
 }
 
+kj_constants = record {
+  # Integer literals for float constants must become float literals in Kotlin.
+  const f32_one: f32 = 1;
+  const f64_minus_two: f64 = -2;
+}
+
 kj_color = enum {
   red;
   green;
   blue;
+}
+
+kj_flags = flags {
+  flag_a;
+  flag_b;
+}
+
+kj_empty_extended = record +j {
+}
+
+kj_extended = record +j {
+  value: i32;
+  name: string;
 }
 
 kj_blob = record {
@@ -59,6 +78,8 @@ kj_service = interface +c {
   failing_future(): future<i32>;
   done(): future<void>;
   complete_pending(value: i32);
+  # Calls of pending() that reached C++; a cancelled-before-start call must not count
+  pending_started(): i32;
   fail(): i32;
   busy(millis: i32);
   max_concurrent(): i32;
@@ -66,4 +87,7 @@ kj_service = interface +c {
   echo_service(service: kj_service): kj_service;
   call_both(both: kj_both): i32;
   make_both(): kj_both;
+  # optional<enum> and optional<flags> round trips, both null and set
+  invert_opt(color: optional<kj_color>): optional<kj_color>;
+  flags_opt(flags: optional<kj_flags>): optional<kj_flags>;
 }

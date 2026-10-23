@@ -8,17 +8,17 @@ import TestSuiteCxx
 
 public enum SwiftAsyncErrorMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncError
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return withUnsafePointer(to: c) { p in
-            let message = StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let code = I32Marshaller.fromCpp(djinni.swift.getMember(p, 1))
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try withUnsafePointer(to: c) { p in
+            let message = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let code = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 1))
             return SwiftType(message: message, code: code)
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, StringMarshaller.toCpp(s.message))
-        djinni.swift.addMember(&ret, I32Marshaller.toCpp(s.code))
+        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.message))
+        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.code))
         return ret
     }
 }

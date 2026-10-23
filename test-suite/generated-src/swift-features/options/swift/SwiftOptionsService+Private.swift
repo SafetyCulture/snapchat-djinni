@@ -11,38 +11,38 @@ final class SwiftOptionsServiceCppProxy: DjinniSupport.CppProxy, TestSuite.Swift
     func compute(_ value: Int32) throws -> Int32 {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        _params.addValue(I32Marshaller.toCpp(value))
+        _params.addValue(try I32Marshaller.toCpp(value))
         var ret = djinni_options.SwiftOptionsService_compute(&_params)
         try handleCppErrors(&ret)
-        return I32Marshaller.fromCpp(ret)
+        return try I32Marshaller.fromCpp(ret)
     }
     func load(_ id: String) throws -> DjinniSupport.DJFuture<TestSuite.SwiftOptionsItem> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        _params.addValue(StringMarshaller.toCpp(id))
+        _params.addValue(try StringMarshaller.toCpp(id))
         var ret = djinni_options.SwiftOptionsService_load(&_params)
         try handleCppErrors(&ret)
-        return DjinniSupport.FutureMarshaller<SwiftOptionsItemMarshaller>.fromCpp(ret)
+        return try DjinniSupport.FutureMarshaller<SwiftOptionsItemMarshaller>.fromCpp(ret)
     }
 }
 let swiftOptionsServiceMethods: Vtbl<SwiftOptionsService> = [
     { inst, params, ret in
-        let _value = I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _value = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
         djinni.swift.setReturnValue(ret, try I32Marshaller.toCpp(inst.compute(_value)))
     },
     { inst, params, ret in
-        let _id = StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _id = try StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
         djinni.swift.setReturnValue(ret, try DjinniSupport.FutureMarshaller<SwiftOptionsItemMarshaller>.toCpp(inst.load(_id)))
     },
 ]
 
 public enum SwiftOptionsServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftOptionsService
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftOptionsServiceCppProxy(c) as SwiftType })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppInterfaceToSwift(c, { SwiftOptionsServiceCppProxy(c) as SwiftType })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_options.SwiftOptionsServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftOptionsServiceMethods), dispatcherProtocalCall)})
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return try swiftInterfaceToCpp(s, { djinni_options.SwiftOptionsServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftOptionsServiceMethods), dispatcherProtocalCall)})
     }
 }
 public class SwiftOptionsService_statics: @unchecked Sendable {
@@ -50,6 +50,6 @@ public class SwiftOptionsService_statics: @unchecked Sendable {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_options.SwiftOptionsService_create(&_params)
         try handleCppErrors(&ret)
-        return SwiftOptionsServiceMarshaller.fromCpp(ret)
+        return try SwiftOptionsServiceMarshaller.fromCpp(ret)
     }
 }

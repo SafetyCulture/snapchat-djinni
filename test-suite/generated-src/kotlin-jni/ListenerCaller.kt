@@ -32,13 +32,13 @@ abstract class ListenerCaller {
 
         override fun callFirst() {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_callFirst(nativeRef)
+            native_callFirst(this.nativeRef)
         }
         private external fun native_callFirst(_nativeRef: Long)
 
         override fun callSecond() {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_callSecond(nativeRef)
+            native_callSecond(this.nativeRef)
         }
         private external fun native_callSecond(_nativeRef: Long)
 

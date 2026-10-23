@@ -19,6 +19,9 @@ class Constants {
          *   Indented third line of multi-line documentation.)
          */
         const val F64_CONSTANT: Double = 5.0
+        /** An integer literal for a float constant must become a float literal in Kotlin. */
+        const val F32_INT_CONSTANT: Float = 1.0f
+        const val F64_INT_CONSTANT: Double = -2.0
         @JvmField val OPT_BOOL_CONSTANT: Boolean? = true
         @JvmField val OPT_I8_CONSTANT: Byte? = 1
         /** opt_i16_constant has documentation. */

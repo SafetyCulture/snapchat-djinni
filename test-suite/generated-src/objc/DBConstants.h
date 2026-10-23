@@ -38,6 +38,9 @@ extern float const DBConstantsF32Constant;
  *   Indented third line of multi-line documentation.)
  */
 extern double const DBConstantsF64Constant;
+/** An integer literal for a float constant must become a float literal in Kotlin. */
+extern float const DBConstantsF32IntConstant;
+extern double const DBConstantsF64IntConstant;
 extern NSString * __nonnull const DBConstantsStringConstant;
 extern NSString * __nullable const DBConstantsOptStringConstant;
 /**

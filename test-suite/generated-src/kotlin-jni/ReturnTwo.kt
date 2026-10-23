@@ -25,7 +25,7 @@ abstract class ReturnTwo {
 
         override fun returnTwo(): Byte {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_returnTwo(nativeRef)
+            return native_returnTwo(this.nativeRef)
         }
         private external fun native_returnTwo(_nativeRef: Long): Byte
 

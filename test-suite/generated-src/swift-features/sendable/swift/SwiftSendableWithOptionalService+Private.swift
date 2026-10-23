@@ -8,15 +8,15 @@ import TestSuiteCxx
 
 public enum SwiftSendableWithOptionalServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithOptionalService
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return withUnsafePointer(to: c) { p in
-            let service = OptionalMarshaller<SwiftSendableServiceMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try withUnsafePointer(to: c) { p in
+            let service = try OptionalMarshaller<SwiftSendableServiceMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
             return SwiftType(service: service)
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, OptionalMarshaller<SwiftSendableServiceMarshaller>.toCpp(s.service))
+        djinni.swift.addMember(&ret, try OptionalMarshaller<SwiftSendableServiceMarshaller>.toCpp(s.service))
         return ret
     }
 }

@@ -5,7 +5,8 @@
 # The script generates Swift and Swift/C++ glue with the built generator. It runs
 # `swiftc -typecheck` over the generated Swift in Swift 5 mode and in Swift 6 mode with complete
 # strict concurrency checking. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
-# generated protobuf types (module S12Protos) and the generated Swift/C++ declarations
+# generated protobuf types (module S12Protos) are the real messages of the assets protos
+# (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
 # because they come from other build steps.
 #
@@ -21,12 +22,12 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
-mitti_root="${MITTI_MOBILE_ROOT:-$HOME/Desktop/safetyculture/mitti-mobile}"
+mitti_root="${MITTI_MOBILE_ROOT:?set MITTI_MOBILE_ROOT to a mitti-mobile checkout}"
 domain_dir="$mitti_root/crux/djinni/domain"
 extern_src="$mitti_root/crux/deps/APISchema/_generated/crux/cpp"
 idl_files="${IDL_FILES:-common.djinni,media.djinni,assets.djinni}"
 cache="${SWIFT_CACHE:-$HOME/.cache/djinni-swift}"
-protobuf_tag=1.28.2
+protobuf_tag=1.38.1
 
 for d in "$domain_dir" "$extern_src"; do
   [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
@@ -48,10 +49,15 @@ fi
 spb_mod="$cache/spb-$protobuf_tag-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/SwiftProtobuf.swiftmodule" ]; then
   mkdir -p "$cache"
-  [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch "$protobuf_tag" https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
+  # Pinned archive: a moved tag cannot change the sources
+  if [ ! -d "$cache/swift-protobuf-$protobuf_tag" ]; then
+    curl -fsSL --retry 3 -o "$cache/swift-protobuf-$protobuf_tag.tar.gz" "https://github.com/apple/swift-protobuf/archive/refs/tags/$protobuf_tag.tar.gz"
+    [ "$(shasum -a 256 "$cache/swift-protobuf-$protobuf_tag.tar.gz" | cut -d' ' -f1)" = "7e35c119afe8f16fe4de45c2143b0f50a205db83738092336562d610469283ac" ] || { echo "SHA-256 of the SwiftProtobuf archive differs" >&2; exit 1; }
+    tar -xzf "$cache/swift-protobuf-$protobuf_tag.tar.gz" -C "$cache"
+  fi
   mkdir -p "$spb_mod"
   swiftc -emit-module -emit-module-path "$spb_mod/SwiftProtobuf.swiftmodule" -module-name SwiftProtobuf \
-    -parse-as-library -swift-version 5 -wmo -Onone "$cache"/swift-protobuf/Sources/SwiftProtobuf/*.swift
+    -parse-as-library -swift-version 5 -package-name SwiftProtobuf -wmo -Onone "$cache"/swift-protobuf-$protobuf_tag/Sources/SwiftProtobuf/*.swift
 fi
 
 # Fixtures and generation
@@ -75,7 +81,9 @@ out_async="$work/out-async"
 # Stub modules
 mods="$work/mods"
 mkdir -p "$mods"
-python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12Protos.swift"
+python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12ProtosStubs.swift" "$repo_root/ci/fixtures/s12"
+# The real s12 Swift messages of the assets protos come with the checkout; the other yamls keep stubs
+cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
 
 # Test-suite cases: the checked-in expected outputs of test-suite/run_djinni.sh.
@@ -142,7 +150,7 @@ swift_pass() { # <swiftc flags>
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build" -I "$spb_mod")
   swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-name S12Protos \
-    -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12Protos.swift"
+    -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosStubs.swift" "$work"/*.pb.swift
   echo "== [$flags] DjinniSupport (support-lib/swift)"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
@@ -187,10 +195,17 @@ swift_pass() { # <swiftc flags>
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
 
+# The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
+if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
+  echo "FAIL: a crash construct in support-lib/swift" >&2
+  exit 1
+fi
+echo "NO CRASH CONSTRUCTS OK"
+
 echo "== C++ glue ($(ls "$out"/swiftxx/*.cc | wc -l | tr -d ' ') files): ${CXX:-clang++} -std=c++20 -fsyntax-only"
 python3 "$repo_root/ci/swift_stubs.py" cxx-stubs "$work/fx/extern" "$work/cxxstubs"
 ls "$out"/swiftxx/*.cc | xargs -P 4 -I{} "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
-  -I "$out/cpp" -I "$out/cpp/generated" -I "$work/cxxstubs" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" {}
+  -I "$out/cpp" -I "$out/cpp/generated" -I "$work/cxxstubs" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" {}
 echo "C++ GLUE SYNTAX OK"
 
 for c in "${case_names[@]}"; do

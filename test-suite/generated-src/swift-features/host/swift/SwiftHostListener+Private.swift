@@ -12,23 +12,23 @@ import TestSuiteCxx
  */
 let swiftHostListenerMethods: Vtbl<SwiftHostListener> = [
     { inst, params, ret in
-        let _value = I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _value = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
         try inst.onValue(_value)
     },
     { inst, params, ret in
-        let _text = StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
-        let _internal = BoolMarshaller.fromCpp(djinni.swift.getMember(params, 1))
-        let _inout = I32Marshaller.fromCpp(djinni.swift.getMember(params, 2))
+        let _text = try StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _internal = try BoolMarshaller.fromCpp(djinni.swift.getMember(params, 1))
+        let _inout = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 2))
         djinni.swift.setReturnValue(ret, try StringMarshaller.toCpp(inst.onText(_text, internal: _internal, `inout`: _inout)))
     },
 ]
 
 public enum SwiftHostListenerMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftHostListener
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { fatalError("SwiftHostListener has no C++ implementation: add +c to the interface") })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppInterfaceToSwift(c, { throw DjinniError("SwiftHostListener has no C++ implementation: add +c to the interface") })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftHostListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftHostListenerMethods), dispatcherProtocalCall)})
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftHostListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftHostListenerMethods), dispatcherProtocalCall)})
     }
 }

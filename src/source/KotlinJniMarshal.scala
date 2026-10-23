@@ -48,6 +48,13 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
     case _ => List()
   }
 
+  // The Kotlin array type of an extern whose Java typename is a Java primitive (for example DataRef → byte)
+  private val javaPrimitiveArrays = Map(
+    "boolean" -> "BooleanArray", "byte" -> "ByteArray", "short" -> "ShortArray", "int" -> "IntArray",
+    "long" -> "LongArray", "float" -> "FloatArray", "double" -> "DoubleArray", "char" -> "CharArray")
+  private def javaPrimitiveArrayName(e: MExtern): Option[String] =
+    javaPrimitiveArrays.get(e.java.typename)
+
   // The Kotlin type of the value of a future<T>, if the type is a future.
   def futureValueType(ty: TypeRef): Option[String] = ty.resolved.base match {
     case e: MExtern if e.name == "future" && ty.resolved.args.size == 1 =>
@@ -64,7 +71,8 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
 
   private def valueType(tm: MExpr, pkg: Option[String]): String = {
     val name = toKotlinType(tm, pkg)
-    val withFlags = if (javaMarshal.isEnumFlags(tm)) s"EnumSet<${stripNullable(name)}>" else name
+    // An optional flags type stays nullable: EnumSet<F>?
+    val withFlags = if (javaMarshal.isEnumFlags(tm)) s"EnumSet<${stripNullable(name)}>" + (if (name.endsWith("?")) "?" else "") else name
     if (!withFlags.endsWith("?") && interfaceNullable && isInterface(tm)) withFlags + "?" else withFlags
   }
 
@@ -94,6 +102,9 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
           val elem = tm.args.head
           elem.base match {
             case p: MPrimitive => p.kName + "Array"
+            // A primitive array only when the Kotlin JNI name is the Java primitive; a distinct
+            // kotlin.jniTypename wins over the Java name
+            case e: MExtern if e.kotlin.jniTypename.isEmpty && javaPrimitiveArrayName(e).nonEmpty => javaPrimitiveArrayName(e).get
             case _ => "Array<" + f(elem, true) + ">"
           }
         case e: MExtern =>

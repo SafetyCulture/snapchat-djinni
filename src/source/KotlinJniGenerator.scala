@@ -85,6 +85,9 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
 
     def writeValue(ty: TypeRef, v: Any): Unit = v match {
       case l: Long if marshal.fieldType(ty).stripSuffix("?") == "Long" => w.w(l.toString + "L")
+      // An IDL float constant written without a decimal point parses as Long; Kotlin rejects an Int for Float/Double
+      case l: Long if Set("Float", "Double").contains(marshal.fieldType(ty).stripSuffix("?")) =>
+        w.w(if (marshal.fieldType(ty).stripSuffix("?") == "Float") l.toString + ".0f" else l.toString + ".0")
       case l: Long => w.w(l.toString)
       case d: Double if marshal.fieldType(ty).stripSuffix("?") == "Float" => w.w(d.toString + "f")
       case d: Double => w.w(d.toString)
@@ -251,28 +254,29 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
               if (suspendWrap) {
                 w.w(s"override suspend fun ${kt(meth)}(${paramList(m)})${suspendReturnClause(m.ret)}").braced {
                   w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                  val call = s"native_$meth(nativeRef${preComma(args)})"
+                  val call = s"native_$meth(this.nativeRef${preComma(args)})"
                   m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
                     case Some((ret, value)) =>
-                      w.wl(s"val future = withContext(dispatcher) { $call }")
-                      w.wl(s"return suspendCancellableCoroutine<$value> { continuation ->").nested {
-                        w.wl("val target = AtomicReference(continuation)")
-                        w.wl("continuation.invokeOnCancellation { target.set(null) }")
-                        w.wl(s"future.then(Future.FutureHandler<${futureArg(ret)}> { result ->").nested {
-                          w.wl("val waiting = target.getAndSet(null) ?: return@FutureHandler")
-                          w.wl("waiting.resumeWith(try {").nested {
+                      // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
+                      w.wl(s"val djinni_future = withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
+                      w.wl(s"return suspendCancellableCoroutine<${if (value == "Unit") "kotlin.Unit" else value}> { djinni_continuation ->").nested {
+                        w.wl("val djinni_target = AtomicReference(djinni_continuation)")
+                        w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
+                        w.wl(s"djinni_future.then(Future.FutureHandler<${futureArg(ret)}> { djinni_result ->").nested {
+                          w.wl("val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler")
+                          w.wl("djinni_waiting.resumeWith(try {").nested {
                             if (value == "Unit") {
-                              w.wl("result.get()")
-                              w.wl("Result.success(Unit)")
+                              w.wl("djinni_result.get()")
+                              w.wl("kotlin.Result.success(kotlin.Unit)")
                             } else {
-                              w.wl("Result.success(result.get())")
+                              w.wl("kotlin.Result.success(djinni_result.get())")
                             }
                           }
-                          w.wl("} catch (e: ExecutionException) {").nested {
-                            w.wl("Result.failure(e.cause ?: e)")
+                          w.wl("} catch (djinni_e: ExecutionException) {").nested {
+                            w.wl("kotlin.Result.failure(djinni_e.cause ?: djinni_e)")
                           }
-                          w.wl("} catch (e: Throwable) {").nested {
-                            w.wl("Result.failure(e)")
+                          w.wl("} catch (djinni_e: Throwable) {").nested {
+                            w.wl("kotlin.Result.failure(djinni_e)")
                           }
                           w.wl("})")
                         }
@@ -280,13 +284,13 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                       }
                       w.wl("}")
                     case None =>
-                      w.wl(s"${returnStmt}withContext(dispatcher) { $call }")
+                      w.wl(s"${returnStmt}withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
                   }
                 }
               } else {
                 w.w(s"override fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}").braced {
                   w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                  w.wl(s"${returnStmt}native_$meth(nativeRef${preComma(args)})")
+                  w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)})")
                 }
               }
               val nativeParams = "_nativeRef: Long" + preComma(paramList(m))
@@ -352,7 +356,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       if (isParcelable) supertypes += "Parcelable"
       val inherits = if (supertypes.isEmpty) "" else " : " + supertypes.mkString(", ")
       // A data class needs a field, and an extended record needs a base class that can be open.
-      val kind = if (r.fields.isEmpty) "class" else if (extended) "open class" else "data class"
+      val kind = if (extended) "open class" else if (r.fields.isEmpty) "class" else "data class"
       w.w(s"$accessModifier$kind $self${typeParams(params)}")
       if (r.fields.nonEmpty) {
         w.wl("(")
@@ -393,7 +397,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"if (other !is $self$star) return false")
             val tests = r.fields.map { f =>
               val name = kt(idJava.field(f.ident))
-              if (isArray(f)) s"$name.contentEquals(other.$name)" else s"$name == other.$name"
+              if (isArray(f)) s"this.$name.contentEquals(other.$name)" else s"this.$name == other.$name"
             }
             w.wl("return " + tests.mkString(" && "))
           }

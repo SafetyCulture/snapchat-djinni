@@ -12,25 +12,25 @@ final class SwiftHostRegistryCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftHo
     func registerListener(_ listener: TestSuite.SwiftHostListener) throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        _params.addValue(SwiftHostListenerMarshaller.toCpp(listener))
+        _params.addValue(try SwiftHostListenerMarshaller.toCpp(listener))
         var ret = djinni_generated.SwiftHostRegistry_registerListener(&_params)
         try handleCppErrors(&ret)
     }
     func notifyValue(_ value: Int32) throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        _params.addValue(I32Marshaller.toCpp(value))
+        _params.addValue(try I32Marshaller.toCpp(value))
         var ret = djinni_generated.SwiftHostRegistry_notifyValue(&_params)
         try handleCppErrors(&ret)
     }
 }
 public enum SwiftHostRegistryMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftHostRegistry
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftHostRegistryCppProxy(c) as SwiftType })
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
+        return try cppInterfaceToSwift(c, { SwiftHostRegistryCppProxy(c) as SwiftType })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { fatalError("SwiftHostRegistry has no Swift host implementation: add +sw to the interface") })
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return try swiftInterfaceToCpp(s, { throw DjinniError("SwiftHostRegistry has no Swift host implementation: add +sw to the interface") })
     }
 }
 public class SwiftHostRegistry_statics: @unchecked Sendable {
@@ -38,6 +38,6 @@ public class SwiftHostRegistry_statics: @unchecked Sendable {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_generated.SwiftHostRegistry_create(&_params)
         try handleCppErrors(&ret)
-        return SwiftHostRegistryMarshaller.fromCpp(ret)
+        return try SwiftHostRegistryMarshaller.fromCpp(ret)
     }
 }

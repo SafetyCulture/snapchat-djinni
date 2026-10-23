@@ -82,7 +82,7 @@ struct CompositeValue {
     void addValue(AnyValue&& v) {
         _elems.push_back(std::move(v));
     }
-    AnyValue getValue(size_t i) const { return _elems[i]; }
+    AnyValue getValue(size_t i) const { return _elems.at(i); }
     size_t getSize() const { return _elems.size(); }
 };
 
@@ -132,7 +132,7 @@ protected:
     void* _ctx;
     DispatchFunc _dispatcher;
     ProtocolWrapper(void* ctx, DispatchFunc dispatcher);
-    AnyValue callProtocol(int idx, const ParameterList* params);
+    AnyValue callProtocol(int idx, const ParameterList* params) const;
 public:
     ProtocolWrapper(const ProtocolWrapper&) = delete;
     ProtocolWrapper& operator=(const ProtocolWrapper&) = delete;
@@ -349,7 +349,8 @@ public:
         BinaryValue bin(c.ByteSizeLong());
         bool success = c.SerializeToArray(bin.data(), static_cast<int>(bin.size()));
         if (!success) {
-            return ErrorValue("failed to serialize protobuf type " + c.GetTypeName());
+            // A returned ErrorValue nested in a record or a list would surface as bad_variant_access
+            throw ErrorValue("failed to serialize protobuf type " + c.GetTypeName());
         }
         return {bin};
     }
