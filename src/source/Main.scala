@@ -301,7 +301,6 @@ object Main {
         .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
         .text("The package of the Kotlin JNI classes (default: the value of --java-package). It must equal --java-package when the JNI code binds the classes.")
-        .validate(x => if (kotlinJniOutFolder.isDefined && x != javaPackage) failure("--kotlin-jni-package must equal --java-package when the JNI code binds the classes.") else success)
       opt[Unit]("kotlin-suspend-wrap").foreach(_ => kotlinSuspendWrap = true)
         .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. Each C++ object runs one call at a time.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
@@ -416,6 +415,12 @@ object Main {
 
     if (kotlinSuspendWrap && kotlinJniOutFolder.isEmpty) {
       System.err.println("Error: --kotlin-suspend-wrap needs --kotlin-jni-out.")
+      System.exit(1); return
+    }
+
+    // The JNI code binds the classes of one package; a different Kotlin package breaks the binding
+    if (kotlinJniPackage.isDefined && jniOutFolder.isDefined && kotlinJniPackage.get != javaPackage) {
+      System.err.println("Error: --kotlin-jni-package must equal --java-package when the JNI code binds the classes.")
       System.exit(1); return
     }
 
