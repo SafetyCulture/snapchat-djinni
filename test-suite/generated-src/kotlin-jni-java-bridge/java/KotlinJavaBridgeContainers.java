@@ -30,6 +30,25 @@ public final class KotlinJavaBridgeContainers {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof KotlinJavaBridgeContainers)) {
+            return false;
+        }
+        KotlinJavaBridgeContainers other = (KotlinJavaBridgeContainers) obj;
+        return this.mNestedItems.equals(other.mNestedItems) &&
+                this.mNestedTable.equals(other.mNestedTable);
+    }
+
+    @Override
+    public int hashCode() {
+        // Pick an arbitrary non-zero starting value
+        int hashCode = 17;
+        hashCode = hashCode * 31 + mNestedItems.hashCode();
+        hashCode = hashCode * 31 + mNestedTable.hashCode();
+        return hashCode;
+    }
+
+    @Override
     public String toString() {
         return "KotlinJavaBridgeContainers{" +
                 "mNestedItems=" + mNestedItems +

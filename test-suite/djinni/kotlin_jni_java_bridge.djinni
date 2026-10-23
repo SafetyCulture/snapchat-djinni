@@ -81,7 +81,7 @@ kotlin_java_bridge_both = interface +c +j {
 kotlin_java_bridge_containers = record {
   nested_items: list<list<kotlin_java_bridge_leaf>>;
   nested_table: map<string, map<string, kotlin_java_bridge_leaf>>;
-}
+} deriving(eq)
 
 # A +c interface has no converter. The records that hold it, directly or through another record, have none either.
 kotlin_java_bridge_service = interface +c {
