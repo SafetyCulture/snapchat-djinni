@@ -145,6 +145,23 @@ if ! grep -qF "abstract suspend fun loadUnit(): Unit" "$suspend_kt" || ! grep -q
 fi
 echo "suspend functions: future<unit> returns the record, future<void> returns nothing"
 
+# A suspend function cannot override a member of Any, so the generator rejects it and writes no file.
+name=suspend-any-names
+mkdir -p "$work/$name"
+set +e
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --kotlin-suspend-wrap --java-package "$package" \
+  --idl djinni/kotlin_suspend_any_names.djinni) >"$work/$name/out.log" 2>&1
+status=$?
+set -e
+expected="interface kotlin_suspend_any_names, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method."
+if [ "$status" -ne 1 ] || ! grep -qF -- "$expected" "$work/$name/out.log" || [ -e "$work/$name/kotlin" ]; then
+  echo "FAIL: the generator accepted a suspend function with the name of a member of Any, or wrote files (exit $status)" >&2
+  cat "$work/$name/out.log" >&2
+  exit 1
+fi
+echo "suspend functions: a method with the name of a member of Any is rejected"
+
 # 4. Extern records with the Kotlin keys. The JNI code binds one class for each extern type, so Java and Kotlin
 # are generated apart. The Java classes are the reference: the Kotlin class of the extern type replaces its
 # Java class in their descriptors. The header of the translator is a copy of the form that the Crux plugin writes.
