@@ -385,26 +385,29 @@ Async wrappers (`--swift-async-wrap`):
   `DjinniError` when C++ throws.
 - A method that returns `future<T>` is `async throws -> T`. It awaits
   `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
-  The C++ future is not cancelled. Without `--swift-error-type`, a C++ exception
-  that is thrown before the future exists is thrown as `DjinniError`, and a
-  promise that C++ rejects later also throws `DjinniError`. With
-  `--swift-error-type`, `future<outcome<T, E>>` is rejected at generation.
+  The C++ future is not cancelled. A C++ exception that is thrown before the
+  future exists is thrown as `DjinniError`, and a promise that C++ rejects later
+  also throws `DjinniError`. With `--swift-error-type`, the generator rejects
+  every `future<T>` method, also `future<outcome<T, E>>` (see "Error type").
 - Any other method is `async throws -> T`, or `async throws` for a method with no
   return value. It throws `DjinniError` when C++ throws.
 - A C++ object has one wrapper, so its calls run one after another on one queue
   (first in, first out). Two values from C++ that name the same object are the
-  same Swift object. The callback of a future runs on the queue of the wrapper
-  that started the call, not on the actor of the caller. A cancelled task stops
-  waiting at once, but a C++ call that already runs on the queue cannot be
+  same Swift object. The C++ side of a future completes on the thread that
+  completes the C++ promise. The wrapper does not move the caller to another
+  actor: the task resumes on the executor of the wrapper method.
+- Only a method that returns `future<T>` stops waiting when its task is
+  cancelled. The other methods, also the ones that return `outcome<T, E>`, wait
+  until C++ returns, and a C++ call that already runs on the queue cannot be
   stopped: the queue slot is occupied until C++ returns.
 - Static methods stay synchronous, in `<Interface>_statics`.
 - The wrapper needs `--swift-private-in-same-module`. The generator stops with an
   error without it.
 - A host object that implements a generated protocol must be `Sendable` (the
-  protocols are `AnyObject, Sendable`). A host object that lives on the main
-  actor conforms with `@MainActor` on the class and `nonisolated` on the
-  protocol methods that C++ calls from its own thread; such a method hops to
-  the main actor with `await MainActor.run` around its body.
+  protocols are `AnyObject, Sendable`). C++ calls its methods from its own
+  thread. A host object that lives on the main actor marks the protocol methods
+  `nonisolated` and moves to the main actor itself, because nothing in the
+  generated code moves the call to an actor.
 
 Error type (`--swift-error-type <name>`):
 
@@ -438,7 +441,10 @@ Error type (`--swift-error-type <name>`):
 - Declare the conformance in a source file of the module that compiles the
   generated Swift (the module of `--swift-module`). The wrapper needs
   `--swift-private-in-same-module`, so a declaration in another module does not
-  help. If the conformance is missing, `swiftc` stops in the generated wrapper
+  help. When the error record is an extern record from another module, the
+  conformance is retroactive, and Swift warns about it. Write
+  `extension CruxError: @retroactive CppExceptionConvertible`. If the
+  conformance is missing, `swiftc` stops in the generated wrapper
   with the message `global function 'cppOutcome' requires that '<name>' conform
   to 'CppExceptionConvertible'`.
 - A static method is exempt, for example a factory. A host interface without
