@@ -232,6 +232,28 @@ for c in error-legacy separate-module; do
 done
 echo "TEST-SUITE ERROR-LEGACY AND SEPARATE-MODULE C++ GLUE SYNTAX OK"
 
+# An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
+# The other languages must still compile next to the Swift files.
+host="$cases/host"
+echo "== Host languages of the +sw interfaces (swift-features/host): javac, JNI C++, Objective-C++"
+java_home="${JAVA_HOME:-}"
+[ -n "$java_home" ] || java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+[ -f "$java_home/include/jni.h" ] || { echo "jni.h is not in $java_home/include (set JAVA_HOME)" >&2; exit 2; }
+mkdir -p "$work/host-java"
+# shellcheck disable=SC2046
+javac -nowarn -d "$work/host-java" $(find "$host/java" "$repo_root/support-lib/java" -name '*.java')
+echo "HOST JAVA OK"
+for f in "$host"/jni/*.cpp; do
+  "${CXX:-clang++}" -std=c++17 -fsyntax-only -I "$host/jni" -I "$host/cpp" -I "$repo_root/support-lib" -I "$repo_root/support-lib/jni" \
+    -I "$java_home/include" -I "$java_home/include/darwin" "$f"
+done
+echo "HOST JNI C++ SYNTAX OK"
+for f in "$host"/objc/*.mm; do
+  "${CXX:-clang++}" -x objective-c++ -std=c++17 -fobjc-arc -fsyntax-only -I "$host/objc" -I "$host/cpp" \
+    -I "$repo_root/support-lib" -I "$repo_root/support-lib/objc" "$f"
+done
+echo "HOST OBJECTIVE-C++ SYNTAX OK"
+
 echo "== Runtime C++ (support-lib/swiftxx, objc/DataRef_objc.cpp): clang++ -fsyntax-only"
 for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp"; do
   "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations -DDATAREF_OBJC=1 \
