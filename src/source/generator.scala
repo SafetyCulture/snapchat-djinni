@@ -131,6 +131,8 @@ package object generatorTools {
                    kotlinSuspendWrap: Boolean,
                    kotlinSuspendDispatcher: Option[String],
                    kotlinErrorType: Option[String],
+                   kotlinJniJavaBridgeOutFolder: Option[File],
+                   kotlinJniJavaBridgePackage: Option[String],
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
@@ -313,6 +315,9 @@ package object generatorTools {
       if (spec.kotlinJniOutFolder.isDefined && spec.kotlinErrorType.isDefined) {
         KotlinErrorType.check(idl, spec).foreach(message => throw GenerateException(message))
       }
+      if (spec.kotlinJniJavaBridgeOutFolder.isDefined) {
+        JavaBridgeCheck.check(idl, spec).foreach(message => throw GenerateException(message))
+      }
       if (spec.cppOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("C++", spec.cppOutFolder.get)
@@ -331,6 +336,12 @@ package object generatorTools {
           createFolder("Kotlin JNI", spec.kotlinJniOutFolder.get)
         }
         new KotlinJniGenerator(spec).generate(idl)
+      }
+      if (spec.kotlinJniJavaBridgeOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Kotlin JNI Java bridge", spec.kotlinJniJavaBridgeOutFolder.get)
+        }
+        new JavaBridgeGenerator(spec).generate(idl)
       }
       if (spec.jniOutFolder.isDefined) {
         if (!spec.skipGeneration) {
