@@ -205,23 +205,23 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     writeSwiftPrivateFile(ident, origin, refs.privateImports, w => {
       w.w(s"public enum ${marshal.typename(ident, r)}Marshaller: DjinniSupport.Marshaller").braced {
         w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, r)}")
-        w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType").braced {
+        w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType").braced {
           w.wl("return withUnsafePointer(to: c) { p in").nested {
             for ((f, i) <- r.fields.view.zipWithIndex) {
               val swiftExp = s"djinni.swift.getMember(p, $i)"
-              w.wl(s"let ${idSwift.field(f.ident)} = ${marshal.fromCpp(f.ty, swiftExp)}")
+              w.wl(s"let ${idSwift.field(f.ident)} = try ${marshal.fromCpp(f.ty, swiftExp)}")
             }
             val members = r.fields.map(f => s"${SwiftIdent.label(idSwift.field(f.ident))}: ${idSwift.field(f.ident)}").mkString(", ")
             w.wl(s"return SwiftType(${members})")
           }
           w.wl("}")
         }
-        w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
+        w.w("public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue").braced {
           if (r.fields.nonEmpty) {
             w.wl("var ret = djinni.swift.makeCompositeValue()")
             for (f <- r.fields) {
               val swiftExpr = s"s.${idSwift.field(f.ident)}"
-              w.wl(s"djinni.swift.addMember(&ret, ${marshal.toCpp(f.ty,swiftExpr )})")
+              w.wl(s"djinni.swift.addMember(&ret, try ${marshal.toCpp(f.ty,swiftExpr )})")
             }
             w.wl("return ret")
           } else {
@@ -332,12 +332,12 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           w.wl("var _params = djinni.swift.ParameterList()")
           w.wl("_params.addValue(inst)")
           for (p <- m.params) {
-            w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
+            w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
           }
           w.wl(s"var ret = ${spec.swiftxxNamespace}.${name}_${SwiftIdent.plain(m.ident)}(&_params)")
           w.wl("try handleCppErrors(&ret)")
           if (!m.ret.isEmpty) {
-            w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
+            w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
           }
         }
       }
@@ -394,12 +394,12 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
               w.wl("var _params = djinni.swift.ParameterList()")
               w.wl("_params.addValue(inst)")
               for (p <- m.params) {
-                w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
+                w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
               }
               w.wl(s"var ret = ${spec.swiftxxNamespace}.${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
               w.wl("try handleCppErrors(&ret)")
               if (!m.ret.isEmpty) {
-                w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
+                w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
               }
             }
           }
@@ -414,7 +414,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl("{ inst, params, ret in").nested {
               for ((p, i) <- m.params.view.zipWithIndex) {
                 val pi = s"djinni.swift.getMember(params, $i)"
-                w.wl(s"let _${SwiftIdent.plain(p.ident)} = ${marshal.fromCpp(p.ty, pi)}")
+                w.wl(s"let _${SwiftIdent.plain(p.ident)} = try ${marshal.fromCpp(p.ty, pi)}")
               }
               val args = m.params.view.zipWithIndex.map{case (p, i) =>
                 val label = if (i==0) "" else s"${SwiftIdent.label(idSwift.local(p.ident))}: "
@@ -468,12 +468,12 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
               w.wl("var _params = djinni.swift.ParameterList()")
               for (p <- m.params) {
-                w.wl(s"_params.addValue(${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
+              w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
               }
               w.wl(s"var ret = ${spec.swiftxxNamespace}.${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
               w.wl("try handleCppErrors(&ret)")
               if (!m.ret.isEmpty) {
-                w.wl(s"return ${marshal.fromCpp(m.ret.get, "ret")}")
+              w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
               }
             }
           }

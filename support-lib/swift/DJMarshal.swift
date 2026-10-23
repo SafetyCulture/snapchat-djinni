@@ -5,8 +5,8 @@ import Foundation
 // The C++ type is always djinni.swift.AnyValue
 public protocol Marshaller {
     associatedtype SwiftType
-    static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType
-    static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue
+    static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType
+    static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue
 }
 // Djinni generated enums are always backed by Int32
 public enum EnumMarshaller<T: RawRepresentable>: Marshaller where T.RawValue == Int32 {
@@ -110,7 +110,7 @@ public enum DateMarshaller: Marshaller {
         return Date(timeIntervalSince1970: Double(millisecondsSinceEpoch) / 1000)
     }
     static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return I64Marshaller.toCpp(Int64(s.timeIntervalSince1970 * 1000))
+        return I64Marshaller.toCpp(Int64((s.timeIntervalSince1970 * 1000).rounded()))
     }
 }
 
