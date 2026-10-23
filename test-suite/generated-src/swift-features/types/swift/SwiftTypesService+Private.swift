@@ -6,7 +6,7 @@ import DjinniSupportCxx
 import Foundation
 import TestSuiteCxx
 
-final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTypesService {
+final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTypesService, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
     func compute(_ value: Int32) throws -> Result<Int32, TestSuite.SwiftError> {
         var _params = djinni.swift.ParameterList()
@@ -74,10 +74,10 @@ public enum SwiftTypesServiceMarshaller: DjinniSupport.Marshaller {
         return cppInterfaceToSwift(c, { SwiftTypesServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftTypesServiceSwiftProxy.make(ctxPtr(s, swiftTypesServiceMethods), dispatcherProtocalCall)})
+        return swiftInterfaceToCpp(s, { djinni_generated.SwiftTypesServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftTypesServiceMethods), dispatcherProtocalCall)})
     }
 }
-public class SwiftTypesService_statics {
+public class SwiftTypesService_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftTypesService {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_generated.SwiftTypesService_create(&_params)

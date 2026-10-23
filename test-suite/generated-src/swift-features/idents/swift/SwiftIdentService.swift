@@ -3,7 +3,7 @@
 
 import Foundation
 
-public protocol SwiftIdentService: AnyObject {
+public protocol SwiftIdentService: AnyObject, Sendable {
     /** A method that `is` a Swift keyword and arguments that are keywords. */
     func init_(_ `is`: Int32, `internal`: String) throws -> TestSuite.Type_
     func deinit_() throws -> Void

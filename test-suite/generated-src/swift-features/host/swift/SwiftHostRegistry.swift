@@ -4,7 +4,7 @@
 import Foundation
 
 /** Implemented in C++. Swift calls it and passes a Swift host listener to it. */
-public protocol SwiftHostRegistry: AnyObject {
+public protocol SwiftHostRegistry: AnyObject, Sendable {
     func registerListener(_ listener: TestSuite.SwiftHostListener) throws -> Void
     func notifyValue(_ value: Int32) throws -> Void
 }

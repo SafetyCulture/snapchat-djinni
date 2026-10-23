@@ -6,7 +6,7 @@ import DjinniSupportCxx
 import Foundation
 import TestSuiteCxx
 
-final class SwiftIdentServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftIdentService {
+final class SwiftIdentServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftIdentService, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
     func init_(_ `is`: Int32, `internal`: String) throws -> TestSuite.Type_ {
         var _params = djinni.swift.ParameterList()
@@ -33,7 +33,7 @@ public enum SwiftIdentServiceMarshaller: DjinniSupport.Marshaller {
         return swiftInterfaceToCpp(s, { fatalError("SwiftIdentService has no Swift host implementation: add +sw to the interface") })
     }
 }
-public class SwiftIdentService_statics {
+public class SwiftIdentService_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftIdentService {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_generated.SwiftIdentService_create(&_params)

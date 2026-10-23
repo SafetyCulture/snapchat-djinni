@@ -337,6 +337,7 @@ Command line switches:
 - `--swift-module`: Swift module name (default: `Module`)
 - `--swift-private-in-same-module`: omit `import <module>` in the `+Private`
   files, for use when all generated Swift files are in one module
+- `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated`)
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
@@ -345,6 +346,23 @@ Command line switches:
   C++ (default: `DjinniSupportCxx`)
 - `--swiftxx-base-lib-include-prefix`: path prefix for includes of the support library
 - `--ident-swiftxx-class`, `--ident-swiftxx-file`: identifier styles of the glue code
+
+Swift 6 defaults:
+
+- A record is a `public struct` with `public let` fields and a public memberwise
+  `init`.
+- Every record is `Sendable`. Swift checks the conformance when every field is
+  `Sendable`: primitives, `String`, `Data`, `Date`, enums, records, protobuf
+  types, `DJFuture`, and `Result` with `Sendable` arguments. The conformance is
+  `@unchecked Sendable` when a field is an interface, `DataRef`, `DataView`, or
+  an extern type without a known `Sendable` mapping. This also applies inside
+  `optional<>`, `list<>`, `set<>` and `map<>`.
+- Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
+  Every generated class and every class of `DjinniSupport` is `@unchecked Sendable`.
+- A host class that implements a `+sw` interface must be `Sendable`. Make it a
+  `final` class with immutable state, or mark it `@unchecked Sendable`.
+- `deriving(sendable)` adds no Swift conformance. The resolver still requires it
+  on field records.
 
 IDL changes:
 
@@ -355,7 +373,7 @@ IDL changes:
 - If an interface has `+o` but not `+sw`, the generator prints one warning for
   it with `--swift-out`: `Warning: interface X has +o but not +sw. The generator
   makes no Swift proxy for it.`
-- `deriving(hashable, sendable, codable, error)` adds the matching Swift conformances.
+- `deriving(hashable, codable, error)` adds the matching Swift conformances.
 - A Swift identifier that is a Swift keyword gets backticks, for example
   `` `internal` ``. These names get a trailing `_` because Swift cannot escape
   them in member position: `Type`, `Protocol`, `self`, `Self`, `init`, `deinit`,
@@ -385,12 +403,19 @@ exits with 1.
 The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
 `DJFuture`, `Result`, and `NSData` (both data types).
 
-Two scripts check the Swift support. `ci/swift-typecheck.sh` generates Swift for
-the Crux assets IDL, runs `swiftc -typecheck` on it and compiles the C++ glue
-with `-fsyntax-only`. It does the same for the Swift cases of the test suite
-(`test-suite/djinni/swift_host.djinni`, `swift_idents.djinni`). `ci/check-byte-identity.sh` proves that a change does not
-alter the output of the other generators. Both read the Crux IDL from
-`MITTI_MOBILE_ROOT`.
+Three scripts check the Swift support. They read the Crux IDL from
+`MITTI_MOBILE_ROOT`, except for the runtime test.
+
+- `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It runs
+  `swiftc -typecheck` in Swift 5 mode and in Swift 6 mode with strict
+  concurrency checking, and compiles the C++ glue with `-fsyntax-only`. It does
+  the same for the Swift cases of the test suite (`test-suite/djinni/swift_*.djinni`).
+- `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
+  of generated interfaces, and runs it in both Swift modes. The program checks
+  calls in both directions, the identity of proxies, the release of host objects,
+  and many threads. A watchdog fails the run when it deadlocks.
+- `ci/check-byte-identity.sh` proves that a change does not alter the output of
+  the other generators.
 
 ## Async interface support
 

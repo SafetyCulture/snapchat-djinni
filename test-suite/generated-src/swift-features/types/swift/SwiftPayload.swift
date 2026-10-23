@@ -3,12 +3,12 @@
 
 import Foundation
 
-public struct SwiftPayload {
-    public var data: Foundation.NSData
-    public var bytes: Data
-    public var when: Date
-    public var note: Optional<String>
-    public var tags: Array<String>
+public struct SwiftPayload: @unchecked Sendable {
+    public let data: Foundation.NSData
+    public let bytes: Data
+    public let when: Date
+    public let note: Optional<String>
+    public let tags: Array<String>
 
     public init(data: Foundation.NSData, bytes: Data, when: Date, note: Optional<String>, tags: Array<String>)
     {

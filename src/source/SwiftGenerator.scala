@@ -87,7 +87,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     writeSwiftFile(ident, origin, List[String](), w => {
       val t = marshal.typename(ident, e)
       if (e.flags) {
-        w.w(s"public struct $t: OptionSet").braced {
+        w.w(s"public struct $t: OptionSet, Sendable").braced {
           w.wl("public let rawValue: Int32")
           w.wl("public init(rawValue: Int32) { self.rawValue = rawValue }")
           writeFlagNone(w, e, idSwift.enum, t)
@@ -95,7 +95,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           writeFlagAll(w, e, idSwift.enum, t)
         }
       } else {
-        w.w(s"public enum ${marshal.typename(ident, e)}: Int32").braced {
+        w.w(s"public enum ${marshal.typename(ident, e)}: Int32, Sendable").braced {
           writeEnumOptions(w, e, idSwift.enum, "=", "case ", "")
         }
       }
@@ -169,26 +169,27 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
-  def generateConformance(deriving: Set[Record.DerivingType.Value], prefix: String) = {
+  def generateConformance(deriving: Set[Record.DerivingType.Value], sendable: String, prefix: String) = {
     val eq = if (deriving.contains(DerivingType.Eq)) "Equatable" else ""
     val hashable = if (deriving.contains(DerivingType.Hashable)) "Hashable" else ""
-    val sendable = if (deriving.contains(DerivingType.Sendable)) "Sendable" else ""
     val codable = if (deriving.contains(DerivingType.Codable)) "Codable" else ""
     val error = if (deriving.contains(DerivingType.Error)) "Error" else ""
-    val conformance = Array(eq, hashable, sendable, codable, error).filter(_ != "")
+    val conformance = Array(eq, hashable, codable, error, sendable).filter(_ != "")
     if (conformance.nonEmpty) prefix + conformance.mkString(", ") else ""
   }
 
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {
     val refs = new SwiftRefs(ident.name)
     r.fields.foreach(f => refs.find(f.ty))
+    val sendable = if (r.fields.forall(f => marshal.isSendable(f.ty.resolved))) "Sendable" else "@unchecked Sendable"
+    val fieldKeyword = if (spec.swiftLegacyRecords) "var" else "let"
     writeSwiftFile(ident, origin, refs.swiftImports, w => {
       writeDoc(w, doc)
-      w.w(s"public struct ${marshal.typename(ident, r)}${generateConformance(r.derivingTypes, ": ")}").braced {
+      w.w(s"public struct ${marshal.typename(ident, r)}${generateConformance(r.derivingTypes, sendable, ": ")}").braced {
         generateSwiftConstants(w, r.consts)
         for (f <- r.fields) {
           writeDoc(w, f.doc)
-          w.wl(s"public var ${idSwift.field(f.ident)}: ${marshal.fqFieldType(f.ty)}")
+          w.wl(s"public $fieldKeyword ${idSwift.field(f.ident)}: ${marshal.fqFieldType(f.ty)}")
         }
         val initParams = r.fields.map(f => s"${idSwift.field(f.ident)}: ${marshal.fqFieldType(f.ty)}").mkString(", ")
         w.wl
@@ -242,7 +243,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     })
     writeSwiftFile(ident, origin, refs.swiftImports, w => {
       writeDoc(w, doc)
-      w.w(s"public protocol ${marshal.typename(ident, i)}: AnyObject").braced {
+      w.w(s"public protocol ${marshal.typename(ident, i)}: AnyObject, Sendable").braced {
         for (m <- i.methods.filter(!_.static)) {
           writeMethodDoc(w, m, idSwift.local)
           w.w(s"func ${idSwift.method(m.ident)}(")
@@ -257,7 +258,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       writeDoc(w, doc)
       // Define CppProxy class if interface is implemented in C++
       if (i.ext.cpp) {
-        w.w(s"final class ${marshal.typename(ident, i)}CppProxy: DjinniSupport.CppProxy, ${marshal.fqTypename(ident, i)}").braced {
+        w.w(s"final class ${marshal.typename(ident, i)}CppProxy: DjinniSupport.CppProxy, ${marshal.fqTypename(ident, i)}, @unchecked Sendable").braced {
           w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
           for (m <- i.methods.filter(!_.static)) {
             w.w(s"func ${idSwift.method(m.ident)}(")
@@ -314,14 +315,14 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           w.wl(s"return cppInterfaceToSwift(c, ${newProxyBlock})")
         }
         w.w("public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue").braced {
-          val newProxyBlock = if (i.ext.swift) {s"{ ${spec.swiftxxNamespace}.$swiftProxyClassName.make(ctxPtr(s, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
+          val newProxyBlock = if (i.ext.swift) {s"{ ${spec.swiftxxNamespace}.$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ fatalError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
           w.wl(s"return swiftInterfaceToCpp(s, ${newProxyBlock})")
         }
       }
       // Define static method stubs
       val staticMethods = i.methods.filter(m => m.static && m.lang.swift)
       if (!staticMethods.isEmpty) {
-        w.w(s"public class ${marshal.typename(ident, i)}_statics").braced {
+        w.w(s"public class ${marshal.typename(ident, i)}_statics: @unchecked Sendable").braced {
           for (m <- staticMethods) {
             w.w(s"public static func ${idSwift.method(m.ident)}(")
             if (m.params.nonEmpty) { w.w("_ ") }

@@ -7,7 +7,7 @@ import Foundation
 import TestSuiteCxx
 
 /** Implemented in C++. Swift calls it and passes a Swift host listener to it. */
-final class SwiftHostRegistryCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftHostRegistry {
+final class SwiftHostRegistryCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftHostRegistry, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
     func registerListener(_ listener: TestSuite.SwiftHostListener) throws -> Void {
         var _params = djinni.swift.ParameterList()
@@ -33,7 +33,7 @@ public enum SwiftHostRegistryMarshaller: DjinniSupport.Marshaller {
         return swiftInterfaceToCpp(s, { fatalError("SwiftHostRegistry has no Swift host implementation: add +sw to the interface") })
     }
 }
-public class SwiftHostRegistry_statics {
+public class SwiftHostRegistry_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftHostRegistry {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_generated.SwiftHostRegistry_create(&_params)

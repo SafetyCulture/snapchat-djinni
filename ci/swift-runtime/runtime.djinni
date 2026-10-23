@@ -1,0 +1,20 @@
+@extern "../../support-lib/dataref.yaml"
+
+# Types for the Swift runtime test. C++ implements the service, and Swift implements the listener.
+
+runtime_listener = interface +o +j +sw {
+  on_value(value: i32): i32;
+  make_data(): DataRef;
+}
+
+runtime_service = interface +c +sw {
+  static create(): runtime_service;
+  static shared(): runtime_service;
+  add(a: i32, b: i32): i32;
+  call_listener(listener: runtime_listener, value: i32): i32;
+  keep_listener(listener: runtime_listener);
+  call_kept_listener(value: i32): i32;
+  same_service(): runtime_service;
+  data_size(data: DataRef): i32;
+  listener_data_sum(listener: runtime_listener): i32;
+}

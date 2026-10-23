@@ -2,7 +2,7 @@ import DjinniSupportCxx
 import Foundation
 
 // A custom Future<> type thanks to Logan Shire <@LoganShireSnapchat>
-public final class Cancellable {
+public final class Cancellable: @unchecked Sendable {
     private let closure: () -> Void
 
     init(closure: @escaping () -> Void) {
@@ -20,16 +20,25 @@ public final class Cancellable {
 
 public typealias Lock = NSLock
 
-public final class Future<Output, Failure> where Failure : Error {
+// Carries a value across a concurrency boundary when the caller guarantees that the use is safe.
+struct UncheckedSendable<Value>: @unchecked Sendable {
+    let value: Value
+    init(_ value: Value) { self.value = value }
+}
+
+public final class Future<Output, Failure>: @unchecked Sendable where Failure : Error {
     public typealias Promise = (Result<Output, Failure>) -> Void
 
     // The token only needs to be unique within the scope of the Future object
     typealias Token = Int64
-    var nextTokenValue: Token = 0
+    private var nextTokenValue: Token = 0
     private func generateToken() -> Token {
-        return OSAtomicIncrement64(&nextTokenValue)
+        lock.lock()
+        defer { lock.unlock() }
+        nextTokenValue += 1
+        return nextTokenValue
     }
-    
+
     private let lock = Lock()
     private var storedResult: Result<Output, Failure>?
     private var subscriptions = [Token : Promise]()
@@ -56,8 +65,9 @@ public final class Future<Output, Failure> where Failure : Error {
 
             // Run the completion handlers in parallel after unlocking:
             for subscription in copiedSubscriptions.values {
+                let call = UncheckedSendable { subscription(result) }
                 DispatchQueue.global(qos: .default).async {
-                    subscription(result)
+                    call.value()
                 }
             }
         }
@@ -69,7 +79,8 @@ public final class Future<Output, Failure> where Failure : Error {
             return try await withTaskCancellationHandler {
                 return try await withCheckedThrowingContinuation { continuation in
                     self.subscribe(token: token) { result in
-                        continuation.resume(with: result)
+                        nonisolated(unsafe) let unchecked = result
+                        continuation.resume(with: unchecked)
                     }
                 }
             } onCancel: {
@@ -90,14 +101,14 @@ public final class Future<Output, Failure> where Failure : Error {
 
     private func subscribe(token: Token, subscription: @escaping Promise) {
         self.lock.lock()
-        defer { self.lock.unlock() }
-
         if let result = self.storedResult {
+            self.lock.unlock()
             subscription(result)
             return
         }
 
         self.subscriptions[token] = subscription
+        self.lock.unlock()
     }
 
     private func cancel(token: Token) {
@@ -116,8 +127,8 @@ protocol AbstractPromiseHolder: AnyObject {
     func fulfillPromise(value: UnsafePointer<djinni.swift.AnyValue>)
 }
 // The Swift Future wrapper object that can be fulfilled by a C++ call
-class PromiseHolder<T: Marshaller>: AbstractPromiseHolder {
-    var promise: DJFuture<T.SwiftType>.Promise
+final class PromiseHolder<T: Marshaller>: AbstractPromiseHolder, @unchecked Sendable {
+    let promise: DJFuture<T.SwiftType>.Promise
     init(marshaller: T.Type, promise: @escaping DJFuture<T.SwiftType>.Promise) {
         self.promise = promise
     }

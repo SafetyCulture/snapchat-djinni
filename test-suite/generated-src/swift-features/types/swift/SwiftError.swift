@@ -7,9 +7,9 @@ import Foundation
  * Built-in types that need a Swift marshaller.
  * The error type of an outcome. Swift needs the Error conformance for Result.
  */
-public struct SwiftError: Equatable, Error {
-    public var message: String
-    public var code: Int32
+public struct SwiftError: Equatable, Error, Sendable {
+    public let message: String
+    public let code: Int32
 
     public init(message: String, code: Int32)
     {
