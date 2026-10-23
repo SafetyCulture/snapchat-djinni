@@ -146,7 +146,7 @@ final class SwiftProxyCache: @unchecked Sendable {
     //         protocol type: one object can conform to two djinni protocols, and each gets its
     //         own proxy
     // Value : Weak proxy, no ownership, but can be converted to a C++ callable strong proxy
-    private struct Key: Hashable {
+    struct Key: Hashable {
         let object: UnsafeMutableRawPointer
         let interface: String
     }
