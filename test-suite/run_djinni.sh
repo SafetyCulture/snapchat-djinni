@@ -824,14 +824,16 @@ if ! grep -qF -- "Error: --kotlin-error-type needs --kotlin-jni-out." "$error_ty
     exit 1
 fi
 
-# kotlin_expect_failure <log name> <idl> <expected message>... : --kotlin-error-type rejects the IDL before it writes a file.
+# kotlin_expect_failure <log name> <idl> <extra flag or -> <expected message>... : --kotlin-error-type rejects the IDL
+# before it writes a file.
 kotlin_expect_failure() {
-    local name=$1 idl=$2
-    shift 2
+    local name=$1 idl=$2 extra=$3
+    shift 3
+    [ "$extra" != - ] || extra=""
     local log="$temp_out/$name.log"
     if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
         --kotlin-jni-out "$temp_out_relative/$name" \
-        --kotlin-error-type "com.dropbox.djinni.test.KotlinErrorException" \
+        --kotlin-error-type "com.dropbox.djinni.test.KotlinErrorException" ${extra:+"$extra"} \
         --java-package $java_package \
         --idl "$idl") >"$log" 2>&1; then
         echo "The generator accepted $idl with --kotlin-error-type." 1>&2
@@ -850,13 +852,18 @@ kotlin_expect_failure() {
     fi
 }
 # A future needs a suspend function, for an instance method and for a static method.
-kotlin_expect_failure kotlin-error-future "djinni/kotlin_error_async.djinni" \
+kotlin_expect_failure kotlin-error-future "djinni/kotlin_error_async.djinni" - \
     "interface kotlin_error_async_service, method load: --kotlin-error-type needs --kotlin-suspend-wrap for a method that returns future<T>" \
     "interface kotlin_error_async_service, method fetch_later: --kotlin-error-type needs --kotlin-suspend-wrap for a method that returns future<T>" \
     "interface kotlin_error_async_service, method load_static: --kotlin-error-type needs --kotlin-suspend-wrap for a method that returns future<T>"
 # The class has one constructor (error: E), so the outcomes must have one error type.
-kotlin_expect_failure kotlin-error-mixed "djinni/kotlin_error_negative.djinni" \
+kotlin_expect_failure kotlin-error-mixed "djinni/kotlin_error_negative.djinni" - \
     "--kotlin-error-type com.dropbox.djinni.test.KotlinErrorException has one constructor (error: E), but the outcomes have 2 error types: KotlinErrorFirst (interface kotlin_error_mixed, method first), KotlinErrorSecond (interface kotlin_error_mixed, method second)"
+# A static or a suspend function cannot override a member of Any. KotlinJniIdent.check can report these methods
+# first, so the case checks the methods that the message names, not its words.
+kotlin_expect_failure kotlin-error-any "djinni/kotlin_error_any_negative.djinni" --kotlin-suspend-wrap \
+    "interface kotlin_error_any_static, method hash_code" \
+    "interface kotlin_error_any_suspend, method to_string"
 
 # The queue flag needs the async wrappers.
 queue_log="$temp_out/queue-without-wrap.log"

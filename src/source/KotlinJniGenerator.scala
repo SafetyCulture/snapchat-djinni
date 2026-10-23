@@ -304,7 +304,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           writeMethodDoc(w, m, idJava.local)
           writeThrows(w, typed(m).isDefined)
           if (typed(m).isDefined) {
-            w.wl(s"abstract ${if (suspendWrap) "suspend " else ""}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${typedClause(typedReturn(m.ret))}")
+            val value = marshal.typedValue(m.ret)
+            // Without suspend, a function with the name and the type of a member of Any overrides it
+            val anyOverride = if (!suspendWrap && KotlinErrorType.overridesAny(idJava.method(m.ident), m, value)) "override " else ""
+            w.wl(s"abstract $anyOverride${if (suspendWrap) "suspend " else ""}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${typedClause(typedReturn(m.ret))}")
           } else if (suspendWrap) {
             w.wl(s"abstract suspend fun ${kt(idJava.method(m.ident))}(${paramList(m)})${suspendReturnClause(m.ret)}")
           } else {
