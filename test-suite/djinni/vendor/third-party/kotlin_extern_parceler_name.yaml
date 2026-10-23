@@ -1,5 +1,4 @@
-# Two extern records for the Kotlin JNI classes. The first has no Kotlin keys: the Kotlin classes and the JNI
-# code use its Java class. The second has the Kotlin keys: the Kotlin classes and the JNI code use the Kotlin class.
+# An extern record with the name of the Parceler of extern_kotlin_message. An extern writes no Kotlin file, so the names do not collide.
 ---
 name: extern_kotlin_message_parceler
 typedef: 'record deriving(eq, ord, parcelable)'
