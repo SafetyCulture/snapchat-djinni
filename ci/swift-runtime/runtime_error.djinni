@@ -29,4 +29,7 @@ error_service = interface +c {
   complete_pending(value: i32);
   # Calls of pending() that reached C++
   pending_started(): i32;
+  # A method without a future that counts the calls that reached C++
+  touch(): i32;
+  touch_count(): i32;
 }
