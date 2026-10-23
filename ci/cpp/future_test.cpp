@@ -1,8 +1,10 @@
-// Checks djinni::Future and djinni::Promise: a dropped promise, a promise that moves, and handlers that throw
-// exceptions which do not derive from std::exception. Build and run with ci/cpp-future-test.sh.
+// Checks djinni::Future and djinni::Promise: a dropped promise, a promise that moves, a replaced handler, and handlers
+// that throw exceptions which do not derive from std::exception. Build and run with ci/cpp-future-test.sh.
 #include "Future.hpp"
 
+#include <atomic>
 #include <chrono>
+#include <memory>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -26,6 +28,24 @@ void waitReady(F& future, const std::string& what) {
     while (!future.isReady()) {
         if (std::chrono::steady_clock::now() > deadline) {
             std::printf("FAIL: %s: the future has no result after 10 s\n", what.c_str());
+            std::exit(EXIT_FAILURE);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+}
+
+// Runs `scenario` on its own thread. A deadlock fails the test after 10 s, and does not hang it.
+template <typename F>
+void runWithin(F scenario, const std::string& what) {
+    auto done = std::make_shared<std::atomic<bool>>(false);
+    std::thread([scenario, done]() mutable {
+        scenario();
+        done->store(true);
+    }).detach();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!done->load()) {
+        if (std::chrono::steady_clock::now() > deadline) {
+            std::printf("FAIL: %s: no end after 10 s, it may be deadlocked\n", what.c_str());
             std::exit(EXIT_FAILURE);
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -113,6 +133,23 @@ int main() {
         }
         check(caught == 42, "a handler that throws an int gives the int to the next future");
     }
+
+    // A then() that replaces the handler of another future of the same promise destroys the old handler after the
+    // unlock. The old handler breaks its next promise, and the handler of that next future can use the shared state.
+    runWithin([] {
+        djinni::Promise<int> promise;
+        auto first = promise.getFuture();
+        auto second = promise.getFuture();
+        auto probe = promise.getFuture();
+        bool ran = false;
+        auto chained = first.then([](djinni::Future<int> f) { return f.get(); }).then([&probe, &ran](djinni::Future<int>) {
+            ran = true;
+            return probe.isReady();
+        });
+        second.then([](djinni::Future<int> f) { return f.get(); });
+        check(ran, "the replaced handler breaks its next promise, and the handler of the next future runs");
+        promise.setValue(1);
+    }, "a then() that replaces a handler");
 
     if (failures == 0) {
         std::printf("CPP FUTURE OK\n");
