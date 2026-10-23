@@ -300,6 +300,7 @@ package object generatorTools {
     try {
       if (spec.swiftOutFolder.isDefined || spec.swiftxxOutFolder.isDefined) {
         SwiftProtobuf.check(idl, spec).foreach(message => throw GenerateException(message))
+        SwiftChecks.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       // Check before any generator writes a file.
       if (spec.swiftOutFolder.isDefined && spec.swiftErrorType.isDefined) {

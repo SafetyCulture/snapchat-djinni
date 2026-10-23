@@ -849,6 +849,42 @@ if [ -e "$base_dir/$temp_out_relative/swift-features/async-without-module" ]; th
     exit 1
 fi
 
+# The wrapper of --swift-async-wrap uses names that start with djinni and a capital letter. An IDL name that Swift
+# writes the same way is rejected before any file is written. Without the flag the same IDL generates.
+reserved_log="$temp_out/swift-naming-reserved.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-naming-reserved/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --idl "djinni/swift_naming_reserved.djinni") >"$reserved_log" 2>&1; then
+    echo "The generator accepted IDL names that the --swift-async-wrap wrapper uses." 1>&2
+    exit 1
+fi
+for expected in \
+    "interface swift_naming_reserved_service, method proxy: the parameter name djinni_proxy is djinniProxy in Swift." \
+    "interface swift_naming_reserved_service, method djinni_queue: the method name djinni_queue is djinniQueue in Swift."; do
+    if ! grep -qF -- "$expected" "$reserved_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$reserved_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qE "method (fine|on_event)|swift_naming_reserved_host" "$reserved_log" || [ -e "$base_dir/$temp_out_relative/swift-naming-reserved" ]; then
+    echo "The generator reported a name that the wrapper does not use, or wrote files for a rejected IDL." 1>&2
+    cat "$reserved_log" 1>&2
+    exit 1
+fi
+(cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-naming-reserved-unwrapped/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_naming_reserved.djinni") >"$reserved_log" 2>&1 || {
+    echo "The generator rejected the names without --swift-async-wrap." 1>&2
+    cat "$reserved_log" 1>&2
+    exit 1
+}
+
 # The Swift glue and the Objective-C++ glue define the same helper symbols when they share a namespace.
 # The default namespaces differ. Equal namespaces fail the run before any file is written.
 namespace_out="$temp_out/swiftxx-namespace-equal"
