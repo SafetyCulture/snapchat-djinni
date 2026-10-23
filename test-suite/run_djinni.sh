@@ -460,6 +460,23 @@ swift_options_relative="djinni/swift_options.djinni"
     --idl "$swift_error_relative" \
 )
 if ! grep -qx "import OptionsSupport" "$temp_out"/swift-features/options/swift/*+Private.swift; then
+
+# A label prefix that would break the generated string literal is rejected.
+prefix_log="$temp_out/swift-async-wrap-prefix.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-async-wrap-prefix/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap 'bad"prefix' \
+    --idl "$swift_async_relative") >"$prefix_log" 2>&1; then
+    echo "The generator accepted a --swift-async-wrap prefix with a quote." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--swift-async-wrap accepts only letters, digits, dot, underscore and hyphen." "$prefix_log"; then
+    echo "Missing error message for a bad --swift-async-wrap prefix." 1>&2
+    cat "$prefix_log" 1>&2
+    exit 1
+fi
     echo "The options case does not import --swiftxx-base-lib-module." 1>&2
     exit 1
 fi
