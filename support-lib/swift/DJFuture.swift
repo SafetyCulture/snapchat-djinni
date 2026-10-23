@@ -73,22 +73,24 @@ public final class Future<Output, Failure> where Failure : Error {
         get async throws {
             let token = generateToken()
             let waiter = Waiter<Output, Failure>()
+            // The future is thread-safe through its lock, so the closures can hold it across domains
+            let box = UncheckedSendable(self)
             return try await withTaskCancellationHandler {
                 return try await withCheckedThrowingContinuation { continuation in
                     if waiter.install(continuation) {
-                        self.subscribe(token: token) { result in
+                        box.value.subscribe(token: token) { result in
                             waiter.fulfill(result)
                         }
                         // onCancel can run before the subscription exists.
                         if waiter.isCancelled {
-                            self.cancel(token: token)
+                            box.value.cancel(token: token)
                         }
                     }
                 }
             } onCancel: {
                 // Cancel the waiter first. Then a body that is between install and subscribe sees isCancelled.
                 waiter.cancel()
-                self.cancel(token: token)
+                box.value.cancel(token: token)
             }
         }
     }
