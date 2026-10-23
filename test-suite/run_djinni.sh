@@ -887,6 +887,10 @@ if ! grep -qF -- "The Parceler name ExternKotlinMessageParceler collides with an
     cat "$parceler_collision_log" 1>&2
     exit 1
 fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-parceler-collision" ]; then
+    echo "The generator wrote files for a Parceler name collision." 1>&2
+    exit 1
+fi
 
 # array<extern> with a Java primitive is a primitive array; with a Kotlin key it is Array<T>.
 (cd "$base_dir" && \
