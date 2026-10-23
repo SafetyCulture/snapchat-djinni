@@ -1,6 +1,7 @@
 package djinni
 
 import djinni.ast._
+import djinni.generatorTools.Spec
 import djinni.meta._
 
 // Checks that every protobuf message and extern type that the IDL uses has the swift and
@@ -9,8 +10,9 @@ import djinni.meta._
 object SwiftProtobuf {
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     val refs = idl.flatMap(td => typeRefs(td.body)).flatMap(allTypes)
-    val missingProto = refs.collect { case p: MProtobuf if p.body.swift.isEmpty => p.name }.distinct
-    val missingExtern = refs.collect {
+    val bases = refs.map(_.base)
+    val missingProto = bases.collect { case p: MProtobuf if p.body.swift.isEmpty => p.name }.distinct
+    val missingExtern = bases.collect {
       case e: MExtern if needsSwift(e, spec) || needsSwiftxx(e, spec) => e.name
     }.distinct
     val messages = missingProto.map(message) ++ missingExtern.map(externMessage)
