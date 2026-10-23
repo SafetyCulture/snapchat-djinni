@@ -23,18 +23,20 @@ object KotlinJniIdent {
 
   private val anyMembers = Map("toString" -> "string", "hashCode" -> "i32")
 
-  // A Kotlin method with the name of a member of Any and no parameters must override it. A suspend function cannot
-  // override it, because the member is not a suspend function.
+  // A Kotlin method with the name of a member of Any and no parameters must override it. A static method of the
+  // companion object cannot, and a suspend function cannot, because the member is not a suspend function.
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     val problems = idl.collect {
       case InternTypeDecl(ident, _, i: Interface, _, _) => (ident, i)
     }.flatMap { case (ident, i) =>
       val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
-      i.methods.filter(m => !m.static && m.params.isEmpty).map(m => (m, spec.javaIdentStyle.method(m.ident.name))).collect {
-        case (m, name) if anyMembers.contains(name) && !overridesAny(name, m) =>
-          s"interface ${ident.name}, method ${m.ident.name}: the Kotlin method $name() overrides $name of Any, so it must return ${anyMembers(name)}. Rename the method or change its return type."
-        case (m, name) if suspendWrap && overridesAny(name, m) =>
+      i.methods.filter(_.params.isEmpty).map(m => (m, spec.javaIdentStyle.method(m.ident.name))).collect {
+        case (m, name) if m.static && m.lang.java && anyMembers.contains(name) =>
+          s"interface ${ident.name}, method ${m.ident.name}: the static method $name() is a member of the companion object, where it hides $name of Any. Rename the method."
+        case (m, name) if !m.static && suspendWrap && anyMembers.contains(name) =>
           s"interface ${ident.name}, method ${m.ident.name}: --kotlin-suspend-wrap makes a suspend function, which cannot override $name of Any. Rename the method."
+        case (m, name) if !m.static && anyMembers.contains(name) && !overridesAny(name, m) =>
+          s"interface ${ident.name}, method ${m.ident.name}: the Kotlin method $name() overrides $name of Any, so it must return ${anyMembers(name)}. Rename the method or change its return type."
       }
     }
     if (problems.isEmpty) None else Some(problems.mkString("\n"))
