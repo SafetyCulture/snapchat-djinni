@@ -619,7 +619,7 @@ object Main {
     try {
       val r = generate(idl, outSpec)
       r.foreach(e => System.err.println("Error generating output: " + e))
-      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined || kotlinJniOutFolder.isDefined || kotlinJniJavaBridgeOutFolder.isDefined)
+      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined || kotlinJniOutFolder.isDefined)
     }
     finally {
       if (outFileListWriter.isDefined) {
