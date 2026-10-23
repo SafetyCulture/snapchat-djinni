@@ -459,8 +459,10 @@ swift_options_relative="djinni/swift_options.djinni"
     \
     --idl "$swift_error_relative" \
 )
-if ! grep -qx "import OptionsSupport" "$temp_out"/swift-features/options/swift/*+Private.swift; then
-    echo "The options case does not import --swiftxx-base-lib-module." 1>&2
+# Every +Private.swift file of the options case imports the base library module, not only one of them.
+options_private=("$temp_out"/swift-features/options/swift/*+Private.swift)
+if [ "${#options_private[@]}" -eq 0 ] || [ -n "$(grep -L -x "import OptionsSupport" "${options_private[@]}")" ]; then
+    echo "A +Private.swift file of the options case does not import --swiftxx-base-lib-module (or there is none): $(grep -L -x "import OptionsSupport" "${options_private[@]}" || true)" 1>&2
     exit 1
 fi
 
