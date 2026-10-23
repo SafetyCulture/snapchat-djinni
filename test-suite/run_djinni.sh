@@ -850,6 +850,27 @@ if ! grep -qF -- "Set all four Kotlin keys or none." "$partial_log"; then
     exit 1
 fi
 
+# The JNI signature and the Kotlin class of an extern type must name one class.
+mismatch_log="$temp_out/kotlin-jni-extern-mismatch.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-mismatch/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern-mismatch/jni" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_extern_mismatch.djinni" \
+    --idl-include-path "djinni/vendor") >"$mismatch_log" 2>&1; then
+    echo "The generator accepted an extern type whose Kotlin signature and Kotlin class differ." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "extern type extern_kotlin_mismatch: jni.kotlinTypeSignature Lcom/dropbox/djinni/testextern/Other; names the class com.dropbox.djinni.testextern.Other, but kotlin.jniTypename is com.dropbox.djinni.testextern.Partial." "$mismatch_log"; then
+    echo "Missing error message for a Kotlin signature that differs from the Kotlin class." 1>&2
+    cat "$mismatch_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-mismatch" ]; then
+    echo "The generator wrote files for a Kotlin signature that differs from the Kotlin class." 1>&2
+    exit 1
+fi
+
 # A record cannot derive ord over the Kotlin class of an extern type with Kotlin keys: a message has no order.
 ord_log="$temp_out/kotlin-jni-extern-ord.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \

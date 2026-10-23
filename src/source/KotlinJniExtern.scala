@@ -39,8 +39,20 @@ object KotlinJniExtern {
         s"but these extern types have Kotlin keys: ${keyed.map(_.ident.name).mkString(", ")}. " +
         "Run the generator twice: --java-out with --jni-out, and --kotlin-jni-out with --jni-out.")
     } else Seq()
-    incomplete ++ both
+    // The JNI code looks the class up by kotlin.jniTypename's signature, so the two must name one class.
+    val mismatched = keyed.filter(e => keys.forall(has(e, _))).flatMap { e =>
+      for {
+        signature <- value(e, "jni.kotlinTypeSignature")
+        name <- value(e, "kotlin.jniTypename")
+        if signatureToTypename(signature) != name
+      } yield s"extern type ${e.ident.name}: jni.kotlinTypeSignature $signature names the class ${signatureToTypename(signature)}, but kotlin.jniTypename is $name. The JNI code and the Kotlin classes must use one class."
+    }
+    incomplete ++ both ++ mismatched
   }
+
+  // "Lcom/example/Outer$Inner;" is the class com.example.Outer.Inner
+  private def signatureToTypename(signature: String): String =
+    signature.stripPrefix("L").stripSuffix(";").replace('/', '.').replace('$', '.')
 
   // The Kotlin class of an extern type with Kotlin keys is a message class. Its messages have no order, so the
   // compareTo of a record cannot call compareTo on it. Java lite messages are not Comparable either.
@@ -68,6 +80,14 @@ object KotlinJniExtern {
         s"The Parceler name $name collides with an IDL type of the same name."
     }
     duplicate ++ collision
+  }
+
+  private def value(e: ExternTypeDecl, key: String): Option[String] = {
+    val Array(block, name) = key.split('.')
+    e.properties.get(block) match {
+      case Some(map: java.util.Map[_, _]) => Option(map.get(name)).map(_.toString)
+      case _ => None
+    }
   }
 
   // key is "<block>.<name>"
