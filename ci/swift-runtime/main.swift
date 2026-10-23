@@ -304,6 +304,9 @@ func runSafetyCases(_ service: RuntimeService) throws {
             check(String(djinni.swift.getError(p).msg).contains("not an error"), "the error of a value that is not an error")
         }
         do { _ = try binaryRange(scalar); check(false, "the range of a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
+        // A member cannot be added to a value that is not a composite
+        var notComposite = djinni.swift.I32.fromCpp(1)
+        do { try addMember(&notComposite, djinni.swift.makeVoidValue()); check(false, "addMember on a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
         // A scalar of the wrong kind is malformed too. Swift used to abort the process in std::get.
         let text = djinni.swift.makeStringValue("x", 1)
         do { _ = try I32Marshaller.fromCpp(text); check(false, "a string is not an i32") } catch is DjinniError {} catch { check(false, "\(error)") }
