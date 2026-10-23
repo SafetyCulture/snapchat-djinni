@@ -1,0 +1,13 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+swift_options_item = record {
+  name: string;
+  count: i32;
+}
+
+swift_options_service = interface +c +sw {
+  compute(value: i32): i32;
+  load(id: string): future<swift_options_item>;
+  static create(): swift_options_service;
+}

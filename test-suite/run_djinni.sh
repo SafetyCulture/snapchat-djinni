@@ -306,6 +306,7 @@ swift_error_relative="djinni/swift_error.djinni"
 swift_error_negative_relative="djinni/swift_error_negative.djinni"
 swift_error_enum_relative="djinni/swift_error_enum.djinni"
 swift_error_extern_relative="djinni/swift_error_extern.djinni"
+swift_options_relative="djinni/swift_options.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -414,8 +415,54 @@ swift_error_extern_relative="djinni/swift_error_extern.djinni"
     --swiftxx-out "$temp_out_relative/swift-features/error/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
+    --idl "$swift_error_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/options/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/options/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/options/swiftxx" \
+    --swiftxx-namespace djinni_options \
+    --swiftxx-include-prefix "options/" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    --swiftxx-base-lib-module OptionsSupport \
+    --swiftxx-base-lib-include-prefix "support/" \
+    \
+    --idl "$swift_options_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/separate-module/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/separate-module/swift" \
+    --swift-module TestSuite \
+    --swiftxx-out "$temp_out_relative/swift-features/separate-module/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_types_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/error-legacy/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/error-legacy/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-legacy-records \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/error-legacy/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
     --idl "$swift_error_relative" \
 )
+if ! grep -qx "import OptionsSupport" "$temp_out"/swift-features/options/swift/*+Private.swift; then
+    echo "The options case does not import --swiftxx-base-lib-module." 1>&2
+    exit 1
+fi
 
 # A protobuf message without a swift block must fail the run before any file is written.
 swift_protobuf_negative_relative="djinni/swift_protobuf_negative.djinni"
@@ -511,7 +558,7 @@ expect_failure error-enum "$swift_error_enum_relative" CruxError \
 
 # An extern record with the Swift name is accepted.
 (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
-    --swift-out "$temp_out_relative/error-extern/swift" \
+    --swift-out "$temp_out_relative/swift-features/error-extern/swift" \
     --swift-module TestSuite \
     --swift-private-in-same-module \
     --swift-error-type CruxError \
@@ -534,6 +581,26 @@ fi
 if ! grep -qF -- "Error: --kotlin-suspend-wrap needs --kotlin-jni-out." "$suspend_log"; then
     echo "Missing error message for --kotlin-suspend-wrap." 1>&2
     cat "$suspend_log" 1>&2
+    exit 1
+fi
+
+# The async wrappers need the private files in the same module.
+async_log="$temp_out/async-without-module.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-features/async-without-module/swift" \
+    --swift-module TestSuite \
+    --swift-async-wrap "djinni.testsuite" \
+    --idl "$swift_async_relative") >"$async_log" 2>&1; then
+    echo "The generator accepted --swift-async-wrap without --swift-private-in-same-module." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --swift-async-wrap needs --swift-private-in-same-module." "$async_log"; then
+    echo "Missing error message for --swift-async-wrap." 1>&2
+    cat "$async_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/swift-features/async-without-module" ]; then
+    echo "The generator wrote files for a rejected flag." 1>&2
     exit 1
 fi
 
@@ -566,6 +633,22 @@ fi
     --idl "djinni/kotlin_suspend.djinni" \
 )
 
+# Kotlin classes in a package other than the Java package.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-package" \
+    --kotlin-jni-package "com.dropbox.djinni.test.kt" \
+    --kotlin-suspend-wrap \
+    --java-package $java_package \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_suspend.djinni" \
+)
+if grep -L "^package com.dropbox.djinni.test.kt$" "$temp_out"/kotlin-jni-package/*.kt | grep -q .; then
+    echo "A Kotlin file has a package other than --kotlin-jni-package." 1>&2
+    exit 1
+fi
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
@@ -587,6 +670,7 @@ mirror "ts" "$temp_out/ts" "$ts_out"
 mirror "swift-features" "$temp_out/swift-features" "$base_dir/generated-src/swift-features"
 mirror "kotlin-jni" "$temp_out/kotlin-jni" "$base_dir/generated-src/kotlin-jni"
 mirror "kotlin-jni-suspend" "$temp_out/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-suspend"
+mirror "kotlin-jni-package" "$temp_out/kotlin-jni-package" "$base_dir/generated-src/kotlin-jni-package"
 
 date > "$gen_stamp"
 

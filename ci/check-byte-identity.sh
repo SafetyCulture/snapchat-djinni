@@ -32,7 +32,11 @@ done
 work="$(mktemp -d "${TMPDIR:-/tmp}/djinni-identity.XXXXXX")"
 base_tree="$work/base-tree"
 cleanup() {
-  if [ -d "$base_tree" ]; then git -C "$repo_root" worktree remove --force "$base_tree" >/dev/null 2>&1 || true; fi
+  if [ -d "$base_tree" ]; then
+    # The base tree has its own Bazel output base. Remove it with the tree.
+    (cd "$base_tree" && "$bazel" clean --expunge >/dev/null 2>&1) || true
+    git -C "$repo_root" worktree remove --force "$base_tree" >/dev/null 2>&1 || true
+  fi
   if [ "${KEEP_OUT:-0}" != 1 ]; then rm -rf "$work"; else echo "kept: $work"; fi
 }
 trap cleanup EXIT

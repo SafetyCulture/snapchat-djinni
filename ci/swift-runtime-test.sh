@@ -28,7 +28,7 @@ else
 fi
 
 # SwiftProtobuf is a dependency of DjinniSupport. It is built once per compiler.
-spb_mod="$cache/spb-1.28.2-$(swiftc --version | md5 -q)"
+spb_mod="$cache/spb-1.28.2-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/libSwiftProtobuf.a" ]; then
   mkdir -p "$cache" "$spb_mod"
   [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch 1.28.2 https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
@@ -49,6 +49,14 @@ out="$work/out"
   --swift-error-type CruxError \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_error.djinni)
+
+# Legacy records have var fields. The record crosses the C++ boundary in both directions.
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out/cpp" --cpp-namespace rt \
+  --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-legacy-records \
+  --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime_legacy.djinni)
 
 # Modules
 mods="$work/mods"; build="$work/build"
@@ -75,7 +83,7 @@ cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-dec
 objs="$work/objs"
 mkdir -p "$objs"
 cxxflags=(-std=c++20 -Wno-deprecated-declarations -DDATAREF_OBJC=1 -I "$out/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib")
-for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp" "$out"/swiftxx/*.cpp "$src/runtime_service_impl.cpp" "$src/runtime_async_impl.cpp" "$src/error_service_impl.cpp"; do
+for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp" "$out"/swiftxx/*.cpp "$src/runtime_service_impl.cpp" "$src/runtime_async_impl.cpp" "$src/error_service_impl.cpp" "$src/legacy_service_impl.cpp"; do
   "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$objs/$(basename "$f").o"
 done
 
