@@ -130,6 +130,8 @@ object Main {
     var kotlinSuspendWrap: Boolean = false
     var kotlinSuspendDispatcher: Option[String] = None
     var kotlinErrorType: Option[String] = None
+    var kotlinJniJavaBridgeOutFolder: Option[File] = None
+    var kotlinJniJavaBridgePackage: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -314,6 +316,10 @@ object Main {
       opt[String]("kotlin-error-type").valueName("<qualified class>").foreach(x => kotlinErrorType = Some(x))
         .validate(x => if (x.matches("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*")) success else failure("--kotlin-error-type needs a qualified Kotlin class name."))
         .text("With --kotlin-jni-out, the Exception class that each Kotlin call into C++ throws: the instance methods of the interfaces with +c and without +j, and the static methods. outcome<T, E> returns T and throws the class with the constructor (error: E); a C++ exception throws it with the constructor (cause: DjinniCppException). A future<T> or future<outcome<T, E>> method needs --kotlin-suspend-wrap.")
+      opt[File]("kotlin-jni-java-bridge-out").valueName("<out-folder>").foreach(x => kotlinJniJavaBridgeOutFolder = Some(x))
+        .text("The output folder for Kotlin converters between the Java classes of another run and the Kotlin JNI classes of this run (Generator disabled if unspecified).")
+      opt[String]("kotlin-jni-java-bridge-package").valueName("<java package>").foreach(x => kotlinJniJavaBridgePackage = Some(x))
+        .text("The value of --java-package of the other run, whose Java classes the converters use. Needs --kotlin-jni-java-bridge-out.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -455,6 +461,32 @@ object Main {
       System.exit(1); return
     }
 
+    if (kotlinJniJavaBridgeOutFolder.isDefined && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-jni-java-bridge-out needs --kotlin-jni-out.")
+      System.exit(1); return
+    }
+
+    if (kotlinJniJavaBridgeOutFolder.isDefined && kotlinJniJavaBridgePackage.isEmpty) {
+      System.err.println("Error: --kotlin-jni-java-bridge-out needs --kotlin-jni-java-bridge-package.")
+      System.exit(1); return
+    }
+
+    if (kotlinJniJavaBridgePackage.isDefined && kotlinJniJavaBridgeOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-jni-java-bridge-package needs --kotlin-jni-java-bridge-out.")
+      System.exit(1); return
+    }
+
+    // A bridge from a package to itself would call its own extension functions for each field.
+    if (kotlinJniJavaBridgeOutFolder.isDefined && kotlinJniJavaBridgePackage == kotlinJniPackage.orElse(javaPackage)) {
+      System.err.println("Error: --kotlin-jni-java-bridge-package must differ from the Kotlin JNI package.")
+      System.exit(1); return
+    }
+
+    if (kotlinJniJavaBridgeOutFolder.isDefined && kotlinSuspendWrap) {
+      System.err.println("Error: --kotlin-jni-java-bridge-out does not support --kotlin-suspend-wrap.")
+      System.exit(1); return
+    }
+
     val yamlOptions = YamlOptions(enableKotlinWarnings = kotlinOutFolder.isDefined)
 
     // Resolve names in IDL file, check types.
@@ -584,13 +616,15 @@ object Main {
       kotlinSuspendWrap,
       kotlinSuspendDispatcher,
       kotlinErrorType,
+      kotlinJniJavaBridgeOutFolder,
+      kotlinJniJavaBridgePackage,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false
     try {
       val r = generate(idl, outSpec)
       r.foreach(e => System.err.println("Error generating output: " + e))
-      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined || kotlinJniOutFolder.isDefined)
+      failed = r.isDefined && (swiftOutFolder.isDefined || swiftxxOutFolder.isDefined || kotlinJniOutFolder.isDefined || kotlinJniJavaBridgeOutFolder.isDefined)
     }
     finally {
       if (outFileListWriter.isDefined) {
