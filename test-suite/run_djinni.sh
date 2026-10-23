@@ -842,11 +842,11 @@ kotlin_expect_failure kotlin-error-future "djinni/kotlin_error_async.djinni" - \
 # The class has one constructor (error: E), so the outcomes must have one error type.
 kotlin_expect_failure kotlin-error-mixed "djinni/kotlin_error_negative.djinni" - \
     "--kotlin-error-type com.dropbox.djinni.test.KotlinErrorException has one constructor (error: E), but the outcomes have 2 error types: KotlinErrorFirst (interface kotlin_error_mixed, method first), KotlinErrorSecond (interface kotlin_error_mixed, method second)"
-# A static or a suspend function cannot override a member of Any. KotlinJniIdent.check can report these methods
-# first, so the case checks the methods that the message names, not its words.
-kotlin_expect_failure kotlin-error-any "djinni/kotlin_error_any_negative.djinni" --kotlin-suspend-wrap \
-    "interface kotlin_error_any_static, method hash_code" \
-    "interface kotlin_error_any_suspend, method to_string"
+# The flag does not let a static or a suspend function with the name of a member of Any through.
+kotlin_expect_failure kotlin-error-any-static "djinni/kotlin_error_any_negative.djinni" - \
+    "interface kotlin_error_any_static, method hash_code: the static method hashCode() is a member of the companion object, where it hides hashCode of Any. Rename the method."
+kotlin_expect_failure kotlin-error-any-suspend "djinni/kotlin_error_any_suspend_negative.djinni" --kotlin-suspend-wrap \
+    "interface kotlin_error_any_suspend, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method."
 
 # The queue flag needs the async wrappers.
 queue_log="$temp_out/queue-without-wrap.log"
@@ -1172,7 +1172,7 @@ rm -f "$namespace_log"
     --java-nonnull-annotation "javax.annotation.Nonnull" \
     --ident-java-field mFooBar \
     --jni-use-on-load-initializer false \
-    --idl "djinni/kotlin_error.djinni" \
+    --idl "djinni/kotlin_error_sync.djinni" \
 )
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \

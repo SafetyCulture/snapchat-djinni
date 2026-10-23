@@ -1,5 +1,5 @@
 @extern "../../support-lib/future.yaml"
-@import "kotlin_error_types.djinni"
+@import "kotlin_error.djinni"
 
 # A record named unit is the class Unit of the package, so the output must name kotlin.Unit for void.
 unit = record {

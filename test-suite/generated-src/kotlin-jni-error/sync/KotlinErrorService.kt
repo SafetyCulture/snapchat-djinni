@@ -5,7 +5,7 @@ package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
 
-/** C++ implements this one. Its methods cover each kind of return type, without futures, so the functions stay blocking. */
+/** C++ implements this one. Its methods cover each kind of return type. */
 abstract class KotlinErrorService {
     @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
     abstract fun ping()
@@ -34,13 +34,6 @@ abstract class KotlinErrorService {
 
     @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
     abstract fun both(both: KotlinErrorBoth?): KotlinErrorBoth?
-
-    /** The names and the types of members of Any: the functions override them. */
-    @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
-    abstract override fun toString(): String
-
-    @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
-    abstract override fun hashCode(): Int
 
     companion object {
 
@@ -173,26 +166,6 @@ abstract class KotlinErrorService {
             }
         }
         private external fun native_both(_nativeRef: Long, both: KotlinErrorBoth?): KotlinErrorBoth?
-
-        @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
-        override fun toString(): String {
-            return try {
-                native_toString(this.nativeRef)
-            } catch (djinni_e: com.snapchat.djinni.DjinniCppException) {
-                throw com.dropbox.djinni.test.KotlinErrorException(djinni_e)
-            }
-        }
-        private external fun native_toString(_nativeRef: Long): String
-
-        @Throws(com.dropbox.djinni.test.KotlinErrorException::class)
-        override fun hashCode(): Int {
-            return try {
-                native_hashCode(this.nativeRef)
-            } catch (djinni_e: com.snapchat.djinni.DjinniCppException) {
-                throw com.dropbox.djinni.test.KotlinErrorException(djinni_e)
-            }
-        }
-        private external fun native_hashCode(_nativeRef: Long): Int
 
         companion object {
             @JvmStatic external fun nativeDestroy(nativeRef: Long)
