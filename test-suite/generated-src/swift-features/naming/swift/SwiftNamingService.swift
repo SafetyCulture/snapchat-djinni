@@ -16,23 +16,23 @@ public final class SwiftNamingService: @unchecked Sendable {
 
     init(proxy: SwiftNamingServiceCppProxy) { self.djinniProxy = proxy }
 
-    public func params(_ params: Int32, ret: Int32, inst: Int32, p: Int32, djinni djinni_: Int32) async throws -> Int32 {
+    @concurrent public func params(_ params: Int32, ret: Int32, inst: Int32, p: Int32, djinni djinni_: Int32) async throws -> Int32 {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.params(params, ret: ret, inst: inst, p: p, djinni: djinni_) }
     }
 
-    public func fields(_ fields: TestSuite.SwiftNamingFields) async throws -> TestSuite.SwiftNamingFields {
+    @concurrent public func fields(_ fields: TestSuite.SwiftNamingFields) async throws -> TestSuite.SwiftNamingFields {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fields(fields) }
     }
 
-    public func outcome(_ ret: Int32, params: Int32) async throws -> Int32 {
+    @concurrent public func outcome(_ ret: Int32, params: Int32) async throws -> Int32 {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.outcome(ret, params: params) }.get()
     }
 
-    public func load(_ ret: Int32, inst: Int32) async throws -> Int32 {
+    @concurrent public func load(_ ret: Int32, inst: Int32) async throws -> Int32 {
         return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load(ret, inst: inst) }
     }
 
-    public func nothing(_ inst: Int32) async throws -> Void {
+    @concurrent public func nothing(_ inst: Int32) async throws -> Void {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.nothing(inst) }
     }
 }

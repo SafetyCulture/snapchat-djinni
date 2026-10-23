@@ -314,7 +314,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         val ret = m.ret.map(_.resolved)
         // With --swift-error-type, a C++ exception of an outcome method becomes a value of the error type.
         val typedOutcome = spec.swiftErrorType.isDefined && ret.exists(marshal.isOutcome)
-        w.w(s"public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
+        // With nonisolated(nonsending) by default, the wrapper would run on the actor of the caller and its result would cross a domain.
+        w.w(s"@concurrent public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
         if (typedOutcome) {
           w.w(s" throws(${marshal.fqParamType(ret.get.args(1))}) -> ${marshal.fqParamType(ret.get.args.head)}")
         } else if (ret.exists(r => marshal.isOutcome(r) || marshal.isFuture(r))) {

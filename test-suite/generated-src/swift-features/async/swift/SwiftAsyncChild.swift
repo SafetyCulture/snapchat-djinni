@@ -14,7 +14,7 @@ public final class SwiftAsyncChild: @unchecked Sendable {
 
     init(proxy: SwiftAsyncChildCppProxy) { self.djinniProxy = proxy }
 
-    public func name() async throws -> String {
+    @concurrent public func name() async throws -> String {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.name() }
     }
 }

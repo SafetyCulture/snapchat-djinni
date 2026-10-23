@@ -34,6 +34,8 @@ swift_async_service = interface +c {
   stop_watching(): outcome<i32, swift_async_error>;
   load(id: string): future<swift_async_item>;
   flush(): future<void>;
+  # The value of the future is not Sendable.
+  load_data(): future<DataRef>;
   send(data: DataRef, tags: list<string>);
   watch(observer: swift_async_observer);
   child(): swift_async_child;

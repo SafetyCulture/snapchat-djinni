@@ -392,6 +392,11 @@ Async wrappers (`--swift-async-wrap`):
   application. The flag needs `--swift-async-wrap`. The generator does not use
   the label prefix of `--swift-async-wrap`. The method is `async throws`, and it
   returns when C++ returns.
+- Each wrapper method is `@concurrent`. So it runs on the global concurrent
+  executor also when the module uses `NonisolatedNonsendingByDefault`, and a
+  value that is not `Sendable` (for example the `NSData` of `future<DataRef>`)
+  does not cross from the actor of the caller. The attribute needs Swift 6.2
+  (Xcode 26) or later.
 - A C++ exception is never fatal. The generated proxy throws `DjinniError`, and
   the wrapper method gives it to the caller. `DjinniError.errorMessage` is the
   message of the exception. The shim catches `std::exception` and every other
@@ -550,9 +555,10 @@ Three scripts check the Swift support. They read the Crux IDL from
 `MITTI_MOBILE_ROOT`, except for the runtime test.
 
 - `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It runs
-  `swiftc -typecheck` in Swift 5 mode and in Swift 6 mode with strict
-  concurrency checking, and compiles the C++ glue with `-fsyntax-only`. It does
-  the same for the Swift cases of the test suite (`test-suite/djinni/swift_*.djinni`).
+  `swiftc -typecheck` in Swift 5 mode, in Swift 6 mode with strict concurrency
+  checking, and in Swift 6 mode with `NonisolatedNonsendingByDefault`, and
+  compiles the C++ glue with `-fsyntax-only`. It does the same for the Swift
+  cases of the test suite (`test-suite/djinni/swift_*.djinni`).
   It also compiles the Java, the JNI C++ and the Objective-C++ output of the `+sw`
   host case (`javac`, `clang++ -fsyntax-only`), so the other languages still
   compile next to the Swift files.

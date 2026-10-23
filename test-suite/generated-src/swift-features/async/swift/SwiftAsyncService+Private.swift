@@ -61,6 +61,13 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         try handleCppErrors(&ret)
         return try DjinniSupport.FutureMarshaller<Void_Marshaller>.fromCpp(ret)
     }
+    func loadData() throws -> DjinniSupport.DJFuture<Foundation.NSData> {
+        var _params = djinni.swift.ParameterList()
+        _params.addValue(inst)
+        var ret = djinni_generated_swift.SwiftAsyncService_loadData(&_params)
+        try handleCppErrors(&ret)
+        return try DjinniSupport.FutureMarshaller<DjinniSupport.DataRefMarshaller>.fromCpp(ret)
+    }
     func send(_ data: Foundation.NSData, tags: Array<String>) throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)

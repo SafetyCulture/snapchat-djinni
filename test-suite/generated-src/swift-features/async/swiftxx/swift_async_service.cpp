@@ -103,6 +103,17 @@ catch (const std::exception& e) {
 catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
+djinni::swift::AnyValue SwiftAsyncService_loadData(const djinni::swift::ParameterList* params) try {
+    auto inst = SwiftAsyncService::toCpp(params->getValue(0));
+    auto ret = inst->load_data();
+    return ::djinni::swift::FutureAdaptor<::djinni::swift::DataRefAdaptor>::fromCpp(std::move(ret));
+}
+catch (const std::exception& e) {
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftAsyncService_send(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncService::toCpp(params->getValue(0));
     auto _data = ::djinni::swift::DataRefAdaptor::toCpp(params->getValue(1));

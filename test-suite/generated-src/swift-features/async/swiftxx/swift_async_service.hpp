@@ -18,6 +18,7 @@ djinni::swift::AnyValue SwiftAsyncService_fetch(const djinni::swift::ParameterLi
 djinni::swift::AnyValue SwiftAsyncService_stopWatching(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_load(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_flush(const djinni::swift::ParameterList* params);
+djinni::swift::AnyValue SwiftAsyncService_loadData(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_send(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_watch(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_child(const djinni::swift::ParameterList* params);

@@ -14,23 +14,23 @@ public final class SwiftResultService: @unchecked Sendable {
 
     init(proxy: SwiftResultServiceCppProxy) { self.djinniProxy = proxy }
 
-    public func echo(_ value: TestSuite.Result) async throws -> TestSuite.Result {
+    @concurrent public func echo(_ value: TestSuite.Result) async throws -> TestSuite.Result {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.echo(value) }
     }
 
-    public func fetch(_ value: TestSuite.Result) async throws -> TestSuite.Result {
+    @concurrent public func fetch(_ value: TestSuite.Result) async throws -> TestSuite.Result {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(value) }.get()
     }
 
-    public func load() async throws -> TestSuite.Result {
+    @concurrent public func load() async throws -> TestSuite.Result {
         return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load() }
     }
 
-    public func ping() async throws -> Void {
+    @concurrent public func ping() async throws -> Void {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
     }
 
-    public func plain() async throws -> Int32 {
+    @concurrent public func plain() async throws -> Int32 {
         return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.plain() }
     }
 }

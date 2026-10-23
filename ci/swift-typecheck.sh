@@ -3,8 +3,9 @@
 # syntax-checks the generated Swift/C++ glue.
 #
 # The script generates Swift and Swift/C++ glue with the built generator. It runs
-# `swiftc -typecheck` over the generated Swift in Swift 5 mode and in Swift 6 mode with complete
-# strict concurrency checking. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
+# `swiftc -typecheck` over the generated Swift in Swift 5 mode, in Swift 6 mode with complete
+# strict concurrency checking, and in Swift 6 mode with NonisolatedNonsendingByDefault (the mode of
+# Approachable Concurrency in the app modules). Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
 # generated protobuf types (module S12Protos) are the real messages of the assets protos
 # (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
@@ -185,7 +186,7 @@ swift_pass() { # <swiftc flags>
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
-  files+=("$error_conformance")
+  files+=("$error_conformance" "$repo_root/ci/swift-typecheck/AsyncCallers.swift")
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
@@ -217,6 +218,7 @@ swift_pass() { # <swiftc flags>
 }
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
+swift_pass "-swift-version 6 -strict-concurrency=complete -enable-upcoming-feature NonisolatedNonsendingByDefault"
 
 # The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
 if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then

@@ -14,15 +14,15 @@ public final class SwiftErrorService: @unchecked Sendable {
 
     init(proxy: SwiftErrorServiceCppProxy) { self.djinniProxy = proxy }
 
-    public func fetch(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
+    @concurrent public func fetch(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
         return try await DjinniSupport.djinniRun(DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in DjinniSupport.cppOutcome { try djinniProxy.fetch(id) } }.get()
     }
 
-    public func count() async throws(TestSuite.CruxError) -> Int32 {
+    @concurrent public func count() async throws(TestSuite.CruxError) -> Int32 {
         return try await DjinniSupport.djinniRun(DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in DjinniSupport.cppOutcome { try djinniProxy.count() } }.get()
     }
 
-    public func watch(_ observer: TestSuite.SwiftErrorObserver) async throws(TestSuite.CruxError) -> Bool {
+    @concurrent public func watch(_ observer: TestSuite.SwiftErrorObserver) async throws(TestSuite.CruxError) -> Bool {
         return try await DjinniSupport.djinniRun(DispatchQueue.global(qos: .utility)) { [djinniProxy = self.djinniProxy] in DjinniSupport.cppOutcome { try djinniProxy.watch(observer) } }.get()
     }
 }
