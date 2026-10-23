@@ -104,7 +104,7 @@ public:
             auto res = f.get();
             if (std::holds_alternative<ErrorValue>(res)) {
                 const auto& e = std::get<ErrorValue>(res);
-                p.setException(e);
+                p.setException(e.cause ? e.cause : std::make_exception_ptr(e));
             } else {
                 // A throwing conversion must not destroy the promise unset; the future would hang
                 try {
