@@ -39,10 +39,10 @@ let swiftOptionsServiceMethods: Vtbl<SwiftOptionsService> = [
 public enum SwiftOptionsServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftOptionsService
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftOptionsServiceCppProxy(c) as SwiftType })
+        return try cppInterfaceToSwift(c, { SwiftOptionsServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_options.SwiftOptionsServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftOptionsServiceMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_options.SwiftOptionsServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftOptionsServiceMethods), dispatcherProtocalCall)})
     }
 }
 public class SwiftOptionsService_statics: @unchecked Sendable {

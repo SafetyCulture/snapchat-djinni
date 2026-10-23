@@ -13,9 +13,9 @@ import TestSuiteCxx
 public enum ObjcHostListenerMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.ObjcHostListener
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { throw DjinniError("ObjcHostListener has no C++ implementation: add +c to the interface") })
+        return try cppInterfaceToSwift(c, { throw DjinniError("ObjcHostListener has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { throw DjinniError("ObjcHostListener has no Swift host implementation: add +sw to the interface") })
+        return try swiftInterfaceToCpp(s, { throw DjinniError("ObjcHostListener has no Swift host implementation: add +sw to the interface") })
     }
 }

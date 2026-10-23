@@ -26,9 +26,9 @@ let swiftAsyncSharedMethods: Vtbl<SwiftAsyncShared> = [
 public enum SwiftAsyncSharedMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncShared
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftAsyncSharedCppProxy(c) as SwiftType })
+        return try cppInterfaceToSwift(c, { SwiftAsyncSharedCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncSharedSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncSharedMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncSharedSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncSharedMethods), dispatcherProtocalCall)})
     }
 }

@@ -17,9 +17,9 @@ let swiftAsyncObserverMethods: Vtbl<SwiftAsyncObserver> = [
 public enum SwiftAsyncObserverMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncObserver
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { throw DjinniError("SwiftAsyncObserver has no C++ implementation: add +c to the interface") })
+        return try cppInterfaceToSwift(c, { throw DjinniError("SwiftAsyncObserver has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
     }
 }

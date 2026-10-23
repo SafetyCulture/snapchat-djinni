@@ -27,10 +27,10 @@ final class SwiftIdentServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftId
 public enum SwiftIdentServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftIdentService
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftIdentServiceCppProxy(c) as SwiftType })
+        return try cppInterfaceToSwift(c, { SwiftIdentServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { throw DjinniError("SwiftIdentService has no Swift host implementation: add +sw to the interface") })
+        return try swiftInterfaceToCpp(s, { throw DjinniError("SwiftIdentService has no Swift host implementation: add +sw to the interface") })
     }
 }
 public class SwiftIdentService_statics: @unchecked Sendable {

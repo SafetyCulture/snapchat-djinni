@@ -24,9 +24,9 @@ let swiftSendableServiceMethods: Vtbl<SwiftSendableService> = [
 public enum SwiftSendableServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableService
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftSendableServiceCppProxy(c) as SwiftType })
+        return try cppInterfaceToSwift(c, { SwiftSendableServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { djinni_generated.SwiftSendableServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftSendableServiceMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftSendableServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftSendableServiceMethods), dispatcherProtocalCall)})
     }
 }

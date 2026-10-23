@@ -21,9 +21,9 @@ final class SwiftErrorExternServiceCppProxy: DjinniSupport.CppProxy, TestSuite.S
 public enum SwiftErrorExternServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftErrorExternService
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppInterfaceToSwift(c, { SwiftErrorExternServiceCppProxy(c) as SwiftType })
+        return try cppInterfaceToSwift(c, { SwiftErrorExternServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { throw DjinniError("SwiftErrorExternService has no Swift host implementation: add +sw to the interface") })
+        return try swiftInterfaceToCpp(s, { throw DjinniError("SwiftErrorExternService has no Swift host implementation: add +sw to the interface") })
     }
 }
