@@ -48,6 +48,14 @@ public final class KotlinJavaBridgeEverything {
 
     /*package*/ final HashMap<String, ArrayList<KotlinJavaBridgeLeaf>> mNested;
 
+    /*package*/ final HashSet<KotlinJavaBridgeLeaf> mLeafSet;
+
+    /*package*/ final HashSet<KotlinJavaBridgeColor> mColorSet;
+
+    /*package*/ final KotlinJavaBridgeLeaf[] mLeafArray;
+
+    /*package*/ final HashMap<KotlinJavaBridgeColor, KotlinJavaBridgeLeaf> mColorTable;
+
     /*package*/ final KotlinJavaBridgeColor mColor;
 
     /*package*/ final KotlinJavaBridgeColor mMaybeColor;
@@ -79,6 +87,10 @@ public final class KotlinJavaBridgeEverything {
             HashSet<String> keys,
             HashMap<String, KotlinJavaBridgeLeaf> table,
             HashMap<String, ArrayList<KotlinJavaBridgeLeaf>> nested,
+            HashSet<KotlinJavaBridgeLeaf> leafSet,
+            HashSet<KotlinJavaBridgeColor> colorSet,
+            KotlinJavaBridgeLeaf[] leafArray,
+            HashMap<KotlinJavaBridgeColor, KotlinJavaBridgeLeaf> colorTable,
             KotlinJavaBridgeColor color,
             KotlinJavaBridgeColor maybeColor,
             EnumSet<KotlinJavaBridgeFlags> flags,
@@ -103,6 +115,10 @@ public final class KotlinJavaBridgeEverything {
         this.mKeys = keys;
         this.mTable = table;
         this.mNested = nested;
+        this.mLeafSet = leafSet;
+        this.mColorSet = colorSet;
+        this.mLeafArray = leafArray;
+        this.mColorTable = colorTable;
         this.mColor = color;
         this.mMaybeColor = maybeColor;
         this.mFlags = flags;
@@ -183,6 +199,22 @@ public final class KotlinJavaBridgeEverything {
         return mNested;
     }
 
+    public HashSet<KotlinJavaBridgeLeaf> getLeafSet() {
+        return mLeafSet;
+    }
+
+    public HashSet<KotlinJavaBridgeColor> getColorSet() {
+        return mColorSet;
+    }
+
+    public KotlinJavaBridgeLeaf[] getLeafArray() {
+        return mLeafArray;
+    }
+
+    public HashMap<KotlinJavaBridgeColor, KotlinJavaBridgeLeaf> getColorTable() {
+        return mColorTable;
+    }
+
     public KotlinJavaBridgeColor getColor() {
         return mColor;
     }
@@ -231,6 +263,10 @@ public final class KotlinJavaBridgeEverything {
                 this.mKeys.equals(other.mKeys) &&
                 this.mTable.equals(other.mTable) &&
                 this.mNested.equals(other.mNested) &&
+                this.mLeafSet.equals(other.mLeafSet) &&
+                this.mColorSet.equals(other.mColorSet) &&
+                java.util.Arrays.equals(mLeafArray, other.mLeafArray) &&
+                this.mColorTable.equals(other.mColorTable) &&
                 this.mColor == other.mColor &&
                 ((this.mMaybeColor == null && other.mMaybeColor == null) || (this.mMaybeColor != null && this.mMaybeColor.equals(other.mMaybeColor))) &&
                 this.mFlags == other.mFlags &&
@@ -261,6 +297,10 @@ public final class KotlinJavaBridgeEverything {
         hashCode = hashCode * 31 + mKeys.hashCode();
         hashCode = hashCode * 31 + mTable.hashCode();
         hashCode = hashCode * 31 + mNested.hashCode();
+        hashCode = hashCode * 31 + mLeafSet.hashCode();
+        hashCode = hashCode * 31 + mColorSet.hashCode();
+        hashCode = hashCode * 31 + java.util.Arrays.hashCode(mLeafArray);
+        hashCode = hashCode * 31 + mColorTable.hashCode();
         hashCode = hashCode * 31 + mColor.hashCode();
         hashCode = hashCode * 31 + (mMaybeColor == null ? 0 : mMaybeColor.hashCode());
         hashCode = hashCode * 31 + mFlags.hashCode();
@@ -291,6 +331,10 @@ public final class KotlinJavaBridgeEverything {
                 "," + "mKeys=" + mKeys +
                 "," + "mTable=" + mTable +
                 "," + "mNested=" + mNested +
+                "," + "mLeafSet=" + mLeafSet +
+                "," + "mColorSet=" + mColorSet +
+                "," + "mLeafArray=" + mLeafArray +
+                "," + "mColorTable=" + mColorTable +
                 "," + "mColor=" + mColor +
                 "," + "mMaybeColor=" + mMaybeColor +
                 "," + "mFlags=" + mFlags +

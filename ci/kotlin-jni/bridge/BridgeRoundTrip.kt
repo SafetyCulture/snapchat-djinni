@@ -1,11 +1,14 @@
-// Round trips every field kind between the Java classes of one generator run and the Kotlin JNI classes of another.
+// Round trips every supported field kind between the Java classes of one generator run and the Kotlin JNI
+// classes of another run, and checks the wrappers of the interfaces that Kotlin and Java implement.
 
+import com.dropbox.djinni.bridgejava.KotlinJavaBridgeBoth as JavaBoth
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeColor as JavaColor
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeError as JavaError
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeEverything as JavaEverything
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeFlags as JavaFlags
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf as JavaLeaf
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener as JavaListener
+import com.dropbox.djinni.bridgekt.KotlinJavaBridgeBoth as KotlinBoth
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeColor as KotlinColor
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeError as KotlinError
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeEverything as KotlinEverything
@@ -24,6 +27,7 @@ import java.util.Date
 import java.util.EnumSet
 import java.util.HashMap
 import java.util.HashSet
+import java.util.concurrent.ExecutionException
 
 private fun check(condition: Boolean, message: String) {
     if (!condition) {
@@ -38,25 +42,52 @@ private fun <T> ready(value: T): Future<T> {
     return promise.getFuture()
 }
 
-private fun kotlinLeaf(): KotlinLeaf = KotlinLeaf(7, "seven")
+private fun <T> failed(message: String): Future<T> {
+    val promise = Promise<T>()
+    promise.setException(IllegalStateException(message))
+    return promise.getFuture()
+}
 
-private fun javaLeaf(): JavaLeaf = JavaLeaf(7, "seven")
+private fun failureMessage(error: Throwable): String? {
+    var current: Throwable? = error
+    while (current != null) {
+        if (current.message == "failed future") return current.message
+        current = current.cause
+    }
+    return null
+}
 
 private fun kotlinEverything(): KotlinEverything = KotlinEverything(
     true, 8, 16, 32, 64, 1.5f, 2.5, "text", byteArrayOf(1, 2, 3), Date(1_700_000_000_000L),
-    5, null, kotlinLeaf(), ArrayList(listOf(kotlinLeaf())), ArrayList(listOf("name")),
-    HashSet(listOf("key")), HashMap(mapOf("table" to kotlinLeaf())),
-    HashMap(mapOf("nested" to ArrayList(listOf(kotlinLeaf())))),
-    KotlinColor.GREEN, null, EnumSet.of(KotlinFlags.FIRST, KotlinFlags.THIRD), null,
-    kotlinLeaf(), ExternKotlinMessage(byteArrayOf(9, 8)))
+    5, "maybe", KotlinLeaf(9, "maybe-leaf"),
+    ArrayList(listOf(KotlinLeaf(10, "ten"), KotlinLeaf(11, "eleven"))),
+    ArrayList(listOf("name")),
+    HashSet(listOf("key", "other")),
+    HashMap(mapOf("table" to KotlinLeaf(12, "twelve"))),
+    HashMap(mapOf("nested" to ArrayList(listOf(KotlinLeaf(13, "thirteen"))))),
+    HashSet(listOf(KotlinLeaf(15, "fifteen"), KotlinLeaf(16, "sixteen"))),
+    HashSet(listOf(KotlinColor.RED, KotlinColor.BLUE)),
+    arrayOf(KotlinLeaf(17, "seventeen"), KotlinLeaf(18, "eighteen")),
+    HashMap(mapOf(KotlinColor.GREEN to KotlinLeaf(19, "nineteen"))),
+    KotlinColor.GREEN, KotlinColor.BLUE,
+    EnumSet.of(KotlinFlags.FIRST, KotlinFlags.THIRD), EnumSet.of(KotlinFlags.SECOND),
+    KotlinLeaf(14, "fourteen"), ExternKotlinMessage(byteArrayOf(9, 8)))
 
 private fun javaEverything(): JavaEverything = JavaEverything(
     true, 8, 16, 32, 64, 1.5f, 2.5, "text", byteArrayOf(1, 2, 3), Date(1_700_000_000_000L),
-    5, null, javaLeaf(), ArrayList(listOf(javaLeaf())), ArrayList(listOf("name")),
-    HashSet(listOf("key")), HashMap(mapOf("table" to javaLeaf())),
-    HashMap(mapOf("nested" to ArrayList(listOf(javaLeaf())))),
-    JavaColor.GREEN, null, EnumSet.of(JavaFlags.FIRST, JavaFlags.THIRD), null,
-    javaLeaf(), ExternJavaMessage(byteArrayOf(9, 8)))
+    5, "maybe", JavaLeaf(9, "maybe-leaf"),
+    ArrayList(listOf(JavaLeaf(10, "ten"), JavaLeaf(11, "eleven"))),
+    ArrayList(listOf("name")),
+    HashSet(listOf("key", "other")),
+    HashMap(mapOf("table" to JavaLeaf(12, "twelve"))),
+    HashMap(mapOf("nested" to ArrayList(listOf(JavaLeaf(13, "thirteen"))))),
+    HashSet(listOf(JavaLeaf(15, "fifteen"), JavaLeaf(16, "sixteen"))),
+    HashSet(listOf(JavaColor.RED, JavaColor.BLUE)),
+    arrayOf(JavaLeaf(17, "seventeen"), JavaLeaf(18, "eighteen")),
+    HashMap(mapOf(JavaColor.GREEN to JavaLeaf(19, "nineteen"))),
+    JavaColor.GREEN, JavaColor.BLUE,
+    EnumSet.of(JavaFlags.FIRST, JavaFlags.THIRD), EnumSet.of(JavaFlags.SECOND),
+    JavaLeaf(14, "fourteen"), ExternJavaMessage(byteArrayOf(9, 8)))
 
 private class KotlinListenerImpl : KotlinListener() {
     override fun value(value: Int): Int = value + 1
@@ -69,8 +100,21 @@ private class KotlinListenerImpl : KotlinListener() {
 
     override fun futureLeaf(leaf: KotlinLeaf): Future<KotlinLeaf> = ready(leaf)
 
+    override fun futureOutcome(value: Int): Future<Outcome<KotlinLeaf, KotlinError>> =
+        ready(if (value > 0) Outcome.fromResult(KotlinLeaf(20, "twenty")) else Outcome.fromError(KotlinError("failed", 9)))
+
+    override fun failedLeafFuture(): Future<KotlinLeaf> = failed("failed future")
+
     override fun outcomeValue(value: Int): Outcome<KotlinLeaf, KotlinError> =
-        if (value > 0) Outcome.fromResult(kotlinLeaf()) else Outcome.fromError(KotlinError("failed", 9))
+        if (value > 0) Outcome.fromResult(KotlinLeaf(21, "twenty-one")) else Outcome.fromError(KotlinError("failed", 9))
+
+    override fun chain(other: KotlinListener?, value: Int): Int = (other?.value(value) ?: 0) + 1
+
+    override fun self(): KotlinListener? = this
+
+    override fun listeners(items: ArrayList<KotlinListener>): ArrayList<KotlinListener> = items
+
+    override fun maybeListener(value: KotlinListener?): KotlinListener? = value
 }
 
 private class JavaListenerImpl : JavaListener() {
@@ -84,8 +128,29 @@ private class JavaListenerImpl : JavaListener() {
 
     override fun futureLeaf(leaf: JavaLeaf): Future<JavaLeaf> = ready(leaf)
 
+    override fun futureOutcome(value: Int): Future<Outcome<JavaLeaf, JavaError>> =
+        ready(if (value > 0) Outcome.fromResult(JavaLeaf(22, "twenty-two")) else Outcome.fromError(JavaError("failed", 9)))
+
+    override fun failedLeafFuture(): Future<JavaLeaf> = failed("failed future")
+
     override fun outcomeValue(value: Int): Outcome<JavaLeaf, JavaError> =
-        if (value > 0) Outcome.fromResult(javaLeaf()) else Outcome.fromError(JavaError("failed", 9))
+        if (value > 0) Outcome.fromResult(JavaLeaf(23, "twenty-three")) else Outcome.fromError(JavaError("failed", 9))
+
+    override fun chain(other: JavaListener?, value: Int): Int = (other?.value(value) ?: 0) + 2
+
+    override fun self(): JavaListener? = this
+
+    override fun listeners(items: ArrayList<JavaListener>): ArrayList<JavaListener> = items
+
+    override fun maybeListener(value: JavaListener?): JavaListener? = value
+}
+
+private class KotlinBothImpl : KotlinBoth() {
+    override fun ping(leaf: KotlinLeaf): KotlinLeaf = leaf
+}
+
+private class JavaBothImpl : JavaBoth() {
+    override fun ping(leaf: JavaLeaf): JavaLeaf = leaf
 }
 
 // The Java equals of a flags field compares the EnumSet objects, so this program compares the fields.
@@ -108,6 +173,10 @@ private fun sameJava(a: JavaEverything, b: JavaEverything): Boolean =
         a.keys == b.keys &&
         a.table.mapValues { it.value.name } == b.table.mapValues { it.value.name } &&
         a.nested.mapValues { entry -> entry.value.map { it.name } } == b.nested.mapValues { entry -> entry.value.map { it.name } } &&
+        a.leafSet.map { it.name }.toSet() == b.leafSet.map { it.name }.toSet() &&
+        a.colorSet == b.colorSet &&
+        a.leafArray.map { it.name }.toList() == b.leafArray.map { it.name }.toList() &&
+        a.colorTable.mapValues { it.value.name } == b.colorTable.mapValues { it.value.name } &&
         a.color.name == b.color.name &&
         a.maybeColor?.name == b.maybeColor?.name &&
         a.flags.map { it.name }.toSet() == b.flags.map { it.name }.toSet() &&
@@ -138,12 +207,25 @@ fun main() {
     check(javaListener.toKotlinJni() === kotlinImpl, "a wrapper round trip returns the Kotlin object")
     check(javaListener.value(1) == 2, "value")
     check(javaListener.optional(null) == null, "optional null")
-    check(javaListener.optional(javaLeaf()) == "seven", "optional")
-    check(javaListener.list(ArrayList(listOf(javaLeaf()))) == ArrayList(listOf("seven")), "list")
+    check(javaListener.optional(JavaLeaf(24, "twenty-four")) == "twenty-four", "optional")
+    check(javaListener.list(ArrayList(listOf(JavaLeaf(25, "twenty-five")))) == ArrayList(listOf("twenty-five")), "list")
     check(javaListener.futureValue(1).get() == 2, "future value")
-    check(javaListener.futureLeaf(javaLeaf()).get().name == "seven", "future record")
-    check(javaListener.outcomeValue(1).resultOr(null)?.name == "seven", "outcome value")
+    check(javaListener.futureLeaf(JavaLeaf(26, "twenty-six")).get().name == "twenty-six", "future record")
+    check(javaListener.futureOutcome(1).get().resultOr(null)?.name == "twenty", "future outcome value")
+    check(javaListener.futureOutcome(0).get().errorOrNull()?.code == 9, "future outcome error")
+    try {
+        javaListener.failedLeafFuture().get()
+        check(false, "the failed future must not return a value")
+    } catch (error: ExecutionException) {
+        check(failureMessage(error) == "failed future", "failed future error: $error")
+    }
+    check(javaListener.outcomeValue(1).resultOr(null)?.name == "twenty-one", "outcome value")
     check(javaListener.outcomeValue(0).errorOrNull()?.code == 9, "outcome error")
+    check(javaListener.chain(javaListener, 1) == 3, "interface argument")
+    check(javaListener.self() === javaListener, "interface return")
+    check(javaListener.listeners(ArrayList(listOf(javaListener)))[0] === javaListener, "interface list")
+    check(javaListener.maybeListener(null) == null, "interface optional null")
+    check(javaListener.maybeListener(javaListener) === javaListener, "interface optional")
 
     // A Java +j implementation behind the Kotlin abstract class.
     val javaImpl = JavaListenerImpl()
@@ -151,10 +233,23 @@ fun main() {
     check(kotlinListener === javaImpl.toKotlinJni(), "one wrapper for one Java object")
     check(kotlinListener.toJava() === javaImpl, "a wrapper round trip returns the Java object")
     check(kotlinListener.value(1) == 3, "reverse value")
-    check(kotlinListener.optional(kotlinLeaf()) == "seven", "reverse optional")
-    check(kotlinListener.list(ArrayList(listOf(kotlinLeaf()))) == ArrayList(listOf("seven")), "reverse list")
-    check(kotlinListener.futureLeaf(kotlinLeaf()).get().mName == "seven", "reverse future")
+    check(kotlinListener.optional(KotlinLeaf(27, "twenty-seven")) == "twenty-seven", "reverse optional")
+    check(kotlinListener.list(ArrayList(listOf(KotlinLeaf(28, "twenty-eight")))) == ArrayList(listOf("twenty-eight")), "reverse list")
+    check(kotlinListener.futureLeaf(KotlinLeaf(29, "twenty-nine")).get().mName == "twenty-nine", "reverse future")
+    check(kotlinListener.futureOutcome(1).get().resultOr(null)?.mName == "twenty-two", "reverse future outcome")
     check(kotlinListener.outcomeValue(0).errorOrNull()?.mCode == 9, "reverse outcome")
+    check(kotlinListener.chain(kotlinListener, 1) == 5, "reverse interface argument")
+    check(kotlinListener.self() === kotlinListener, "reverse interface return")
+
+    // A +c +j interface: each leg wraps the implementation of the other leg.
+    val kotlinBoth = KotlinBothImpl()
+    val javaBoth = kotlinBoth.toJava()
+    check(javaBoth.ping(JavaLeaf(30, "thirty")).name == "thirty", "+c +j Kotlin to Java")
+    check(javaBoth.toKotlinJni() === kotlinBoth, "+c +j Kotlin round trip")
+    val javaBothImpl = JavaBothImpl()
+    val kotlinBothOfJava = javaBothImpl.toKotlinJni()
+    check(kotlinBothOfJava.ping(KotlinLeaf(31, "thirty-one")).mName == "thirty-one", "+c +j Java to Kotlin")
+    check(kotlinBothOfJava.toJava() === javaBothImpl, "+c +j Java round trip")
 
     println("JAVA BRIDGE ROUND TRIP OK")
     System.exit(0)

@@ -2,7 +2,7 @@
 @extern "../../support-lib/outcome.yaml"
 @extern "vendor/third-party/kotlin_extern.yaml"
 
-# Records, enums and a +j interface for the Java <-> Kotlin JNI converters.
+# Records, enums and interfaces for the Java <-> Kotlin JNI converters.
 
 kotlin_java_bridge_color = enum {
   red;
@@ -40,6 +40,10 @@ kotlin_java_bridge_everything = record {
   keys: set<string>;
   table: map<string, kotlin_java_bridge_leaf>;
   nested: map<string, list<kotlin_java_bridge_leaf>>;
+  leaf_set: set<kotlin_java_bridge_leaf>;
+  color_set: set<kotlin_java_bridge_color>;
+  leaf_array: array<kotlin_java_bridge_leaf>;
+  color_table: map<kotlin_java_bridge_color, kotlin_java_bridge_leaf>;
   color: kotlin_java_bridge_color;
   maybe_color: optional<kotlin_java_bridge_color>;
   flags: kotlin_java_bridge_flags;
@@ -47,6 +51,37 @@ kotlin_java_bridge_everything = record {
   leaf: kotlin_java_bridge_leaf;
   message: extern_kotlin_message;
 } deriving(eq)
+
+kotlin_java_bridge_error = record {
+  message: string;
+  code: i32;
+}
+
+kotlin_java_bridge_listener = interface +j {
+  value(value: i32): i32;
+  optional(leaf: optional<kotlin_java_bridge_leaf>): optional<string>;
+  list(items: list<kotlin_java_bridge_leaf>): list<string>;
+  future_value(value: i32): future<i32>;
+  future_leaf(leaf: kotlin_java_bridge_leaf): future<kotlin_java_bridge_leaf>;
+  future_outcome(value: i32): future<outcome<kotlin_java_bridge_leaf, kotlin_java_bridge_error>>;
+  failed_leaf_future(): future<kotlin_java_bridge_leaf>;
+  outcome_value(value: i32): outcome<kotlin_java_bridge_leaf, kotlin_java_bridge_error>;
+  chain(other: kotlin_java_bridge_listener, value: i32): i32;
+  self(): kotlin_java_bridge_listener;
+  listeners(items: list<kotlin_java_bridge_listener>): list<kotlin_java_bridge_listener>;
+  maybe_listener(value: optional<kotlin_java_bridge_listener>): optional<kotlin_java_bridge_listener>;
+}
+
+# C++ and Kotlin can implement this one.
+kotlin_java_bridge_both = interface +c +j {
+  ping(leaf: kotlin_java_bridge_leaf): kotlin_java_bridge_leaf;
+}
+
+# Containers that need the nested form of the converters.
+kotlin_java_bridge_containers = record {
+  nested_items: list<list<kotlin_java_bridge_leaf>>;
+  nested_table: map<string, map<string, kotlin_java_bridge_leaf>>;
+}
 
 # A +c interface has no converter. The records that hold it, directly or through another record, have none either.
 kotlin_java_bridge_service = interface +c {
@@ -60,27 +95,4 @@ kotlin_java_bridge_skipped = record {
 
 kotlin_java_bridge_holder = record {
   skipped: kotlin_java_bridge_skipped;
-}
-
-# The Java bridge implements these methods for the other leg: value, optional, list, future and outcome.
-kotlin_java_bridge_error = record {
-  message: string;
-  code: i32;
-}
-
-kotlin_java_bridge_listener = interface +j {
-  value(value: i32): i32;
-  optional(leaf: optional<kotlin_java_bridge_leaf>): optional<string>;
-  list(items: list<kotlin_java_bridge_leaf>): list<string>;
-  future_value(value: i32): future<i32>;
-  future_leaf(leaf: kotlin_java_bridge_leaf): future<kotlin_java_bridge_leaf>;
-  outcome_value(value: i32): outcome<kotlin_java_bridge_leaf, kotlin_java_bridge_error>;
-}
-
-# Containers that need the nested form and the interface form of the converters.
-kotlin_java_bridge_containers = record {
-  nested_items: list<list<kotlin_java_bridge_leaf>>;
-  nested_table: map<string, map<string, kotlin_java_bridge_leaf>>;
-  listeners: list<kotlin_java_bridge_listener>;
-  maybe_listener: optional<kotlin_java_bridge_listener>;
 }

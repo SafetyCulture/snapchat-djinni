@@ -3,10 +3,8 @@
 
 package com.dropbox.djinni.bridgekt
 
-/** Containers that need the nested form and the interface form of the converters. */
+/** Containers that need the nested form of the converters. */
 data class KotlinJavaBridgeContainers(
     val mNestedItems: ArrayList<ArrayList<KotlinJavaBridgeLeaf>>,
-    val mNestedTable: HashMap<String, HashMap<String, KotlinJavaBridgeLeaf>>,
-    val mListeners: ArrayList<KotlinJavaBridgeListener>,
-    val mMaybeListener: KotlinJavaBridgeListener?
+    val mNestedTable: HashMap<String, HashMap<String, KotlinJavaBridgeLeaf>>
 )

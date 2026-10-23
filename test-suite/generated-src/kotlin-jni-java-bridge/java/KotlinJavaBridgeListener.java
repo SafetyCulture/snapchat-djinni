@@ -16,5 +16,17 @@ public abstract class KotlinJavaBridgeListener {
 
     public abstract com.snapchat.djinni.Future<KotlinJavaBridgeLeaf> futureLeaf(KotlinJavaBridgeLeaf leaf);
 
+    public abstract com.snapchat.djinni.Future<com.snapchat.djinni.Outcome<KotlinJavaBridgeLeaf, KotlinJavaBridgeError>> futureOutcome(int value);
+
+    public abstract com.snapchat.djinni.Future<KotlinJavaBridgeLeaf> failedLeafFuture();
+
     public abstract com.snapchat.djinni.Outcome<KotlinJavaBridgeLeaf, KotlinJavaBridgeError> outcomeValue(int value);
+
+    public abstract int chain(KotlinJavaBridgeListener other, int value);
+
+    public abstract KotlinJavaBridgeListener self();
+
+    public abstract ArrayList<KotlinJavaBridgeListener> listeners(ArrayList<KotlinJavaBridgeListener> items);
+
+    public abstract KotlinJavaBridgeListener maybeListener(KotlinJavaBridgeListener value);
 }

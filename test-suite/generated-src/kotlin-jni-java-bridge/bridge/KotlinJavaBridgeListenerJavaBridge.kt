@@ -24,8 +24,32 @@ class KotlinJavaBridgeListenerJavaBridge(private val impl: com.dropbox.djinni.br
         return this.impl.futureLeaf(leaf.toKotlinJni()).then(com.snapchat.djinni.Future.FutureHandlerWithReturn<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf> { djinni_future -> djinni_future.get().toJava() })
     }
 
+    override fun futureOutcome(value: Int): com.snapchat.djinni.Future<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>> {
+        return this.impl.futureOutcome(value).then(com.snapchat.djinni.Future.FutureHandlerWithReturn<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>> { djinni_future -> djinni_future.get().match(com.snapchat.djinni.Outcome.ResultHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf> { djinni_value -> com.snapchat.djinni.Outcome.fromResult<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>(djinni_value.toJava()) }, com.snapchat.djinni.Outcome.ErrorHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError> { djinni_error -> com.snapchat.djinni.Outcome.fromError<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>(djinni_error.toJava()) }) })
+    }
+
+    override fun failedLeafFuture(): com.snapchat.djinni.Future<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf> {
+        return this.impl.failedLeafFuture().then(com.snapchat.djinni.Future.FutureHandlerWithReturn<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf> { djinni_future -> djinni_future.get().toJava() })
+    }
+
     override fun outcomeValue(value: Int): com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError> {
         return this.impl.outcomeValue(value).match(com.snapchat.djinni.Outcome.ResultHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf> { djinni_value -> com.snapchat.djinni.Outcome.fromResult<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>(djinni_value.toJava()) }, com.snapchat.djinni.Outcome.ErrorHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError> { djinni_error -> com.snapchat.djinni.Outcome.fromError<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>(djinni_error.toJava()) })
+    }
+
+    override fun chain(other: com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener?, value: Int): Int {
+        return this.impl.chain(other?.toKotlinJni(), value)
+    }
+
+    override fun self(): com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener? {
+        return this.impl.self()?.toJava()
+    }
+
+    override fun listeners(items: ArrayList<com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener>): ArrayList<com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener> {
+        return ArrayList(this.impl.listeners(ArrayList(items.map { djinni_item0 -> djinni_item0.toKotlinJni() })).map { djinni_item0 -> djinni_item0.toJava() })
+    }
+
+    override fun maybeListener(value: com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener?): com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener? {
+        return this.impl.maybeListener(value?.let { djinni_value0 -> djinni_value0.toKotlinJni() })?.let { djinni_value0 -> djinni_value0.toJava() }
     }
 
     internal fun djinniBridgeImpl(): com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener = this.impl
@@ -52,8 +76,32 @@ class KotlinJavaBridgeListenerKotlinBridge(private val impl: com.dropbox.djinni.
         return this.impl.futureLeaf(leaf.toJava()).then(com.snapchat.djinni.Future.FutureHandlerWithReturn<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf> { djinni_future -> djinni_future.get().toKotlinJni() })
     }
 
+    override fun futureOutcome(value: Int): com.snapchat.djinni.Future<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>> {
+        return this.impl.futureOutcome(value).then(com.snapchat.djinni.Future.FutureHandlerWithReturn<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError>, com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>> { djinni_future -> djinni_future.get().match(com.snapchat.djinni.Outcome.ResultHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf> { djinni_value -> com.snapchat.djinni.Outcome.fromResult<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>(djinni_value.toKotlinJni()) }, com.snapchat.djinni.Outcome.ErrorHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError> { djinni_error -> com.snapchat.djinni.Outcome.fromError<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>(djinni_error.toKotlinJni()) }) })
+    }
+
+    override fun failedLeafFuture(): com.snapchat.djinni.Future<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf> {
+        return this.impl.failedLeafFuture().then(com.snapchat.djinni.Future.FutureHandlerWithReturn<com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf> { djinni_future -> djinni_future.get().toKotlinJni() })
+    }
+
     override fun outcomeValue(value: Int): com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError> {
         return this.impl.outcomeValue(value).match(com.snapchat.djinni.Outcome.ResultHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf> { djinni_value -> com.snapchat.djinni.Outcome.fromResult<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>(djinni_value.toKotlinJni()) }, com.snapchat.djinni.Outcome.ErrorHandler<com.snapchat.djinni.Outcome<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>, com.dropbox.djinni.bridgejava.KotlinJavaBridgeError> { djinni_error -> com.snapchat.djinni.Outcome.fromError<com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf, com.dropbox.djinni.bridgekt.KotlinJavaBridgeError>(djinni_error.toKotlinJni()) })
+    }
+
+    override fun chain(other: com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener?, value: Int): Int {
+        return this.impl.chain(other?.toJava(), value)
+    }
+
+    override fun self(): com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener? {
+        return this.impl.self()?.toKotlinJni()
+    }
+
+    override fun listeners(items: ArrayList<com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener>): ArrayList<com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener> {
+        return ArrayList(this.impl.listeners(ArrayList(items.map { djinni_item0 -> djinni_item0.toJava() })).map { djinni_item0 -> djinni_item0.toKotlinJni() })
+    }
+
+    override fun maybeListener(value: com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener?): com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener? {
+        return this.impl.maybeListener(value?.let { djinni_value0 -> djinni_value0.toJava() })?.let { djinni_value0 -> djinni_value0.toKotlinJni() }
     }
 
     internal fun djinniBridgeImpl(): com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener = this.impl
