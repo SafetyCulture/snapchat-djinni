@@ -715,6 +715,16 @@ fi
     --idl-include-path "djinni/vendor" \
 )
 
+# An extern type may carry the name of a Parceler; it writes no Kotlin file, so it cannot collide.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-parceler-name/kotlin" \
+    --java-package $java_package \
+    --java-implement-android-os-parcelable true \
+    --idl "djinni/kotlin_extern.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+
 # The JNI code binds one class for an extern record, so it cannot serve --java-out and --kotlin-jni-out.
 extern_log="$temp_out/kotlin-jni-extern-both.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \

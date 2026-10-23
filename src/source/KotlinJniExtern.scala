@@ -52,7 +52,8 @@ object KotlinJniExtern {
       case (name, fqns) if fqns.size > 1 =>
         s"The classes ${fqns.mkString(" and ")} need a Parceler with the same name $name."
     }
-    val typeNames = idl.map(d => spec.javaIdentStyle.ty(d.ident.name)).toSet
+    // Extern declarations write no Kotlin file, so only internal types can collide
+    val typeNames = idl.collect { case d: InternTypeDecl => spec.javaIdentStyle.ty(d.ident.name) }.toSet
     val collision = classes.map(parcelerName(spec, _)).distinct.sorted.collect {
       case name if typeNames.contains(name) =>
         s"The Parceler name $name collides with an IDL type of the same name."

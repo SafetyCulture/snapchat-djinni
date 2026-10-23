@@ -384,9 +384,10 @@ Async wrappers (`--swift-async-wrap`):
   `DjinniError` when C++ throws.
 - A method that returns `future<T>` is `async throws -> T`. It awaits
   `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
-  The C++ future is not cancelled. A C++ exception that is thrown before the
-  future exists is thrown as `DjinniError`. A promise that C++ rejects later
-  also throws `DjinniError`.
+  The C++ future is not cancelled. Without `--swift-error-type`, a C++ exception
+  that is thrown before the future exists is thrown as `DjinniError`, and a
+  promise that C++ rejects later also throws `DjinniError`. With
+  `--swift-error-type`, `future<outcome<T, E>>` is rejected at generation.
 - Any other method is `async throws -> T`, or `async throws` for a method with no
   return value. It throws `DjinniError` when C++ throws.
 - A C++ object has one wrapper, so its calls run one after another on one queue
@@ -439,8 +440,6 @@ Error type (`--swift-error-type <name>`):
   help. If the conformance is missing, `swiftc` stops in the generated wrapper
   with the message `global function 'cppOutcome' requires that '<name>' conform
   to 'CppExceptionConvertible'`.
-- A method that returns `future<outcome<T, E>>` throws `DjinniError`, as with
-  the flag off.
 - A static method is exempt, for example a factory. A host interface without
   `+c` is exempt.
 - An interface with `+c +sw` is checked, although `--swift-async-wrap` does not

@@ -124,7 +124,10 @@ public enum DateMarshaller: Marshaller {
         return Date(timeIntervalSince1970: Double(millisecondsSinceEpoch) / 1000)
     }
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try I64Marshaller.toCpp(Int64((s.timeIntervalSince1970 * 1000).rounded()))
+        guard let ms = Int64(exactly: (s.timeIntervalSince1970 * 1000).rounded()) else {
+            throw DjinniError("Date out of range for milliseconds since epoch: \(s.timeIntervalSince1970)")
+        }
+        return try I64Marshaller.toCpp(ms)
     }
 }
 

@@ -89,6 +89,14 @@ func runTests() throws {
     let epochMs = Date(timeIntervalSince1970: 1_700_000_000.001)
     check(try service.dateRoundtrip(epochMs) == epochMs, "date round trip keeps 1 ms")
 
+    // A date outside the millisecond range throws instead of trapping
+    do {
+        _ = try service.dateRoundtrip(Date.distantFuture)
+        check(false, "an out-of-range date must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("Date out of range"), "date range error: \(error.errorMessage)")
+    }
+
     // An enum value that Swift does not know throws instead of trapping
     do {
         _ = try service.unknownColor()
