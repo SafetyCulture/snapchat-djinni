@@ -91,12 +91,24 @@ struct ParameterList: CompositeValue {};
 // Swift callable functions
 AnyValue makeStringValue(const char* bytes, size_t size);
 AnyValue makeBinaryValue(const void* bytes, size_t size);
-RangeValue getBinaryRange(const AnyValue& v);
+// Swift calls these helpers directly, outside any C++ try block. They never throw: a value of the wrong kind or an
+// index out of range gives an error value, and the Swift wrappers of DjinniSupport turn it into a DjinniError.
+struct BinaryRangeResult {
+    const void* bytes;
+    size_t size;
+    bool valid;
+};
+struct SizeResult {
+    size_t size;
+    bool valid;
+};
+BinaryRangeResult getBinaryRange(const AnyValue& v) noexcept;
 AnyValue makeRangeValue(const void* bytes, size_t size);
-size_t getSize(const AnyValue* v);
-AnyValue getMember(const AnyValue* v, size_t i);
+SizeResult getSize(const AnyValue* v) noexcept;
+// The result is an ErrorValue when the value is not a composite or the index is out of range
+AnyValue getMember(const AnyValue* v, size_t i) noexcept;
 void addMember(AnyValue* c, const AnyValue& v);
-AnyValue getMember(const ParameterList* v, size_t i);
+AnyValue getMember(const ParameterList* v, size_t i) noexcept;
 void setReturnValue(AnyValue* ret, const AnyValue& v);
 void setErrorValue(AnyValue* ret, const ErrorValue& v);
 void setErrorMessage(AnyValue* ret, const std::string& s);
@@ -104,7 +116,8 @@ AnyValue makeVoidValue();
 bool isVoidValue(const AnyValue* c);
 AnyValue makeCompositeValue();
 bool isError(const AnyValue* ret);
-ErrorValue getError(const AnyValue* ret);
+// The error of an error value, or an error that says the value is not an error
+ErrorValue getError(const AnyValue* ret) noexcept;
 
 // Provider bridge: call a provider held in AnyValue (C++ or Swift), or create one from a callback.
 AnyValue callProviderFunction(const AnyValue& providerValue);
@@ -113,8 +126,10 @@ AnyValue makeProviderFunction(AnyValue (*callback)(void*), void* context, void (
 struct InterfaceInfo {
     void* cppPointer;
     void* ctxPointer;
+    // false when the value is not an interface value
+    bool valid;
 };
-InterfaceInfo getInterfaceInfo(const AnyValue* v);
+InterfaceInfo getInterfaceInfo(const AnyValue* v) noexcept;
 
 // Keeps both pointers because the ProtocolWrapper is a base class, and its address differs from the address of the interface.
 struct WeakSwiftProxy {
@@ -251,6 +266,9 @@ struct Map {
     static CppType toCpp(const AnyValue& v) {
         CppType map;
         auto c = std::get<CompositeValuePtr>(v);
+        if (c->_elems.size() % 2 != 0) {
+            throw ErrorValue("a map has an odd number of keys and values");
+        }
         for (auto i = c->_elems.begin(); i != c->_elems.end(); i += 2) {
             map.insert_or_assign(T::toCpp(*i), U::toCpp(*(i+1)));
         }
@@ -321,10 +339,14 @@ struct Interface {
     using CppType = std::shared_ptr<T>;
     using CppOptType = std::shared_ptr<T>;
     static AnyValue fromCpp(const CppType& c) {
+        // A null shared_ptr is not an interface value. An optional interface uses fromCppOpt.
+        if (!c) {
+            throw ErrorValue("null value for a non-optional interface");
+        }
         return {c};
     }
     static CppType toCpp(const AnyValue& v) {
-        auto i = std::get<InterfaceValue>(v);
+        const auto& i = std::get<InterfaceValue>(v);
         return std::reinterpret_pointer_cast<T>(i.ptr);
     }
     static AnyValue fromCppOpt(const CppOptType& c) {

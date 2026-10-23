@@ -215,7 +215,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType").braced {
           w.wl("return try withUnsafePointer(to: c) { p in").nested {
             for ((f, i) <- r.fields.view.zipWithIndex) {
-              val swiftExp = s"djinni.swift.getMember(p, $i)"
+              val swiftExp = s"DjinniSupport.compositeMember(p, $i)"
               w.wl(s"let ${idSwift.field(f.ident)} = try ${marshal.fromCpp(f.ty, swiftExp)}")
             }
             val members = r.fields.map(f => s"${SwiftIdent.label(idSwift.field(f.ident))}: ${idSwift.field(f.ident)}").mkString(", ")
@@ -421,7 +421,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           for (m <- i.methods.filter(!_.static)) {
             w.wl("{ inst, params, ret in").nested {
               for ((p, i) <- m.params.view.zipWithIndex) {
-                val pi = s"djinni.swift.getMember(params, $i)"
+                val pi = s"DjinniSupport.parameter(params, $i)"
                 w.wl(s"let _${SwiftIdent.plain(p.ident)} = try ${marshal.fromCpp(p.ty, pi)}")
               }
               val args = m.params.view.zipWithIndex.map{case (p, i) =>
@@ -460,7 +460,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"return try cppInterfaceToSwift(c, ${newProxyBlock})")
           }
           w.w("public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue").braced {
-            val newProxyBlock = if (i.ext.swift) {s"{ ${swiftxxPrefix}$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ throw DjinniError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
+            val newProxyBlock = if (i.ext.swift) {s"{ try checkedProxy(${swiftxxPrefix}$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)) }"} else {s"""{ throw DjinniError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
             w.wl(s"return try swiftInterfaceToCpp(s, ${newProxyBlock})")
           }
         }

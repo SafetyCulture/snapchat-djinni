@@ -16,7 +16,9 @@ public typealias Vtbl<T> = [@Sendable (T, UnsafePointer<djinni.swift.ParameterLi
 // parameter T for ProtocolWrapperContext inside dispatcherProtocalCall (called
 // by C++ code)
 protocol GenericProtocolWrapperContext: AnyObject, Sendable {
-    var interfaceName: String { get }
+    // The protocol type of the context. It is the proxy cache key of the interface, so the cleanup of one proxy
+    // finds its own entry.
+    var interface: ObjectIdentifier { get }
     func dispatch(idx: Int32, params: UnsafePointer<djinni.swift.ParameterList>?, ret: UnsafeMutablePointer<djinni.swift.AnyValue>?) -> Void
     func getInst() -> AnyObject
 }
@@ -24,11 +26,12 @@ protocol GenericProtocolWrapperContext: AnyObject, Sendable {
 // The bridge between C++ caller and Swift protocol. We store
 // - The object instance (that conforms to our protocol)
 // - The dispatch table for each callable method in the protocol
-final class ProtocolWrapperContext<T>: GenericProtocolWrapperContext, @unchecked Sendable {
+final class ProtocolWrapperContext<T>: GenericProtocolWrapperContext, @unchecked Sendable { // SAFETY: `inst` and `vtbl` are immutable, the vtbl closures are `@Sendable`, and a conforming object must be safe to call from any thread
     let inst: T
     let vtbl: Vtbl<T>
-    // The proxy cache key of the interface, so the cleanup of one proxy finds its own entry
-    let interfaceName = String(describing: T.self)
+    // ObjectIdentifier, not the type name: the name has no module, so two protocols with the same name in two modules
+    // would share one cache key
+    let interface = ObjectIdentifier(T.self)
     init(inst: T, vtbl: Vtbl<T>) {
         self.inst = inst
         self.vtbl = vtbl
@@ -58,8 +61,15 @@ public func dispatcherProtocalCall(
   params: UnsafePointer<djinni.swift.ParameterList>?, // Input parameters from C++ caller
   ret: UnsafeMutablePointer<djinni.swift.AnyValue>?)  // Return value that will be passed back to C++
   -> Void {
-    guard let pctx = ptr else { return }
-    guard let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as? GenericProtocolWrapperContext else { return }
+    // A call without a context cannot run. C++ gets an error instead of a void result. The cleanup call has no `ret`.
+    guard let pctx = ptr else {
+        if let ret { djinni.swift.setErrorMessage(ret, std.string("the Swift object of the call is not available")) }
+        return
+    }
+    guard let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as? GenericProtocolWrapperContext else { // SAFETY: the pointer is the retained context of ctxPtr, and it stays valid until the dispatch with a negative index
+        if let ret { djinni.swift.setErrorMessage(ret, std.string("the Swift object of the call is not available")) }
+        return
+    }
     if (idx >= 0) {
         // Dynamic dispatch on the vtbl.  We use `takeUnretainedValue` here
         // because we want to keep the wrapper object alive inside the C++ side
@@ -68,15 +78,15 @@ public func dispatcherProtocalCall(
     } else {
         // If the index is negative, release and destroy the context.  We do
         // this when the C++ side proxy (ProtocolWrapper) is destroyed.
-        let key = SwiftProxyCache.Key(object: Unmanaged.passUnretained(ctx.getInst()).toOpaque(),
-                                      interface: ctx.interfaceName)
+        let key = SwiftProxyCache.Key(object: Unmanaged.passUnretained(ctx.getInst()).toOpaque(), // SAFETY: the key is an identity only, and the cache never dereferences it
+                                      interface: ctx.interface)
         SwiftProxyCache.shared.removeIfExpired(key)
-        Unmanaged<AnyObject>.fromOpaque(pctx).release()
+        Unmanaged<AnyObject>.fromOpaque(pctx).release() // SAFETY: balances the passRetained of ctxPtr. The C++ proxy sends this index once, from its destructor
     }
 }
 
 // Base class for a Swift callable proxy of a C++ object
-open class CppProxy: @unchecked Sendable {
+open class CppProxy: @unchecked Sendable { // SAFETY: `inst` is immutable. The C++ object owns its thread safety, and the generated wrappers only call it
     // Stores a C++ interface. A C++ interface value is a double pointer:
     // 1. A shared_ptr<> that keeps the C++ implementation object alive
     // 2. A shared_ptr<> to a ProtocolWrapper that facilitates dispatching
@@ -88,7 +98,10 @@ open class CppProxy: @unchecked Sendable {
         // Remove the C++ proxy pointer from the proxy cache
         withUnsafePointer(to: inst) { p in
             let info = djinni.swift.getInterfaceInfo(p)
-            CppProxyCache.shared.removeIfExpired(info.cppPointer)
+            // A proxy of a null interface was never stored
+            if info.valid, let key = info.cppPointer {
+                CppProxyCache.shared.removeIfExpired(UnsafeRawPointer(key))
+            }
         }
     }
 }
@@ -98,7 +111,7 @@ final class WeakBox {
     init(_ value: AnyObject) { self.value = value }
 }
 
-final class CppProxyCache: @unchecked Sendable {
+final class CppProxyCache: @unchecked Sendable { // SAFETY: every access to `mapPtrToProxy` holds `lock`, and the cached proxies are `CppProxy` or wrapper objects that are safe to share
     static let shared = CppProxyCache()
     private let lock = NSLock()
     // C++ objects in swift.
@@ -112,14 +125,20 @@ final class CppProxyCache: @unchecked Sendable {
         return mapPtrToProxy[key]?.value
     }
     // Returns the live proxy of a C++ object, or creates and stores a new one.
+    // `create` runs outside the lock. It can throw, and a proxy that dies calls removeIfExpired, which takes the lock.
+    // When two threads create a proxy for one object, the first one that stores its proxy wins, and the other proxy is dropped.
     func getOrCreate(_ key: UnsafeRawPointer, _ create: () throws -> AnyObject) throws -> AnyObject {
-        lock.lock()
-        defer { lock.unlock() }
-        if let existing = mapPtrToProxy[key]?.value {
+        if let existing = get(key) {
             return existing
         }
         let proxy = try create()
+        lock.lock()
+        if let existing = mapPtrToProxy[key]?.value {
+            lock.unlock()
+            return existing
+        }
         mapPtrToProxy[key] = WeakBox(proxy)
+        lock.unlock()
         return proxy
     }
     // A newer proxy of the same C++ object keeps its entry.
@@ -138,7 +157,7 @@ final class CppProxyCache: @unchecked Sendable {
     }
 }
 
-final class SwiftProxyCache: @unchecked Sendable {
+final class SwiftProxyCache: @unchecked Sendable { // SAFETY: every access to `mapPtrToProxy` holds `lock`, and a weak proxy is a pair of `weak_ptr`, which is thread-safe
     static let shared = SwiftProxyCache()
     private let lock = NSLock()
     // Swift objects in c++
@@ -148,22 +167,34 @@ final class SwiftProxyCache: @unchecked Sendable {
     // Value : Weak proxy, no ownership, but can be converted to a C++ callable strong proxy
     struct Key: Hashable {
         let object: UnsafeMutableRawPointer
-        let interface: String
+        let interface: ObjectIdentifier
     }
     private var mapPtrToProxy: [Key: djinni.swift.WeakSwiftProxy] = [:]
 
+    // The live C++ proxy of the key, if there is one. The caller holds the lock.
+    private func liveProxy(_ key: Key) -> djinni.swift.AnyValue? {
+        guard let weakProxy = mapPtrToProxy[key] else { return nil }
+        let strong = djinni.swift.strongify(weakProxy)
+        return isNullInterface(strong) ? nil : strong
+    }
+
     // Returns the live C++ proxy of a Swift object, or creates and stores a new one.
+    // `create` runs outside the lock, for the reasons of CppProxyCache.getOrCreate.
     func getOrCreate(_ key: Key, _ create: () throws -> djinni.swift.AnyValue) throws -> djinni.swift.AnyValue {
         lock.lock()
-        defer { lock.unlock() }
-        if let weakProxy = mapPtrToProxy[key] {
-            let strong = djinni.swift.strongify(weakProxy)
-            if !isNullInterface(strong) {
-                return strong
-            }
+        let live = liveProxy(key)
+        lock.unlock()
+        if let live {
+            return live
         }
         let proxy = try create()
+        lock.lock()
+        if let live = liveProxy(key) {
+            lock.unlock()
+            return live
+        }
         mapPtrToProxy[key] = djinni.swift.weakify(proxy)
+        lock.unlock()
         return proxy
     }
     // A newer proxy of the same Swift object keeps its entry.
@@ -176,9 +207,14 @@ final class SwiftProxyCache: @unchecked Sendable {
     }
 
     private func isNullInterface(_ v: djinni.swift.AnyValue) -> Bool {
-        return withUnsafePointer(to: v) { p in djinni.swift.getInterfaceInfo(p).cppPointer == nil }
+        return withUnsafePointer(to: v) { p in
+            let info = djinni.swift.getInterfaceInfo(p)
+            return !info.valid || info.cppPointer == nil
+        }
     }
 }
+
+private let nullInterfaceMessage = "null value for a non-optional interface"
 
 // 1. Object is a an existing cpp proxy  : return cpp proxy
 // 2. Object is a an existing swift proxy: unwrap the original swift object
@@ -186,20 +222,23 @@ final class SwiftProxyCache: @unchecked Sendable {
 public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
                                    _ newProxyFunc: () throws -> I) throws -> I {
     return try withUnsafePointer(to: c) { p in
-        let info = djinni.swift.getInterfaceInfo(p)
+        let info = try interfaceInfo(p)
+        // C++ can return a null pointer for a non-optional interface. An optional interface does not reach this function with null.
+        guard let cppKey = info.cppPointer else { throw DjinniError(nullInterfaceMessage) }
+        let key = UnsafeRawPointer(cppKey)
         // 1. Check the CppProxyCache
-        if let s = CppProxyCache.shared.get(info.cppPointer) {
+        if let s = CppProxyCache.shared.get(key) {
             guard let proxy = s as? I else { return try newProxyFunc() }
             return proxy
         }
         // 2. Check if c++ ptr exists in SwiftProxyCache
         if let pctx = info.ctxPointer {
-            guard let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as? GenericProtocolWrapperContext,
+            guard let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as? GenericProtocolWrapperContext, // SAFETY: a ctxPointer is the retained context of ctxPtr, and the C++ proxy that the value holds keeps it alive
                   let inst = ctx.getInst() as? I else { return try newProxyFunc() }
             return inst
         }
         // 3. Create new proxy and store a weak reference in CppProxyCache
-        guard let proxy = try CppProxyCache.shared.getOrCreate(info.cppPointer, { try newProxyFunc() as AnyObject }) as? I else { return try newProxyFunc() }
+        guard let proxy = try CppProxyCache.shared.getOrCreate(key, { try newProxyFunc() as AnyObject }) as? I else { return try newProxyFunc() }
         return proxy
     }
 }
@@ -208,10 +247,55 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
 public func cppWrapperToSwift<W: AnyObject>(_ c: djinni.swift.AnyValue,
                                             _ newWrapper: () throws -> W) throws -> W {
     return try withUnsafePointer(to: c) { p in
-        let info = djinni.swift.getInterfaceInfo(p)
-        guard let wrapper = try CppProxyCache.shared.getOrCreate(info.cppPointer, { try newWrapper() }) as? W else { return try newWrapper() }
+        let info = try interfaceInfo(p)
+        guard let cppKey = info.cppPointer else { throw DjinniError(nullInterfaceMessage) }
+        guard let wrapper = try CppProxyCache.shared.getOrCreate(UnsafeRawPointer(cppKey), { try newWrapper() }) as? W else { return try newWrapper() }
         return wrapper
     }
+}
+
+// The C++ values that Swift reads. The C++ helpers do not throw: a value of the wrong kind or an index out of
+// range comes back as a flag or as an error value, and these functions throw it as a DjinniError.
+public func compositeSize(_ p: UnsafePointer<djinni.swift.AnyValue>) throws -> Int {
+    let result = djinni.swift.getSize(p)
+    guard result.valid else { throw DjinniError("the value is not a composite") }
+    return Int(result.size)
+}
+
+public func compositeMember(_ p: UnsafePointer<djinni.swift.AnyValue>, _ index: Int) throws -> djinni.swift.AnyValue {
+    guard index >= 0 else { throw DjinniError("the composite has no member \(index)") }
+    return try checkedValue(djinni.swift.getMember(p, index))
+}
+
+public func parameter(_ p: UnsafePointer<djinni.swift.ParameterList>?, _ index: Int) throws -> djinni.swift.AnyValue {
+    guard index >= 0 else { throw DjinniError("the call has no parameter \(index)") }
+    return try checkedValue(djinni.swift.getMember(p, index))
+}
+
+public func binaryRange(_ v: djinni.swift.AnyValue) throws -> djinni.swift.BinaryRangeResult {
+    let range = djinni.swift.getBinaryRange(v)
+    guard range.valid else { throw DjinniError("the value is not a string, a binary or a range") }
+    return range
+}
+
+public func interfaceInfo(_ p: UnsafePointer<djinni.swift.AnyValue>) throws -> djinni.swift.InterfaceInfo {
+    let info = djinni.swift.getInterfaceInfo(p)
+    guard info.valid else { throw DjinniError("the value is not an interface") }
+    return info
+}
+
+// A C++ helper that cannot throw gives an error value instead. This turns it into a Swift error.
+func checkedValue(_ v: djinni.swift.AnyValue) throws -> djinni.swift.AnyValue {
+    var value = v
+    if djinni.swift.isError(&value) {
+        throw DjinniError(djinni.swift.getError(&value))
+    }
+    return value
+}
+
+// The C++ `make` function of a Swift proxy gives an error value when it fails.
+public func checkedProxy(_ v: djinni.swift.AnyValue) throws -> djinni.swift.AnyValue {
+    return try checkedValue(v)
 }
 
 
@@ -225,8 +309,8 @@ public func swiftInterfaceToCpp<I>(_ s: I,
         return cppproxy.inst
     }
     // 2. Reuse the live swift proxy, or 3. create new proxy and store a weak reference
-    let key = SwiftProxyCache.Key(object: Unmanaged.passUnretained(s as AnyObject).toOpaque(),
-                                  interface: String(describing: I.self))
+    let key = SwiftProxyCache.Key(object: Unmanaged.passUnretained(s as AnyObject).toOpaque(), // SAFETY: the key is an identity only, and the cache never dereferences it
+                                  interface: ObjectIdentifier(I.self))
     return try SwiftProxyCache.shared.getOrCreate(key, newProxyFunc)
 }
 
@@ -236,11 +320,11 @@ public func swiftInterfaceToCpp<I>(_ s: I,
 // sending a dispatch request with index -1.
 public func ctxPtr<I> (_ s: I, _ vtbl: Vtbl<I>) -> UnsafeMutableRawPointer {
     let ctx = ProtocolWrapperContext(inst: s, vtbl: vtbl)
-    return Unmanaged.passRetained(ctx).toOpaque()
+    return Unmanaged.passRetained(ctx).toOpaque() // SAFETY: the C++ ProtocolWrapper owns this retain, and the dispatch with index -1 releases it
 }
 
 // Wraps C++ ErrorValue as a Swift throwable Error
-public final class DjinniError: Error, @unchecked Sendable {
+public final class DjinniError: Error, @unchecked Sendable { // SAFETY: `wrapped` is immutable, and the `exception_ptr` inside it is only rethrown, which is thread-safe
     let wrapped: djinni.swift.ErrorValue
     init(_ wrapped: djinni.swift.ErrorValue) {
         self.wrapped = wrapped
@@ -249,6 +333,12 @@ public final class DjinniError: Error, @unchecked Sendable {
         self.wrapped = djinni.swift.ErrorValue(std.string(msg))
     }
     public var errorMessage: String { return String(wrapped.msg) }
+}
+
+// Logs and `String(describing:)` show the message of the C++ exception, not only the type name
+extension DjinniError: CustomStringConvertible, LocalizedError {
+    public var description: String { return "DjinniError: \(errorMessage)" }
+    public var errorDescription: String? { return errorMessage }
 }
 
 // Called by stubs to convert C++ exceptions stored as ErrorValue to Swift errors
@@ -276,7 +366,7 @@ public func cppOutcome<T, E: CppExceptionConvertible>(_ call: () throws -> Resul
 }
 
 // Carries a value across a concurrency boundary when the caller guarantees that the use is safe.
-public struct UncheckedSendable<Value>: @unchecked Sendable {
+public struct UncheckedSendable<Value>: @unchecked Sendable { // SAFETY: the caller of the initialiser guarantees that `value` is used in one place at a time
     public let value: Value
     public init(_ value: Value) { self.value = value }
 }

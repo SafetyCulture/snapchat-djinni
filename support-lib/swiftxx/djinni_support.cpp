@@ -15,30 +15,47 @@ AnyValue makeRangeValue(const void* bytes, size_t size) {
     return RangeValue{bytes, size};
 }
 
-RangeValue getBinaryRange(const AnyValue& v) {
-    if (std::holds_alternative<StringValue>(v)) {
-        const auto& s = std::get<StringValue>(v);
-        return {s.data(), s.size()};
-    } else if (std::holds_alternative<BinaryValue>(v)) {
-        const auto& b = std::get<BinaryValue>(v);
-        return {b.data(), b.size()};
-    } else {
-        return std::get<RangeValue>(v);
+BinaryRangeResult getBinaryRange(const AnyValue& v) noexcept {
+    if (const auto* s = std::get_if<StringValue>(&v)) {
+        return {s->data(), s->size(), true};
+    } else if (const auto* b = std::get_if<BinaryValue>(&v)) {
+        return {b->data(), b->size(), true};
+    } else if (const auto* r = std::get_if<RangeValue>(&v)) {
+        return {r->bytes, r->size, true};
     }
+    return {nullptr, 0, false};
 }
 
-size_t getSize(const AnyValue* v) {
-    auto composite = std::get<CompositeValuePtr>(*v);
-    return composite->getSize();
+SizeResult getSize(const AnyValue* v) noexcept {
+    if (v != nullptr) {
+        if (const auto* composite = std::get_if<CompositeValuePtr>(v); composite != nullptr && *composite) {
+            return {(*composite)->getSize(), true};
+        }
+    }
+    return {0, false};
 }
 
-AnyValue getMember(const AnyValue* v, size_t i) {
-    auto composite = std::get<CompositeValuePtr>(*v);
-    return composite->getValue(i);
+namespace {
+
+AnyValue memberOf(const CompositeValue* composite, size_t i) noexcept {
+    if (composite == nullptr) {
+        return ErrorValue("the value is not a composite");
+    }
+    if (i >= composite->_elems.size()) {
+        return ErrorValue("the composite has no member " + std::to_string(i) + ", it has " + std::to_string(composite->_elems.size()));
+    }
+    return composite->_elems[i];
 }
 
-AnyValue getMember(const ParameterList* v, size_t i) {
-    return v->getValue(i);
+} // namespace
+
+AnyValue getMember(const AnyValue* v, size_t i) noexcept {
+    const auto* composite = v != nullptr ? std::get_if<CompositeValuePtr>(v) : nullptr;
+    return memberOf(composite != nullptr ? composite->get() : nullptr, i);
+}
+
+AnyValue getMember(const ParameterList* v, size_t i) noexcept {
+    return memberOf(v, i);
 }
 
 void addMember(AnyValue* c, const AnyValue& v) {
@@ -71,9 +88,12 @@ bool isExpired(const WeakSwiftProxy& v) {
     return v.sptr.expired();
 }
 
-InterfaceInfo getInterfaceInfo(const AnyValue* v) {
-    auto i = std::get<InterfaceValue>(*v);
-    return {i.ptr.get(), i.sptr ? i.sptr->ctx() : nullptr };
+InterfaceInfo getInterfaceInfo(const AnyValue* v) noexcept {
+    const auto* i = v != nullptr ? std::get_if<InterfaceValue>(v) : nullptr;
+    if (i == nullptr) {
+        return {nullptr, nullptr, false};
+    }
+    return {i->ptr.get(), i->sptr ? i->sptr->ctx() : nullptr, true};
 }
 
 AnyValue makeVoidValue() {
@@ -93,8 +113,9 @@ bool isError(const AnyValue* ret) {
     return std::holds_alternative<ErrorValue>(*ret);
 }
 
-ErrorValue getError(const AnyValue* ret) {
-    return std::get<ErrorValue>(*ret);
+ErrorValue getError(const AnyValue* ret) noexcept {
+    const auto* e = ret != nullptr ? std::get_if<ErrorValue>(ret) : nullptr;
+    return e != nullptr ? *e : ErrorValue("the value is not an error");
 }
 
 ProtocolWrapper::ProtocolWrapper(void* ctx, DispatchFunc dispatcher):

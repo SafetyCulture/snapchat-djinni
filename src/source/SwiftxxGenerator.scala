@@ -172,8 +172,18 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
         })
       }
       if (i.ext.swift) {
-        w.w(s"djinni::swift::AnyValue ${proxy}::make(void* instance, djinni::swift::DispatchFunc dispatcher)").braced {
+        // Swift calls make directly, so an exception here must not leave the C++ frame. The proxy owns the context of
+        // Swift only after its constructor ran, so the handlers release the context themselves.
+        w.w(s"djinni::swift::AnyValue ${proxy}::make(void* instance, djinni::swift::DispatchFunc dispatcher) try").braced {
           w.wl(s"return {std::make_shared<$proxy>(instance, dispatcher)};")
+        }
+        w.w("catch (const std::exception& e)").braced {
+          w.wl("dispatcher(instance, -1, nullptr, nullptr);")
+          w.wl("return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};")
+        }
+        w.w("catch (...)").braced {
+          w.wl("dispatcher(instance, -1, nullptr, nullptr);")
+          w.wl("""return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};""")
         }
         for ((m, idx) <- i.methods.filter(!_.static).view.zipWithIndex) {
           val ret = cppMarshal.fqReturnType(m.ret)
