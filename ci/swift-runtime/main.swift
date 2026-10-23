@@ -493,7 +493,7 @@ func runAsyncTests() async throws {
     let point = try await legacy.echo(input)
     check(point.x == 3 && point.y == 5, "legacy record round trip")
 
-    // One C++ object has one wrapper. Calls to the object run at the same time on the queue of --swift-async-queue.
+    // One C++ object has one wrapper. Calls to the object run at the same time on the queue of the wrappers.
     let first = try RuntimeAsync_statics.shared()
     let second = try RuntimeAsync_statics.shared()
     check(first === second, "the same C++ object has one wrapper")
@@ -508,7 +508,8 @@ func runAsyncTests() async throws {
     check(maxConcurrent > 1, "calls to one C++ object run one at a time: \(maxConcurrent)")
     let listener = Doubler()
     check(try await first.callListener(listener, value: 4) == 8, "callListener through the wrapper")
-    check(listener.queueLabel == "djinni.runtime.blocking", "the C++ call runs on the queue of --swift-async-queue, not \(listener.queueLabel)")
+    let expectedLabel = ProcessInfo.processInfo.environment["RT_QUEUE_LABEL"] ?? "djinni.runtime.blocking"
+    check(listener.queueLabel == expectedLabel, "the C++ call runs on \(listener.queueLabel), not on \(expectedLabel)")
 
     // A call to an object does not wait for a blocking call on the same object, as cancel() must not.
     let blocking = Task { try await first.busy(3000) }

@@ -419,19 +419,29 @@ Async wrappers (`--swift-async-wrap`):
   call that it stops. The C++ object must be thread-safe, as it is for the calls
   of the other languages. An adapter that needs one call at a time must
   serialize the calls itself, for example on a serial queue.
-- A task that is cancelled before the C++ call throws `CancellationError` and
-  does not call C++. A C++ call that runs cannot be stopped. The method waits
-  for it and returns its result.
-- The value of a future arrives on a thread of `DispatchQueue.global()`. The
-  caller then continues on its own executor.
+- Without `--swift-error-type`, a task that is already cancelled when the
+  method starts throws `CancellationError` and does not call C++. A cancel that
+  comes later does not stop the C++ call, also when the call still waits on the
+  queue. A method without a future waits for the call and returns its result. A
+  future method then throws `CancellationError`, because its wait for the
+  future sees the cancellation. With `--swift-error-type`, a method that returns
+  an outcome calls C++ and returns its outcome also when the task is cancelled.
+- The caller continues on its own executor when the method returns.
 - Static methods stay synchronous, in `<Interface>_statics`.
 - The wrapper needs `--swift-private-in-same-module`. The generator stops with an
   error without it.
 - A host object that implements a generated protocol must be `Sendable` (the
-  protocols are `AnyObject, Sendable`). C++ calls its methods from its own
-  thread. A host object that lives on the main actor marks the protocol methods
-  `nonisolated` and moves to the main actor itself, because nothing in the
-  generated code moves the call to an actor.
+  protocols are `AnyObject, Sendable`). C++ calls a host method on a thread of
+  C++, and the method is synchronous. Nothing in the generated code moves the
+  call to an actor. A host object that lives on the main actor has `@MainActor`
+  on the class and `nonisolated` on the protocol methods:
+  - A method that returns a value computes it without the main actor, for
+    example from state that a lock protects.
+  - Do not block on the main actor. `DispatchQueue.main.sync` deadlocks when C++
+    calls on the main thread, and `MainActor.assumeIsolated` traps on a thread
+    of C++.
+  - A method with no return value can start `Task { @MainActor in … }` and
+    return.
 
 Error type (`--swift-error-type <name>`):
 

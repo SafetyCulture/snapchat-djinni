@@ -80,6 +80,14 @@ done
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_legacy.djinni)
 
+# The same program with the default queue: runtime.djinni without --swift-async-queue replaces its files.
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$work/default/cpp" --cpp-namespace rt \
+  --swift-out "$work/default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --idl runtime.djinni)
+cp -R "$out/swift" "$out/swift-default"
+cp "$work"/default/swift/*.swift "$out/swift-default/"
+
 # Modules
 mods="$work/mods"; build="$work/build"
 mkdir -p "$mods" "$build"
@@ -108,7 +116,20 @@ for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/Dat
   "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$objs/$(basename "$f").o"
 done
 
+# The program has a watchdog of its own. This guard kills it from outside when even the watchdog cannot run.
+run_guarded() { # <command> [arguments]
+  "$@" &
+  local pid=$! guard status=0
+  ( sleep "${RUNTIME_TIMEOUT:-300}"; echo "FAIL: the runtime test did not end in ${RUNTIME_TIMEOUT:-300} s" >&2; kill -9 "$pid" 2>/dev/null ) &
+  guard=$!
+  wait "$pid" || status=$?
+  kill "$guard" 2>/dev/null || true
+  wait "$guard" 2>/dev/null || true
+  [ "$status" -eq 0 ] || exit "$status"
+}
+
 # Swift: DjinniSupport as a static library, then the program. Each mode has its own build.
+# RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni.
 run_mode() { # <swiftc flags>
   local flags=$1 build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
@@ -119,20 +140,19 @@ run_mode() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
     -enable-testing -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
-  # shellcheck disable=SC2086
-  swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out"/swift/*.swift "$src/main.swift" \
-    "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test"
+  local variant
+  for variant in swift swift-default; do
+    # shellcheck disable=SC2086
+    swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out/$variant"/*.swift "$src/main.swift" \
+      "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-$variant"
+  done
   local i
   for i in $(seq 1 "$runs"); do
-    # The program has a watchdog of its own. This guard kills it from outside when even the watchdog cannot run.
-    "$build/runtime-test" &
-    local pid=$! guard status=0
-    ( sleep "${RUNTIME_TIMEOUT:-300}"; echo "FAIL: the runtime test did not end in ${RUNTIME_TIMEOUT:-300} s" >&2; kill -9 "$pid" 2>/dev/null ) &
-    guard=$!
-    wait "$pid" || status=$?
-    kill "$guard" 2>/dev/null || true
-    wait "$guard" 2>/dev/null || true
-    [ "$status" -eq 0 ] || exit "$status"
+    run_guarded env RT_QUEUE_LABEL=djinni.runtime.blocking "$build/runtime-test-swift"
+  done
+  echo "== [$flags] default queue"
+  for i in $(seq 1 "$runs"); do
+    run_guarded env RT_QUEUE_LABEL=com.apple.root.user-initiated-qos "$build/runtime-test-swift-default"
   done
 }
 run_mode "-swift-version 5"

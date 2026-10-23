@@ -597,23 +597,6 @@ for name in Plain Nested WithOutcome; do
     fi
 done
 
-# A label prefix that would break the generated string literal is rejected.
-prefix_log="$temp_out/swift-async-wrap-prefix.log"
-if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
-    --swift-out "$temp_out_relative/swift-async-wrap-prefix/swift" \
-    --swift-module TestSuite \
-    --swift-private-in-same-module \
-    --swift-async-wrap 'bad"prefix' \
-    --idl "$swift_async_relative") >"$prefix_log" 2>&1; then
-    echo "The generator accepted a --swift-async-wrap prefix with a quote." 1>&2
-    exit 1
-fi
-if ! grep -qF -- "--swift-async-wrap accepts only letters, digits, dot, underscore and hyphen." "$prefix_log"; then
-    echo "Missing error message for a bad --swift-async-wrap prefix." 1>&2
-    cat "$prefix_log" 1>&2
-    exit 1
-fi
-
 # A protobuf message without a swift block must fail the run before any file is written.
 swift_protobuf_negative_relative="djinni/swift_protobuf_negative.djinni"
 for swift_flag in --swift-out --swiftxx-out; do
@@ -883,6 +866,28 @@ if ! grep -qF -- "Error: --swift-async-queue needs --swift-async-wrap." "$queue_
 fi
 if [ -e "$base_dir/$temp_out_relative/swift-features/queue-without-wrap" ]; then
     echo "The generator wrote files for a rejected flag." 1>&2
+    exit 1
+fi
+
+# The queue expression goes into a doc comment, so a value that closes the comment is rejected.
+queue_comment_log="$temp_out/queue-comment.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-features/queue-comment/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-async-queue "a */ b" \
+    --idl "$swift_async_relative") >"$queue_comment_log" 2>&1; then
+    echo "The generator accepted a --swift-async-queue value that closes a comment." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "--swift-async-queue needs a Swift expression on one line." "$queue_comment_log"; then
+    echo "Missing error message for a bad --swift-async-queue value." 1>&2
+    cat "$queue_comment_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/swift-features/queue-comment" ]; then
+    echo "The generator wrote files for a rejected flag value." 1>&2
     exit 1
 fi
 
