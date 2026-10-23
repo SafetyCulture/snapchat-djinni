@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Proves that the Kotlin classes of --kotlin-jni-out bind to the JNI code that goes with the Java classes.
 #
-# For two IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
+# For several IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
 # and the Kotlin on the JVM, and compares the class files with `javap -p -s` (ci/kotlin_jni_compare.py):
-# the Crux assets IDL with the flags of crux/tools/generate_code.sh, and the test-suite IDL.
+# the Crux assets IDL with the flags of crux/tools/generate_code.sh, the whole Crux IDL with --kotlin-error-type
+# and --kotlin-suspend-wrap, and the test-suite IDL.
 #
 # Needs javac, javap and kotlinc. The Kotlin compiler needs its Parcelize plugin (parcelize-compiler.jar).
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
-#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux assets IDL (pass 1), which needs MITTI_MOBILE_ROOT
+#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux IDL (passes 1 and 1b), which needs MITTI_MOBILE_ROOT
 #   KOTLIN_LIB         directory of kotlinc with parcelize-compiler.jar (default: derived from kotlinc)
 #   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for --kotlin-suspend-wrap (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
@@ -82,10 +83,27 @@ compile_and_compare() {
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package" "$@"
 }
 
+# strip_kotlin_keys <extern dir>: removes the Kotlin keys (jni.kotlin*, kotlin.jniTypename) from the yaml files.
+# The Crux passes generate Java, Kotlin and JNI in one run, which binds one class for each extern type, and the
+# committed s12 asset yaml has the Kotlin keys; pass 4 checks the extern types with the Kotlin keys.
+strip_kotlin_keys() {
+  python3 - "$1" <<'EOF'
+import glob, os, re, sys
+for path in glob.glob(os.path.join(sys.argv[1], "**", "*.yaml"), recursive=True):
+    text = open(path).read()
+    stripped = re.sub(r"^  (kotlinTranslator|kotlinHeader|kotlinTypeSignature|jniTypename): .*\n", "", text, flags=re.M)
+    # A kotlin block that had only jniTypename is now empty
+    stripped = re.sub(r"^kotlin:\n(?!  )", "", stripped, flags=re.M)
+    if stripped != text:
+        open(path, "w").write(stripped)
+EOF
+}
+
 # 1. Crux assets IDL, with the flags of crux/tools/generate_code.sh. The names of the fields are the Java names (mFooBar).
 if [ "$check_crux" != 0 ]; then
   package=com.safetyculture.crux.domain
   python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx" "$repo_root" "common.djinni,media.djinni,assets.djinni"
+  strip_kotlin_keys "$work/fx/extern"
   (cd "$work/fx" && java -jar "$jar" \
     --java-out "$work/crux/java" --java-package "$package" --ident-java-field mFooBar \
     --cpp-out "$work/crux/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
@@ -102,6 +120,30 @@ if [ "$check_crux" != 0 ]; then
     exit 1
   fi
   echo "record field: Kotlin 'val mAsset' and JNI GetFieldID \"mAsset\""
+
+  # 1b. The whole Crux IDL (main.djinni) with the error type of the application and suspend functions. Crux has no
+  # error record, so the pass adds the record crux_error for the constructor (error: E) of the class.
+  python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-main" "$repo_root" "main.djinni"
+  strip_kotlin_keys "$work/fx-main/extern"
+  printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-main/crux/djinni/domain/crux_error.djinni"
+  printf '@import "crux_error.djinni"\n' >>"$work/fx-main/crux/djinni/domain/swift_fixture.djinni"
+  (cd "$work/fx-main" && java -jar "$jar" \
+    --java-out "$work/crux-error/java" --java-package "$package" --ident-java-field mFooBar \
+    --cpp-out "$work/crux-error/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
+    --java-nonnull-annotation androidx.annotation.NonNull \
+    --jni-out "$work/crux-error/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar --ident-cpp-method FooBar \
+    --jni-include-cpp-prefix generated/ --java-implement-android-os-parcelable true \
+    --kotlin-jni-out "$work/crux-error/kotlin" --kotlin-jni-package "$package" \
+    --kotlin-suspend-wrap --kotlin-error-type "$package.CruxException" \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
+  compile_and_compare crux-error "$package" "$work/fx-main/extern" "$repo_root/ci/kotlin-jni/crux"
+  # The flag must change the Crux output: a static method throws the class, and a future is a suspend function.
+  if ! grep -q "throw $package.CruxException(djinni_e)" "$work/crux-error/kotlin/CruxAPI.kt" ||
+     ! grep -q "suspend fun downloadAsset(groupId: String, remoteUrl: String): String?" "$work/crux-error/kotlin/TrainingOfflineAssetManager.kt"; then
+    echo "FAIL: --kotlin-error-type did not change the Crux output" >&2
+    exit 1
+  fi
+  echo "crux error type: $(grep -l "$package.CruxException" "$work/crux-error/kotlin"/*.kt | wc -l | tr -d ' ') Kotlin files throw CruxException"
 fi
 
 # 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh. The second run registers the natives in JNI_OnLoad.
