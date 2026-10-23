@@ -9,7 +9,7 @@ import TestSuiteCxx
 public enum SwiftAsyncErrorMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncError
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return withUnsafePointer(to: c) { p in
+        return try withUnsafePointer(to: c) { p in
             let message = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
             let code = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 1))
             return SwiftType(message: message, code: code)

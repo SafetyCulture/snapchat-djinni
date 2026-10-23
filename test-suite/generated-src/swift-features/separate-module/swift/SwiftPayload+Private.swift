@@ -10,7 +10,7 @@ import TestSuiteCxx
 public enum SwiftPayloadMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftPayload
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return withUnsafePointer(to: c) { p in
+        return try withUnsafePointer(to: c) { p in
             let data = try DjinniSupport.DataRefMarshaller.fromCpp(djinni.swift.getMember(p, 0))
             let bytes = try BinaryMarshaller.fromCpp(djinni.swift.getMember(p, 1))
             let when = try DateMarshaller.fromCpp(djinni.swift.getMember(p, 2))

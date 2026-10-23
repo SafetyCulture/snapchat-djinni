@@ -9,7 +9,7 @@ import TestSuiteCxx
 public enum Type_Marshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.Type_
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return withUnsafePointer(to: c) { p in
+        return try withUnsafePointer(to: c) { p in
             let type = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
             let `in` = try BoolMarshaller.fromCpp(djinni.swift.getMember(p, 1))
             let `protocol` = try OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 2))

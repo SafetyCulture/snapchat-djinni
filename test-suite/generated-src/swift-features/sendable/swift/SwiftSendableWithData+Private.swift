@@ -9,7 +9,7 @@ import TestSuiteCxx
 public enum SwiftSendableWithDataMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithData
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return withUnsafePointer(to: c) { p in
+        return try withUnsafePointer(to: c) { p in
             let data = try DjinniSupport.DataRefMarshaller.fromCpp(djinni.swift.getMember(p, 0))
             return SwiftType(data: data)
         }
