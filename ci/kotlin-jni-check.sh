@@ -148,7 +148,7 @@ cp "$repo_root/test-suite/djinni/vendor/third-party/kotlin_extern.yaml" "$work/$
 (cd "$repo_root/test-suite" && java -jar "$jar" \
   --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" \
   --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
-  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar --java-implement-android-os-parcelable true \
   --cpp-out "$work/$name/cpp" --cpp-namespace testsuite \
   --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
   --idl djinni/kotlin_extern.djinni --idl-include-path djinni/vendor)
