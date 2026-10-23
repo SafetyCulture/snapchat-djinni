@@ -20,6 +20,8 @@
 #include "Marshal.hpp"
 #include "../cpp/Future.hpp"
 
+#include <optional>
+
 namespace djinni {
 
 struct PromiseJniInfo {
@@ -40,8 +42,8 @@ struct NativeFutureHandlerJniInfo {
     const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(JJ)V") };
 };
 
-struct RuntimeExceptionJniInfo {
-    const GlobalRef<jclass> clazz { jniFindClass("java/lang/RuntimeException") };
+struct DjinniCppExceptionJniInfo {
+    const GlobalRef<jclass> clazz { jniFindClass("com/snapchat/djinni/DjinniCppException") };
     const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(Ljava/lang/String;)V") };
 };
 
@@ -55,7 +57,16 @@ using NativeFutureHandlerFunc = void (*)(JNIEnv* jniEnv, jlong nativePromise, jo
 template<typename T>
 struct SetResult {
     static void setCppResult(JNIEnv* jniEnv, Promise<typename T::CppType>& promise, jobject jres) {
-        promise.setValue(T::Boxed::toCpp(jniEnv, static_cast<typename T::Boxed::JniType>(jres)));
+        // The conversion runs before the promise is used, so a failure becomes the error of the future. A promise that is
+        // dropped without a value would give BrokenPromiseException instead of the cause.
+        std::optional<typename T::CppType> value;
+        try {
+            value.emplace(T::Boxed::toCpp(jniEnv, static_cast<typename T::Boxed::JniType>(jres)));
+        } catch (...) {
+            promise.setException(std::current_exception());
+            return;
+        }
+        promise.setValue(std::move(*value));
     }
     static void setJavaResult(JNIEnv* jniEnv, const PromiseJniInfo& promiseJniInfo, jobject promise, Future<typename T::CppType>& cppFuture) {
         jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_value, T::Boxed::fromCpp(jniEnv, cppFuture.get()).get());
@@ -71,6 +82,13 @@ struct SetResult<Void> {
         jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_value, nullptr);
     }
 };
+
+// Fails the Java promise with a DjinniCppException that carries the message of the C++ exception
+inline void setJavaException(JNIEnv* jniEnv, const PromiseJniInfo& promiseJniInfo, jobject promise, const std::string& what) {
+    const auto& exceptionJniInfo = JniClass<DjinniCppExceptionJniInfo>::get();
+    LocalRef<jobject> jex(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, what).get()));
+    jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_exception, jex.get());
+}
 
 template <class RESULT>
 class FutureAdaptor
@@ -105,11 +123,16 @@ public:
             if (jex == nullptr) {
                 SetResult<RESULT>::setCppResult(jniEnv, *promise, static_cast<typename RESULT::Boxed::JniType>(jres));
             } else {
-                const auto& throwableJniInfo = JniClass<ThrowableJniInfo>::get();
-                LocalRef<jstring> jmsg(jniEnv, static_cast<jstring>(jniEnv->CallObjectMethod(jex,
-                                                                                             throwableJniInfo.method_get_message,
-                                                                                             jex)));
-                std::string msg = jniUTF8FromString(jniEnv, jmsg.get());
+                std::string msg;
+                try {
+                    const auto& throwableJniInfo = JniClass<ThrowableJniInfo>::get();
+                    LocalRef<jstring> jmsg(jniEnv, static_cast<jstring>(jniEnv->CallObjectMethod(jex,
+                                                                                                 throwableJniInfo.method_get_message,
+                                                                                                 jex)));
+                    msg = jniUTF8FromString(jniEnv, jmsg.get());
+                } catch (...) {
+                    msg = "the Java future failed";
+                }
                 promise->setException(std::runtime_error(msg));
             }
         };
@@ -142,11 +165,11 @@ public:
                 // jniEnv->CallVoidMethod(promise->get(), promiseJniInfo.method_set_value, RESULT::Boxed::fromCpp(jniEnv, res).get());
                 SetResult<RESULT>::setJavaResult(jniEnv, promiseJniInfo, promise->get(), cppFuture);
             } catch (const std::exception& e) {
-                // create a java exception object
-                const auto& exceptionJniInfo = JniClass<RuntimeExceptionJniInfo>::get();
-                LocalRef<jobject> jex(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, e.what()).get()));
-                // call setException()
-                jniEnv->CallVoidMethod(promise->get(), promiseJniInfo.method_set_exception, jex.get());
+                setJavaException(jniEnv, promiseJniInfo, promise->get(), e.what());
+            } catch (...) {
+                // An exception that does not derive from std::exception must reach the coroutine too. If it does not,
+                // the coroutine waits for ever.
+                setJavaException(jniEnv, promiseJniInfo, promise->get(), "unknown C++ exception");
             }
             jniExceptionCheck(jniEnv);
         });
