@@ -267,6 +267,10 @@ public func compositeMember(_ p: UnsafePointer<djinni.swift.AnyValue>, _ index: 
     return try checkedValue(djinni.swift.getMember(p, index))
 }
 
+public func addMember(_ composite: inout djinni.swift.AnyValue, _ member: djinni.swift.AnyValue) throws {
+    guard djinni.swift.addMember(&composite, member) else { throw DjinniError("the value is not a composite") }
+}
+
 public func parameter(_ p: UnsafePointer<djinni.swift.ParameterList>?, _ index: Int) throws -> djinni.swift.AnyValue {
     guard index >= 0 else { throw DjinniError("the call has no parameter \(index)") }
     return try checkedValue(djinni.swift.getMember(p, index))

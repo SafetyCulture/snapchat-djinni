@@ -100,7 +100,8 @@ AnyValue makeRangeValue(const void* bytes, size_t size);
 SizeResult getSize(const AnyValue* v) noexcept;
 // The result is an ErrorValue when the value is not a composite or the index is out of range
 AnyValue getMember(const AnyValue* v, size_t i) noexcept;
-void addMember(AnyValue* c, const AnyValue& v);
+// false when the value is not a composite, or when the member cannot be stored
+bool addMember(AnyValue* c, const AnyValue& v) noexcept;
 AnyValue getMember(const ParameterList* v, size_t i) noexcept;
 void setReturnValue(AnyValue* ret, const AnyValue& v);
 void setErrorValue(AnyValue* ret, const ErrorValue& v);

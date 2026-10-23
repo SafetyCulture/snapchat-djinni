@@ -482,6 +482,7 @@ namespace {
 
 // Sets com.snapchat.djinni.DjinniCppException as the pending exception. The class is in the support-lib Java sources.
 // When an app does not have it on the class path, a RuntimeException is set, and the error does not get lost.
+// Future_jni.hpp (makeJavaException) uses the same two classes for a failed future.
 void setPendingCppException(JNIEnv * env, const char * message) noexcept {
     jclass clazz = env->FindClass("com/snapchat/djinni/DjinniCppException");
     if (clazz == nullptr) {

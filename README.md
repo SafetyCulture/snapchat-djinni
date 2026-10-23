@@ -681,7 +681,10 @@ check scripts select the newest cached jar, and CI pins 1.10.2
   `DjinniCppException` on the class path the JNI code sets a `RuntimeException`.
 - A failed future throws `DjinniCppException`, also when C++ rejects it with
   an exception that does not derive from `std::exception`, and when the C++
-  promise is dropped without a value (`BrokenPromiseException`).
+  promise is dropped without a value (`BrokenPromiseException`). The class of
+  a failed future is resolved when the future is converted, on the thread of the
+  call. When `DjinniCppException` is not on the class path, a failed future
+  throws a `RuntimeException`, as the pending exception does.
   `--java-cpp-exception` only adds `@Throws`.
 - A static method stays a normal method.
 
@@ -855,8 +858,9 @@ use `co_await` on future objects.
 A `Promise` that is destroyed without a value or an exception completes its
 future with `djinni::BrokenPromiseException`. A waiter on the other side of
 the language boundary then gets an error and does not wait for ever: a Swift
-`await` throws `DjinniError`, a Kotlin `suspend` function and a Java
-`Future.get` throw `DjinniCppException`. Keep the promise alive until you
+`await` throws `DjinniError`, a Kotlin `suspend` function throws
+`DjinniCppException`, and a Java `Future.get` throws an `ExecutionException`
+with a `DjinniCppException` as its cause. Keep the promise alive until you
 complete it. When a second call replaces a stored promise, the future of the
 first call breaks. A handler that `Future::then` runs can throw any type. The
 future that `then` returns gets the exception, and the completion of the

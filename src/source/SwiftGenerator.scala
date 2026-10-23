@@ -228,7 +228,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl("var ret = djinni.swift.makeCompositeValue()")
             for (f <- r.fields) {
               val swiftExpr = s"s.${idSwift.field(f.ident)}"
-              w.wl(s"djinni.swift.addMember(&ret, try ${marshal.toCpp(f.ty,swiftExpr )})")
+              w.wl(s"try DjinniSupport.addMember(&ret, ${marshal.toCpp(f.ty,swiftExpr )})")
             }
             w.wl("return ret")
           } else {

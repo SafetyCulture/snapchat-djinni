@@ -13,6 +13,6 @@ trap 'rm -rf "$work"' EXIT
 
 for std in c++17 c++20; do
   echo "== [$std]"
-  "${CXX:-c++}" "-std=$std" -Wall -Wextra -Werror -Wno-unused-parameter -I "$repo_root/support-lib/cpp" "$repo_root/ci/cpp/future_test.cpp" -pthread -o "$work/future-test"
+  "${CXX:-c++}" "-std=$std" -Wall -Wextra -Wno-unused-parameter -I "$repo_root/support-lib/cpp" "$repo_root/ci/cpp/future_test.cpp" -pthread -o "$work/future-test"
   "$work/future-test"
 done

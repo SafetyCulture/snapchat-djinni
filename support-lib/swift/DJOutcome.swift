@@ -21,10 +21,10 @@ public enum OutcomeMarshaller<Res: Marshaller, Err: Marshaller>: Marshaller
         var comp = djinni.swift.makeCompositeValue()
         switch s {
         case .success(let r):
-            djinni.swift.addMember(&comp, try Res.toCpp(r))
+            try addMember(&comp, try Res.toCpp(r))
         case .failure(let e):
-            djinni.swift.addMember(&comp, djinni.swift.makeVoidValue())
-            djinni.swift.addMember(&comp, try Err.toCpp(e))
+            try addMember(&comp, djinni.swift.makeVoidValue())
+            try addMember(&comp, try Err.toCpp(e))
         }
         return comp
     }

@@ -175,7 +175,7 @@ public enum ListMarshaller<T: Marshaller>: Marshaller {
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var composite = djinni.swift.makeCompositeValue()
         for item in s {
-            djinni.swift.addMember(&composite, try T.toCpp(item))
+            try addMember(&composite, T.toCpp(item))
         }
         return composite
     }
@@ -199,7 +199,7 @@ public enum SetMarshaller<T: Marshaller>: Marshaller where T.SwiftType: Hashable
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var composite = djinni.swift.makeCompositeValue()
         for item in s {
-            djinni.swift.addMember(&composite, try T.toCpp(item))
+            try addMember(&composite, T.toCpp(item))
         }
         return composite
     }
@@ -222,8 +222,8 @@ public enum MapMarshaller<K: Marshaller, V: Marshaller>: Marshaller where K.Swif
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var composite = djinni.swift.makeCompositeValue()
         for (k, v) in s {
-            djinni.swift.addMember(&composite, try K.toCpp(k))
-            djinni.swift.addMember(&composite, try V.toCpp(v))
+            try addMember(&composite, K.toCpp(k))
+            try addMember(&composite, V.toCpp(v))
         }
         return composite
     }

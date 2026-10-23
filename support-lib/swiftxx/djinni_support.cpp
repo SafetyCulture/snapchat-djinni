@@ -58,9 +58,17 @@ AnyValue getMember(const ParameterList* v, size_t i) noexcept {
     return memberOf(v, i);
 }
 
-void addMember(AnyValue* c, const AnyValue& v) {
-    auto composite = std::get<CompositeValuePtr>(*c);
-    composite->addValue(v);
+bool addMember(AnyValue* c, const AnyValue& v) noexcept {
+    auto* composite = c != nullptr ? std::get_if<CompositeValuePtr>(c) : nullptr;
+    if (composite == nullptr || !*composite) {
+        return false;
+    }
+    try {
+        (*composite)->addValue(v);
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 void setReturnValue(AnyValue* ret, const AnyValue& v) {

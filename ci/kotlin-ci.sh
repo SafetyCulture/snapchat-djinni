@@ -61,5 +61,7 @@ export KOTLIN_JNI_CHECK_CRUX=0
 export CXX="${CXX:-g++}"
 export CXXFLAGS="-include stdexcept ${CXXFLAGS:-}"
 
+# Futures and promises on their own, with a C++ compiler only
+"$repo_root/ci/cpp-future-test.sh"
 "$repo_root/ci/kotlin-jni-check.sh"
 "$repo_root/ci/kotlin-jni-runtime-test.sh"

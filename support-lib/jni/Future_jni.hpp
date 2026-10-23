@@ -47,9 +47,15 @@ struct DjinniCppExceptionJniInfo {
     const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(Ljava/lang/String;)V") };
 };
 
+struct RuntimeExceptionJniInfo {
+    const GlobalRef<jclass> clazz { jniFindClass("java/lang/RuntimeException") };
+    const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(Ljava/lang/String;)V") };
+};
+
 struct ThrowableJniInfo {
     const GlobalRef<jclass> clazz { jniFindClass("java/lang/Throwable") };
     const jmethodID method_get_message { jniGetMethodID(clazz.get(), "getMessage", "()Ljava/lang/String;") };
+    const jmethodID method_to_string { jniGetMethodID(clazz.get(), "toString", "()Ljava/lang/String;") };
 };
 
 using NativeFutureHandlerFunc = void (*)(JNIEnv* jniEnv, jlong nativePromise, jobject jres, jthrowable jex);
@@ -83,10 +89,21 @@ struct SetResult<Void> {
     }
 };
 
-// Fails the Java promise with a DjinniCppException that carries the message of the C++ exception
+// The Java exception of a failed C++ future: a DjinniCppException with the message of the C++ exception. When the class
+// is not on the class path, the lookup throws and the exception is a RuntimeException, as in jniSetPendingFromCurrent.
+inline LocalRef<jobject> makeJavaException(JNIEnv* jniEnv, const std::string& what) {
+    try {
+        const auto& exceptionJniInfo = JniClass<DjinniCppExceptionJniInfo>::get();
+        return LocalRef<jobject>(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, what).get()));
+    } catch (const std::exception&) {
+        const auto& exceptionJniInfo = JniClass<RuntimeExceptionJniInfo>::get();
+        return LocalRef<jobject>(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, what).get()));
+    }
+}
+
+// Fails the Java promise with the exception of makeJavaException
 inline void setJavaException(JNIEnv* jniEnv, const PromiseJniInfo& promiseJniInfo, jobject promise, const std::string& what) {
-    const auto& exceptionJniInfo = JniClass<DjinniCppExceptionJniInfo>::get();
-    LocalRef<jobject> jex(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, what).get()));
+    LocalRef<jobject> jex = makeJavaException(jniEnv, what);
     jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_exception, jex.get());
 }
 
@@ -129,6 +146,12 @@ public:
                     LocalRef<jstring> jmsg(jniEnv, static_cast<jstring>(jniEnv->CallObjectMethod(jex,
                                                                                                  throwableJniInfo.method_get_message,
                                                                                                  jex)));
+                    jniExceptionCheck(jniEnv);
+                    if (jmsg.get() == nullptr) {
+                        // An exception without a message still says what it is, for example java.lang.NullPointerException
+                        jmsg = LocalRef<jstring>(jniEnv, static_cast<jstring>(jniEnv->CallObjectMethod(jex, throwableJniInfo.method_to_string)));
+                        jniExceptionCheck(jniEnv);
+                    }
                     msg = jniUTF8FromString(jniEnv, jmsg.get());
                 } catch (...) {
                     msg = "the Java future failed";
@@ -152,6 +175,13 @@ public:
     static LocalRef<JniType> fromCpp(JNIEnv* jniEnv, CppType c)
     {
         const auto& promiseJniInfo = JniClass<PromiseJniInfo>::get();
+        // Resolve the exception classes here, on the thread of the call, and not on the worker thread that fails the
+        // future. A lookup that fails there must not leave the coroutine waiting.
+        try {
+            JniClass<DjinniCppExceptionJniInfo>::get();
+        } catch (const std::exception&) {
+            JniClass<RuntimeExceptionJniInfo>::get();
+        }
 
         auto promise = std::make_shared<PromiseHolder>();
         promise->set(jniEnv, jniEnv->NewObject(promiseJniInfo.clazz.get(), promiseJniInfo.constructor));

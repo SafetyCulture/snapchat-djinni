@@ -2,9 +2,11 @@
 // exceptions which do not derive from std::exception. Build and run with ci/cpp-future-test.sh.
 #include "Future.hpp"
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <thread>
 
 namespace {
 
@@ -14,6 +16,19 @@ void check(bool condition, const std::string& message) {
     if (!condition) {
         std::printf("FAIL: %s\n", message.c_str());
         failures++;
+    }
+}
+
+// Waits for a future for at most 10 s. A regression that leaves a future without a result fails here, and does not hang.
+template <typename F>
+void waitReady(F& future, const std::string& what) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!future.isReady()) {
+        if (std::chrono::steady_clock::now() > deadline) {
+            std::printf("FAIL: %s: the future has no result after 10 s\n", what.c_str());
+            std::exit(EXIT_FAILURE);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
 
@@ -27,6 +42,7 @@ int main() {
             return promise.getFuture();
         }();
         bool broken = false;
+        waitReady(future, "a dropped promise");
         try {
             future.get();
         } catch (const djinni::BrokenPromiseException&) {
@@ -44,6 +60,7 @@ int main() {
         });
         { auto dropped = std::move(promise); }
         bool broken = false;
+        waitReady(next, "the next future of a dropped promise");
         try {
             next.get();
         } catch (const djinni::BrokenPromiseException&) {
@@ -58,6 +75,7 @@ int main() {
         auto future = promise.getFuture();
         auto moved = std::move(promise);
         moved.setValue(5);
+        waitReady(future, "a moved promise");
         check(future.get() == 5, "a moved promise completes the future");
     }
 
@@ -68,6 +86,7 @@ int main() {
             return promise.getFuture();
         }();
         bool broken = false;
+        waitReady(future, "a dropped void promise");
         try {
             future.get();
         } catch (const djinni::BrokenPromiseException&) {
@@ -86,6 +105,7 @@ int main() {
         });
         promise.setValue(1);
         int caught = 0;
+        waitReady(next, "a handler that throws an int");
         try {
             next.get();
         } catch (int value) {
