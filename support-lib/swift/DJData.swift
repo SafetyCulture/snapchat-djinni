@@ -7,14 +7,15 @@ import Foundation
 // small Data object will only work within the scope of `withUnsafeBytes` block)
 public enum DataViewMarshaller: Marshaller {
     public typealias SwiftType = NSData
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         let range = djinni.swift.getBinaryRange(v)
         if (range.size == 0 || range.bytes == nil) {
             return SwiftType()
         }
-        return SwiftType(bytesNoCopy: UnsafeMutableRawPointer(mutating: range.bytes!), length: range.size, deallocator:.none)
+        guard let bytes = range.bytes else { throw DjinniError("a DataView value has no bytes") }
+        return SwiftType(bytesNoCopy: UnsafeMutableRawPointer(mutating: bytes), length: range.size, deallocator:.none)
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.makeRangeValue(s.bytes, s.length)
     }
 }
@@ -22,12 +23,13 @@ public enum DataViewMarshaller: Marshaller {
 // to NSData.
 public enum DataRefMarshaller: Marshaller {
     public typealias SwiftType = NSData
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         let range = djinni.swift.getBinaryRange(v)
-        let cfdata = Unmanaged<CFData>.fromOpaque(range.bytes!).takeRetainedValue()
+        guard let bytes = range.bytes else { throw DjinniError("a DataRef value has no bytes") }
+        let cfdata = Unmanaged<CFData>.fromOpaque(bytes).takeRetainedValue()
         return cfdata as NSData
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         // Retained: DataRefAdaptor::toCpp takes this reference, so the data lives until C++ converts it
         if let nsMutableData = s as? NSMutableData {
             let cfDataRef = Unmanaged.passRetained(nsMutableData).toOpaque()

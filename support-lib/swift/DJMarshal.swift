@@ -18,7 +18,7 @@ public enum EnumMarshaller<T: RawRepresentable>: Marshaller where T.RawValue == 
         }
         return value
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.I32.fromCpp(s.rawValue)
     }
 }
@@ -32,7 +32,7 @@ public enum SmallIntMarshaller<T: BinaryInteger>: Marshaller {
         }
         return value
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.I32.fromCpp(Int32(s))
     }
 }
@@ -46,27 +46,27 @@ public enum I64Marshaller: Marshaller {
         }
         return value
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.I64.fromCpp(s)
     }
 }
 // Both float and double are marshalled to double values
 public enum FloatMarshaller<T: BinaryFloatingPoint>: Marshaller {
     public typealias SwiftType = T
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         return T(djinni.swift.F64.toCpp(v))
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.F64.fromCpp(Double(s))
     }
 }
 // Bool is marshalled as Int32 (0 or 1)
 public enum BoolMarshaller: Marshaller {
     public typealias SwiftType = Bool
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         return djinni.swift.I32.toCpp(v) != 0
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.I32.fromCpp(s ? 1 : 0)
     }
 }
@@ -79,7 +79,7 @@ public typealias F64Marshaller = FloatMarshaller<Double>
 
 public enum StringMarshaller: Marshaller {
     public typealias SwiftType = String
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         let range = djinni.swift.getBinaryRange(v)
         if (range.size > 0) {
             return String(data: Data(bytes: range.bytes, count: range.size), encoding: String.Encoding.utf8) ?? "invalid"
@@ -87,7 +87,7 @@ public enum StringMarshaller: Marshaller {
             return String()
         }
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         let bytes = s.utf8CString
         return bytes.withUnsafeBufferPointer { ptr in
             // utf8CString always has a buffer with the terminator
@@ -100,7 +100,7 @@ public enum StringMarshaller: Marshaller {
 
 public enum BinaryMarshaller: Marshaller {
     public typealias SwiftType = Data
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         let range = djinni.swift.getBinaryRange(v)
         if (range.size > 0) {
             return Data(bytes: range.bytes, count: range.size)
@@ -108,7 +108,7 @@ public enum BinaryMarshaller: Marshaller {
             return Data()
         }
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         // withUnsafeBytes can give a nil baseAddress for an empty Data, and makeBinaryValue accepts nil
         return s.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
             return djinni.swift.makeBinaryValue(UnsafeMutableRawPointer(mutating: ptr.baseAddress),
@@ -123,17 +123,17 @@ public enum DateMarshaller: Marshaller {
         let millisecondsSinceEpoch = try I64Marshaller.fromCpp(v)
         return Date(timeIntervalSince1970: Double(millisecondsSinceEpoch) / 1000)
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return I64Marshaller.toCpp(Int64((s.timeIntervalSince1970 * 1000).rounded()))
     }
 }
 
 public enum Void_Marshaller: Marshaller {
     public typealias SwiftType = Void
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         return ()
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.makeVoidValue()
     }
 }
