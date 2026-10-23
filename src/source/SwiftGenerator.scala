@@ -456,11 +456,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, i)}")
           w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType").braced {
             val newProxyBlock = if (i.ext.cpp) {s"{ ${marshal.typename(ident, i)}CppProxy(c) as SwiftType }"} else {s"""{ throw DjinniError("${marshal.typename(ident, i)} has no C++ implementation: add +c to the interface") }"""}
-            w.wl(s"return cppInterfaceToSwift(c, ${newProxyBlock})")
+            w.wl(s"return try cppInterfaceToSwift(c, ${newProxyBlock})")
           }
           w.w("public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue").braced {
             val newProxyBlock = if (i.ext.swift) {s"{ ${swiftxxPrefix}$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ throw DjinniError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
-            w.wl(s"return swiftInterfaceToCpp(s, ${newProxyBlock})")
+            w.wl(s"return try swiftInterfaceToCpp(s, ${newProxyBlock})")
           }
         }
       }
