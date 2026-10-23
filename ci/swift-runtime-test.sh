@@ -3,12 +3,14 @@
 #
 # The program checks the runtime: calls from Swift into C++, calls from C++ into a Swift object,
 # the identity of proxies, and many threads that create and release proxies and host objects.
-# It runs in Swift 5 mode and in Swift 6 mode. A watchdog fails the program when it deadlocks. macOS only.
+# It runs in Swift 5 mode, in Swift 6 mode, in Swift 6 mode with the optimizer (-O, and -O2 for C++), and once with
+# ThreadSanitizer for Swift and C++. A watchdog fails the program when it deadlocks. macOS only.
 #
 # Environment:
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
-#   RUNS               runs of the program in each mode (default: 3)
+#   RUNS               runs of the program in each mode (default: 3; the ThreadSanitizer mode runs once)
+#   RUNTIME_TSAN       set to 0 to skip the ThreadSanitizer mode
 #   RUNTIME_TIMEOUT    seconds after which a run of the program is killed (default: 300)
 #   KEEP_OUT           set to 1 to keep the work directory
 set -euo pipefail
@@ -115,13 +117,17 @@ module RuntimeTestCxx {
 }
 EOF
 
-# C++: the support library, the generated glue and the implementation
-objs="$work/objs"
-mkdir -p "$objs"
+# C++: the support library, the generated glue and the implementation. Each set of C++ flags has its own objects.
 cxxflags=(-std=c++20 -Wno-deprecated-declarations -DDATAREF_OBJC=1 -I "$out/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib")
-for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp" "$out"/swiftxx/*.cpp "$src/runtime_service_impl.cpp" "$src/runtime_async_impl.cpp" "$src/error_service_impl.cpp" "$src/legacy_service_impl.cpp"; do
-  "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$objs/$(basename "$f").o"
-done
+build_objs() { # <object folder> [C++ flags]
+  local dir=$1 f
+  shift
+  mkdir -p "$dir"
+  for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp" "$out"/swiftxx/*.cpp "$src/runtime_service_impl.cpp" "$src/runtime_async_impl.cpp" "$src/error_service_impl.cpp" "$src/legacy_service_impl.cpp"; do
+    "${CXX:-clang++}" "${cxxflags[@]}" "$@" -c "$f" -o "$dir/$(basename "$f").o"
+  done
+}
+build_objs "$work/objs"
 
 # The program has a watchdog of its own. This guard kills it from outside when even the watchdog cannot run.
 run_guarded() { # <command> [arguments]
@@ -136,9 +142,10 @@ run_guarded() { # <command> [arguments]
 }
 
 # Swift: DjinniSupport as a static library, then the program. Each mode has its own build.
-# RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni.
-run_mode() { # <swiftc flags>
-  local flags=$1 build
+# RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni. RT_DEFAULT_QUEUE runs the
+# check that only the default queue passes: more blocking calls than the global queues of libdispatch have threads.
+run_mode() { # <swiftc flags> [<object folder>] [<runs>]
+  local flags=$1 objs=${2:-$work/objs} mode_runs=${3:-$runs} build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
@@ -154,13 +161,22 @@ run_mode() { # <swiftc flags>
       "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-$variant"
   done
   local i
-  for i in $(seq 1 "$runs"); do
+  for i in $(seq 1 "$mode_runs"); do
     run_guarded env RT_QUEUE_LABEL=djinni.runtime.blocking "$build/runtime-test-swift"
   done
   echo "== [$flags] default queue"
-  for i in $(seq 1 "$runs"); do
-    run_guarded env RT_QUEUE_LABEL=com.apple.root.user-initiated-qos "$build/runtime-test-swift-default"
+  for i in $(seq 1 "$mode_runs"); do
+    run_guarded env RT_QUEUE_LABEL=djinni.call RT_DEFAULT_QUEUE=1 "$build/runtime-test-swift-default"
   done
 }
 run_mode "-swift-version 5"
 run_mode "-swift-version 6 -strict-concurrency=complete"
+# The optimizer shortens lifetimes, so a lifetime bug that -Onone hides can show here
+build_objs "$work/objs-O" -O2
+run_mode "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"
+# ThreadSanitizer reports a race in the locks and atomics of the runtime, in Swift and in C++. One run is enough: the
+# sanitizer finds a race between two accesses that are not ordered, also when they do not collide in that run.
+if [ "${RUNTIME_TSAN:-1}" = 1 ]; then
+  build_objs "$work/objs-tsan" -fsanitize=thread
+  TSAN_OPTIONS="halt_on_error=1 ${TSAN_OPTIONS:-}" run_mode "-swift-version 6 -strict-concurrency=complete -sanitize=thread" "$work/objs-tsan" 1
+fi
