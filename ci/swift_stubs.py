@@ -14,7 +14,7 @@ import re
 import sys
 
 STUB = """    public static let protoMessageName = "stub"
-    public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+    public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\\0")
     public var unknownFields = SwiftProtobuf.UnknownStorage()
     public init() {}
     public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {}
