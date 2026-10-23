@@ -162,6 +162,27 @@ if [ "$status" -ne 1 ] || ! grep -qF -- "$expected" "$work/$name/out.log" || [ -
 fi
 echo "suspend functions: a method with the name of a member of Any is rejected"
 
+# A method with the name of a member of Any and another return type cannot override it, with or without the flag.
+for flags in "" --kotlin-suspend-wrap; do
+  name="any-names-return${flags:+-suspend}"
+  mkdir -p "$work/$name"
+  set +e
+  # shellcheck disable=SC2086
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --kotlin-jni-out "$work/$name/kotlin" $flags --java-package "$package" \
+    --idl djinni/kotlin_jni_any_names_return.djinni) >"$work/$name/out.log" 2>&1
+  status=$?
+  set -e
+  if [ "$status" -ne 1 ] || [ -e "$work/$name/kotlin" ] ||
+     ! grep -qF -- "interface kotlin_jni_any_names_return, method to_string: the Kotlin method toString() overrides toString of Any, so it must return string. Rename the method or change its return type." "$work/$name/out.log" ||
+     ! grep -qF -- "interface kotlin_jni_any_names_return_listener, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type." "$work/$name/out.log"; then
+    echo "FAIL: the generator accepted a method with the name of a member of Any and another return type, or wrote files (${flags:-no flag}, exit $status)" >&2
+    cat "$work/$name/out.log" >&2
+    exit 1
+  fi
+done
+echo "Kotlin methods: a method with the name of a member of Any and another return type is rejected"
+
 # Kotlin classes without a package, with the registration in JNI_OnLoad: the module initializer must find the
 # module class. The support-lib classes come from the suite pass.
 name=module
