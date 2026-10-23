@@ -245,6 +245,12 @@ if ! grep -q "com.dropbox.djinni.testextern.ExternKotlinMessage" "$work/$name/ko
 fi
 compile_and_compare "$name" "$package" "$work/$name/yaml" "$repo_root/ci/kotlin-jni/extern" com.dropbox.djinni.testextern \
   "Lcom/dropbox/djinni/testextern/ExternJavaMessage;=Lcom/dropbox/djinni/testextern/ExternKotlinMessage;"
+# The generated Parceler throws a typed exception for a Parcel without a byte array.
+mkdir -p "$work/$name/probe-classes"
+kotlinc -Werror -d "$work/$name/probe-classes" -cp "$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/parcelize-runtime.jar" \
+  "$repo_root/ci/kotlin-jni/parceler/ParcelerProbe.kt"
+java -cp "$work/$name/probe-classes:$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/parcelize-runtime.jar:$kotlin_lib/kotlin-stdlib.jar" \
+  com.dropbox.djinni.test.ParcelerProbeKt
 # The compare tool must reject a JNI lookup that it cannot parse, so a change in the shape of the generated C++
 # cannot turn a lookup into a silent skip. The mutant has one lookup split over two lines.
 mutant="$work/compare-mutant"
