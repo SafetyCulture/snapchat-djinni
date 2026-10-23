@@ -625,6 +625,45 @@ different from `--kotlin-out`, which writes Kotlin Multiplatform code.
 - `--java-out` is not changed. You can use both flags, unless an extern type has
   Kotlin keys (see below).
 
+### Two JNI glue sets in one library
+
+One process can carry two JNI glue sets of the same C++ API. The app uses one
+leg, and a shared module uses the other. The generator makes the second set with
+a second run:
+
+```
+java -jar djinni.jar \
+  --kotlin-jni-out out/kotlin --java-package com.example.cruxkt.domain \
+  --jni-out out/jni --jni-namespace djinni_generated_kt \
+  --jni-include-prefix kt/ --idl main.djinni
+```
+
+- The second run has no `--java-out` and no `--cpp-out`. It writes only the
+  Kotlin JNI classes and the JNI code. The first run writes the Java classes,
+  the C++ headers and the JNI code in the default namespace.
+- The two namespaces differ, so each glue set has its own C++ classes over the
+  same C++ API. The JNI exports differ because the Java packages differ. The
+  library exports one set of `Java_*` symbols for each run, and no symbol is
+  defined twice.
+- `--jni-include-prefix kt/` writes the includes of the second JNI headers for a
+  `kt` folder. Compile the second JNI code with the include folder above `kt/`.
+
+The C++ proxy cache keys each entry by the glue class, not by the C++ type. Two
+glue sets of one C++ type thus get one Java proxy each. A handle records the tag
+that its `get()` used, so the release removes the same entry. With one glue set
+the new key maps one to one to the old key, so the behaviour does not change.
+
+Check the library of the two sets:
+
+```
+nm -D --defined-only libcrux.so | awk '/ Java_/{print $3}' | sort | uniq -d   # prints nothing
+nm -C libcrux.so | grep 'glue_a::Native\|glue_b::Native'                     # one class symbol for each set
+```
+
+`ci/kotlin-jni-runtime-test.sh` builds one library from two glue sets of
+`ci/kotlin-jni/runtime/two_glue.djinni` and checks the two proxies, the cache,
+the release and a `+j` object of each leg.
+
 ### Extern types with Kotlin keys
 
 An extern record normally has a Java class, and the Kotlin classes use it. An
@@ -676,6 +715,52 @@ kotlin:
   code 1 before it writes a file. (For the other fields, the resolver already
   rejects `deriving(ord)` over an `optional<>` or a collection.)
 - A yaml without the keys gives the same output as before.
+
+### Java and Kotlin JNI converters
+
+An adapter on the legacy leg converts the Java records of the first run to the
+Kotlin JNI records of the second run, and back. The generator writes the
+converters when two flags are on:
+
+```
+java -jar djinni.jar \
+  --kotlin-jni-out out/kotlin --java-package com.example.cruxkt.domain \
+  --kotlin-jni-java-bridge-out out/bridge \
+  --kotlin-jni-java-bridge-package com.example.crux.domain \
+  --idl main.djinni
+```
+
+- `--kotlin-jni-java-bridge-out <dir>` writes the converters. It needs
+  `--kotlin-jni-out`.
+- `--kotlin-jni-java-bridge-package <package>` is the value of `--java-package`
+  of the other run, whose Java classes the converters use. Each flag needs the
+  other. The generator exits 1 and names the missing flag.
+- The converters are in the package `<kotlin-jni-package>.javabridge`. Both runs
+  must use the same `--ident-java-field`.
+- The files hold extension functions: `fun <java>.R.toKotlinJni(): <kotlin>.R`
+  and `fun <kotlin>.R.toJava(): <java>.R`. The converters read the Java fields
+  through their getters, and they pass the fields to the constructor in order.
+- The field kinds are primitives, `string`, `binary`, `date`, `optional<>`,
+  `list<>`, `set<>`, `map<>` (also nested), enums, flags (`EnumSet`) and records.
+- An enum converts by option name in an exhaustive `when`.
+- An extern type with the same class in the two runs passes through. An extern
+  type with two classes must have `kotlin.isProtobufMessage: true`. The
+  converter reads `<Target>.parseFrom(value.toByteArray())`. When the yaml has
+  neither, the generator exits 1 and names the type.
+- A `+j` interface gets `class <J>JavaBridge(private val impl: <kotlin>.J) :
+  <java>.J()`, and the reverse `class <J>KotlinBridge`. Each method converts its
+  arguments and its return. A `future<>` or an `outcome<>` passes through when no
+  inner conversion is needed. Otherwise the bridge converts with `Future.then`
+  and `Outcome.match`.
+- A `+c` interface is not converted; the adapter owns it. A record with a field
+  of a `+c` interface, also inside `optional<>`, `list<>`, `set<>` or `map<>`,
+  gets no converter. The same holds for a record that contains such a record.
+  The generator prints one line for each skipped record:
+  `bridge: skipped <record>: field <f> is a +c interface`.
+- The generator does not support `--kotlin-suspend-wrap` with the bridge. It
+  exits 1.
+- Without the two flags the output does not change. The bridge is a new folder
+  only.
 
 ### Kotlin coroutines
 
@@ -963,6 +1048,8 @@ changes.
 | `--kotlin-jni-package` and `--kotlin-suspend-dispatcher` with `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-package` |
 | `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-suspend` |
 | `kotlin.jniTypename`, `jni.kotlin*` of an extern type, with `--kotlin-jni-out` and with `--jni-out` alone | `kotlin_extern` | `kotlin-jni-extern/kotlin`, `kotlin-jni-extern/jni`, `kotlin-jni-extern/jni-java` |
+| `--kotlin-jni-java-bridge-out`, `--kotlin-jni-java-bridge-package` | `kotlin_jni_java_bridge` | `kotlin-jni-java-bridge/java`, `kotlin-jni-java-bridge/kotlin`, `kotlin-jni-java-bridge/bridge` |
+| Two JNI glue sets in one library (runtime) | `two_glue` | none |
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
 `--swift-private-in-same-module`, `--swift-async-queue` without
@@ -980,6 +1067,9 @@ message without a `swift` block with `--swift-out` or `--swiftxx-out`, equal
 `--swiftxx-namespace` and `--objcpp-namespace` with both outputs on, `deriving(ord)`
 over the Kotlin class of an extern type with Kotlin keys, and an extern type whose
 `jni.kotlinTypeSignature` and `kotlin.jniTypename` name two classes. It checks
+the bridge flags: `--kotlin-jni-java-bridge-out` without `--kotlin-jni-out` or
+without `--kotlin-jni-java-bridge-package`, and `--kotlin-jni-java-bridge-package`
+without `--kotlin-jni-java-bridge-out`. It checks
 that every `+Private.swift` file of the options case imports
 `--swiftxx-base-lib-module`, and that the warning for an interface with `+o` and
 without `+sw` appears once.
