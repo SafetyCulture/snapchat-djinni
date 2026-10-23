@@ -1,0 +1,33 @@
+# An extern type with a Java class and a Kotlin class, and no Protobuf marker.
+name: bridge_no_marker
+typedef: 'record'
+params: []
+prefix: ''
+cpp:
+  typename: 'bridge_test::NoMarker'
+  header: '"bridge_no_marker.pb.h"'
+  byValue: false
+objc:
+  typename: 'BNMNoMarker'
+  header: '"BNMNoMarker.pbobjc.h"'
+  boxed: 'BNMNoMarker'
+  pointer: true
+  hash: '%s.hash'
+objcpp:
+  translator: 'djinni::bridge_test::NoMarker::Translator'
+  header: '"bridge_no_marker.djinni.objc.h"'
+java:
+  typename: 'com.dropbox.djinni.bridgeextern.NoMarkerJava'
+  boxed: 'com.dropbox.djinni.bridgeextern.NoMarkerJava'
+  reference: true
+  generic: false
+  hash: '%s.hashCode()'
+jni:
+  translator: 'djinni::bridge_test::NoMarker::Translator'
+  header: '"bridge_no_marker.djinni.jni.h"'
+  typename: jobject
+  typeSignature: 'Lcom/dropbox/djinni/bridgeextern/NoMarkerJava;'
+kotlin:
+  typename: 'com.dropbox.djinni.bridgeextern.NoMarkerKotlin'
+  isProtobufMessage: false
+  jniTypename: 'com.dropbox.djinni.bridgeextern.NoMarkerKotlin'

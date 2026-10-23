@@ -1419,6 +1419,72 @@ if ! grep -qF -- "record bridge_negative_flag_list, field values: a flags type i
     cat "$bridge_flags_log" 1>&2
     exit 1
 fi
+
+# An extern type with two classes and no Protobuf marker has no converter.
+bridge_extern_log="$temp_out/kotlin-jni-java-bridge-extern.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-extern/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-extern/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_extern.djinni" \
+    --idl-include-path "djinni/vendor") >"$bridge_extern_log" 2>&1; then
+    echo "The generator accepted an extern type with two classes and no Protobuf marker." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "extern type bridge_no_marker is com.dropbox.djinni.bridgeextern.NoMarkerKotlin in Kotlin, not com.dropbox.djinni.bridgeextern.NoMarkerJava, and the yaml does not mark it as a protobuf message." "$bridge_extern_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-extern" ]; then
+    echo "Missing error message for an extern type with two classes, or files were written." 1>&2
+    cat "$bridge_extern_log" 1>&2
+    exit 1
+fi
+
+# The bridge package must differ from the Kotlin JNI package.
+bridge_package_log="$temp_out/kotlin-jni-java-bridge-package.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-package/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-package/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgekt" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge.djinni" \
+    --idl-include-path "djinni/vendor") >"$bridge_package_log" 2>&1; then
+    echo "The generator accepted one package for the bridge and the Kotlin JNI classes." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --kotlin-jni-java-bridge-package must differ from the Kotlin JNI package." "$bridge_package_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-package" ]; then
+    echo "Missing error message for one package for the bridge and the Kotlin JNI classes, or files were written." 1>&2
+    cat "$bridge_package_log" 1>&2
+    exit 1
+fi
+
+# A +j record and an interface with type parameters have no converter.
+for kind in extended generic; do
+    bridge_type_log="$temp_out/kotlin-jni-java-bridge-$kind.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-$kind/kotlin" \
+        --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-$kind/bridge" \
+        --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+        --java-package "com.dropbox.djinni.bridgekt" \
+        --idl "djinni/kotlin_jni_java_bridge_negative_$kind.djinni") >"$bridge_type_log" 2>&1; then
+        echo "The generator accepted the $kind case." 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-$kind" ]; then
+        echo "The generator wrote files for the $kind case." 1>&2
+        exit 1
+    fi
+    if [ "$kind" = extended ]; then
+        expected="record bridge_negative_extended: a +j record is extended by application code, so the bridge cannot construct it."
+    else
+        expected="interface bridge_negative_generic: an interface with type parameters is not converted."
+    fi
+    if ! grep -qF -- "$expected" "$bridge_type_log"; then
+        echo "Missing error message for the $kind case: $expected" 1>&2
+        cat "$bridge_type_log" 1>&2
+        exit 1
+    fi
+done
 if ! grep -qF -- "val bytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
    ! grep -qF -- "val keyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
     echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2

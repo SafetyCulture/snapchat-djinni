@@ -1,0 +1,5 @@
+# A +j record is extended by application code, so the bridge cannot construct it.
+
+bridge_negative_extended = record +j {
+  value: i32;
+}
