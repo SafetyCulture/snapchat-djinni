@@ -17,8 +17,8 @@ public enum SwiftLegacyPointMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.x))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.y))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.x))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.y))
         return ret
     }
 }

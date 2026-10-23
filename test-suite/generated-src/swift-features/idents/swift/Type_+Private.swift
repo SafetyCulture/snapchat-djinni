@@ -21,12 +21,12 @@ public enum Type_Marshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.type))
-        djinni.swift.addMember(&ret, try BoolMarshaller.toCpp(s.`in`))
-        djinni.swift.addMember(&ret, try OptionalMarshaller<StringMarshaller>.toCpp(s.`protocol`))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.self_))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.`inout`))
-        djinni.swift.addMember(&ret, try SwiftKindMarshaller.toCpp(s.kind))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.type))
+        try DjinniSupport.addMember(&ret, BoolMarshaller.toCpp(s.`in`))
+        try DjinniSupport.addMember(&ret, OptionalMarshaller<StringMarshaller>.toCpp(s.`protocol`))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.self_))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.`inout`))
+        try DjinniSupport.addMember(&ret, SwiftKindMarshaller.toCpp(s.kind))
         return ret
     }
 }

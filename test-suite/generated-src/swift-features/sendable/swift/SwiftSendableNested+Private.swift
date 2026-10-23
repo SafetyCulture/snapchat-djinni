@@ -17,8 +17,8 @@ public enum SwiftSendableNestedMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try SwiftSendablePlainMarshaller.toCpp(s.plain))
-        djinni.swift.addMember(&ret, try ListMarshaller<SwiftSendablePlainMarshaller>.toCpp(s.items))
+        try DjinniSupport.addMember(&ret, SwiftSendablePlainMarshaller.toCpp(s.plain))
+        try DjinniSupport.addMember(&ret, ListMarshaller<SwiftSendablePlainMarshaller>.toCpp(s.items))
         return ret
     }
 }

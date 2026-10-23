@@ -162,12 +162,12 @@ abstract class KotlinSuspendService {
         private external fun native_both(_nativeRef: Long, both: KotlinSuspendBoth?): KotlinSuspendBoth?
 
         override suspend fun echoUnit(value: Unit): Unit {
-            return withContext(this.dispatcher) { native_echoUnit(this@CppProxy.nativeRef, value) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_echoUnit(this@CppProxy.nativeRef, value) }
         }
         private external fun native_echoUnit(_nativeRef: Long, value: Unit): Unit
 
         override suspend fun loadUnit(): Unit {
-            val djinni_future = withContext(this.dispatcher) { native_loadUnit(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadUnit(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -186,7 +186,7 @@ abstract class KotlinSuspendService {
         private external fun native_loadUnit(_nativeRef: Long): com.snapchat.djinni.Future<Unit>
 
         override suspend fun loadFlags(): EnumSet<KotlinSuspendFlags> {
-            val djinni_future = withContext(this.dispatcher) { native_loadFlags(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadFlags(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<EnumSet<KotlinSuspendFlags>> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -205,7 +205,7 @@ abstract class KotlinSuspendService {
         private external fun native_loadFlags(_nativeRef: Long): com.snapchat.djinni.Future<EnumSet<KotlinSuspendFlags>>
 
         override suspend fun loadOptionalFlags(): EnumSet<KotlinSuspendFlags>? {
-            val djinni_future = withContext(this.dispatcher) { native_loadOptionalFlags(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadOptionalFlags(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<EnumSet<KotlinSuspendFlags>?> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -224,7 +224,7 @@ abstract class KotlinSuspendService {
         private external fun native_loadOptionalFlags(_nativeRef: Long): com.snapchat.djinni.Future<EnumSet<KotlinSuspendFlags>?>
 
         override suspend fun loadFlagsList(): ArrayList<EnumSet<KotlinSuspendFlags>> {
-            val djinni_future = withContext(this.dispatcher) { native_loadFlagsList(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadFlagsList(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<ArrayList<EnumSet<KotlinSuspendFlags>>> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }

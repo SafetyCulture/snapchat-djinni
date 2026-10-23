@@ -16,7 +16,7 @@ public enum SwiftSendableWithOutcomeMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftSendableErrorMarshaller>.toCpp(s.result))
+        try DjinniSupport.addMember(&ret, DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftSendableErrorMarshaller>.toCpp(s.result))
         return ret
     }
 }

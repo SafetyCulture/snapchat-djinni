@@ -21,11 +21,11 @@ public enum SwiftPayloadMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.DataRefMarshaller.toCpp(s.data))
-        djinni.swift.addMember(&ret, try BinaryMarshaller.toCpp(s.bytes))
-        djinni.swift.addMember(&ret, try DateMarshaller.toCpp(s.when))
-        djinni.swift.addMember(&ret, try OptionalMarshaller<StringMarshaller>.toCpp(s.note))
-        djinni.swift.addMember(&ret, try ListMarshaller<StringMarshaller>.toCpp(s.tags))
+        try DjinniSupport.addMember(&ret, DjinniSupport.DataRefMarshaller.toCpp(s.data))
+        try DjinniSupport.addMember(&ret, BinaryMarshaller.toCpp(s.bytes))
+        try DjinniSupport.addMember(&ret, DateMarshaller.toCpp(s.when))
+        try DjinniSupport.addMember(&ret, OptionalMarshaller<StringMarshaller>.toCpp(s.note))
+        try DjinniSupport.addMember(&ret, ListMarshaller<StringMarshaller>.toCpp(s.tags))
         return ret
     }
 }

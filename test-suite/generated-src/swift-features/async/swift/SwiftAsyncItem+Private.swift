@@ -17,8 +17,8 @@ public enum SwiftAsyncItemMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.id))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.count))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.id))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.count))
         return ret
     }
 }

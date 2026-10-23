@@ -16,7 +16,7 @@ public enum SwiftSendableWithExternMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.DateMarshaller.toCpp(s.createdAt))
+        try DjinniSupport.addMember(&ret, DjinniSupport.DateMarshaller.toCpp(s.createdAt))
         return ret
     }
 }

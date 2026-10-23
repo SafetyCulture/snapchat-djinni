@@ -16,7 +16,7 @@ public enum SwiftSendableWithServiceListMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try ListMarshaller<SwiftSendableServiceMarshaller>.toCpp(s.services))
+        try DjinniSupport.addMember(&ret, ListMarshaller<SwiftSendableServiceMarshaller>.toCpp(s.services))
         return ret
     }
 }

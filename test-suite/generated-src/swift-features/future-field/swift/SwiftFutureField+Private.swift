@@ -16,7 +16,7 @@ public enum SwiftFutureFieldMarshaller: DjinniSupport.Marshaller {
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.FutureMarshaller<I32Marshaller>.toCpp(s.value))
+        try DjinniSupport.addMember(&ret, DjinniSupport.FutureMarshaller<I32Marshaller>.toCpp(s.value))
         return ret
     }
 }
