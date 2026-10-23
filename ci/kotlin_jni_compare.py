@@ -89,7 +89,7 @@ def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]],
     them must match the parser and follow a jniFindClass, so a change in the shape of the generated C++ cannot
     turn a lookup into a silent skip."""
     exported, lookups, unparsed = set(), set(), []
-    call = re.compile(r"\bjni(?:GetFieldID|GetMethodID|GetStaticMethodID)\(")
+    call = re.compile(r"\bjni(?:GetFieldID|GetMethodID|GetStaticMethodID)\s*\(")
     for path in sorted(glob.glob(os.path.join(jni_dir, "*"))):
         if not path.endswith((".cc", ".cpp", ".h", ".hpp")):
             continue
@@ -99,7 +99,7 @@ def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]],
             m = re.search(r'jniFindClass\("([^"]+)"\)', line)
             if m:
                 current = m.group(1).replace("/", ".")
-            m = re.search(r'jni(GetFieldID|GetMethodID|GetStaticMethodID)\(clazz\.get\(\), "([^"]+)", "([^"]+)"\)', line)
+            m = re.search(r'jni(GetFieldID|GetMethodID|GetStaticMethodID)\s*\(\s*clazz\.get\(\)\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)', line)
             if m and current:
                 lookups.add((current, m.group(1), m.group(2), m.group(3)))
             elif call.search(line):
