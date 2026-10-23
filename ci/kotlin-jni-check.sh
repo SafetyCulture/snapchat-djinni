@@ -357,6 +357,30 @@ kotlinc -Werror -d "$work/$name/kotlin-classes" -cp "$work/$name/java-classes:$k
   "$repo_root/ci/kotlin-jni/bridge/BridgeRoundTrip.kt"
 echo "== $name: run"
 java -cp "$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/kotlin-stdlib.jar" BridgeRoundTripKt
+
+# The bridge flags do not change the Kotlin JNI output, also with --kotlin-suspend-wrap. The bridge compiles and
+# runs against the suspend classes.
+name=bridge-suspend
+mkdir -p "$work/$name"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
+  --kotlin-suspend-wrap --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor)
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin-bridge" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
+  --kotlin-suspend-wrap --kotlin-jni-java-bridge-out "$work/$name/bridge" \
+  --kotlin-jni-java-bridge-package com.dropbox.djinni.bridgejava \
+  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor)
+echo "== $name: bridge flags do not change the Kotlin JNI output"
+diff -r "$work/$name/kotlin" "$work/$name/kotlin-bridge"
+mkdir -p "$work/$name/kotlin-classes"
+echo "== $name: kotlinc ($(find "$work/$name/kotlin-bridge" "$work/$name/bridge" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
+kotlinc -Werror -d "$work/$name/kotlin-classes" \
+  -cp "$work/bridge/java-classes:$kotlin_lib/kotlin-stdlib.jar:$coroutines" \
+  "$work/$name/kotlin-bridge" "$work/$name/bridge" \
+  "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt" \
+  "$repo_root/ci/kotlin-jni/bridge/BridgeRoundTrip.kt"
+echo "== $name: run"
+java -cp "$work/$name/kotlin-classes:$work/bridge/java-classes:$kotlin_lib/kotlin-stdlib.jar:$coroutines" BridgeRoundTripKt
 # The compare tool must reject a JNI lookup that it cannot parse, so a change in the shape of the generated C++
 # cannot turn a lookup into a silent skip. The mutant has one lookup split over two lines.
 mutant="$work/compare-mutant"

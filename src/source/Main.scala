@@ -482,11 +482,6 @@ object Main {
       System.exit(1); return
     }
 
-    if (kotlinJniJavaBridgeOutFolder.isDefined && kotlinSuspendWrap) {
-      System.err.println("Error: --kotlin-jni-java-bridge-out does not support --kotlin-suspend-wrap.")
-      System.exit(1); return
-    }
-
     val yamlOptions = YamlOptions(enableKotlinWarnings = kotlinOutFolder.isDefined)
 
     // Resolve names in IDL file, check types.
