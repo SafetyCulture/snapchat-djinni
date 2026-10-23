@@ -31,7 +31,11 @@ fi
 [ -f "$kotlin_lib/parcelize-compiler.jar" ] || { echo "parcelize-compiler.jar not found, set KOTLIN_LIB" >&2; exit 2; }
 coroutines="${KOTLINX_COROUTINES_JAR:-}"
 if [ -z "$coroutines" ]; then
-  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
+  # Missing cache directories make find exit 1, which pipefail would turn into a script exit
+  caches=(); for d in "$HOME/.gradle" "$HOME/.m2"; do [ -d "$d" ] && caches+=("$d"); done
+  if [ "${#caches[@]}" -gt 0 ]; then
+    coroutines="$(find "${caches[@]}" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
+  fi
 fi
 [ -n "$coroutines" ] && [ -f "$coroutines" ] || { echo "kotlinx-coroutines-core-jvm.jar not found, set KOTLINX_COROUTINES_JAR" >&2; exit 2; }
 echo "== coroutines: $coroutines"

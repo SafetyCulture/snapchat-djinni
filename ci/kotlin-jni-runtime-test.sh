@@ -109,7 +109,11 @@ run_mode sync "$out/kotlin" Main.kt "$stdlib"
 # The suspend functions need kotlinx-coroutines.
 coroutines="${KOTLINX_COROUTINES_JAR:-}"
 if [ -z "$coroutines" ]; then
-  coroutines="$(find "$HOME/.gradle" "$HOME/.m2" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
+  # Missing cache directories make find exit 1, which pipefail would turn into a script exit
+  caches=(); for d in "$HOME/.gradle" "$HOME/.m2"; do [ -d "$d" ] && caches+=("$d"); done
+  if [ "${#caches[@]}" -gt 0 ]; then
+    coroutines="$(find "${caches[@]}" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
+  fi
 fi
 [ -n "$coroutines" ] && [ -f "$coroutines" ] || skip "kotlinx-coroutines-core-jvm.jar is not found (set KOTLINX_COROUTINES_JAR)"
 echo "== coroutines: $coroutines"
