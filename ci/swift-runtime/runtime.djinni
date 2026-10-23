@@ -12,6 +12,8 @@ runtime_listener = interface +o +j +sw {
   on_fail(): i32;
   # nil success of an outcome of an optional, from Swift to C++
   on_maybe(flag: bool): outcome<optional<i32>, runtime_error>;
+  # The result arrives on another thread after the given time
+  delayed_future(value: i32, millis: i32): future<i32>;
 }
 
 runtime_service = interface +c +sw {
@@ -32,6 +34,21 @@ runtime_service = interface +c +sw {
   date_roundtrip(d: date): date;
   # C++ sends an enum value that Swift does not know; Swift must throw, not trap
   unknown_color(): runtime_color;
+  # C++ returns a null pointer for an interface that is not optional; Swift must throw, not trap
+  static null_service(): runtime_service;
+  # C++ strings that are not valid UTF-8, and a string with a byte order mark; Swift must throw for the first
+  # and keep the mark of the second
+  invalid_string(): string;
+  bom_string(): string;
+  # A record whose first field makes Swift throw, and whose second field holds a reference to kept_data.
+  # kept_data_retain_count is the number of references to that data; a failed call must not change it.
+  bad_blob(): runtime_blob;
+  kept_data_retain_count(): i32;
+}
+
+runtime_blob = record {
+  color: runtime_color;
+  data: DataRef;
 }
 
 runtime_error = record {
@@ -52,6 +69,10 @@ runtime_async = interface +c {
   busy(millis: i32);
   fail_future(): future<i32>;
   max_concurrent(): i32;
+  # A future whose promise C++ drops without a value
+  dropped(): future<i32>;
+  # C++ chains a handler that throws an exception outside std::exception to the future of a Swift host
+  describe_future_failure(listener: runtime_listener): string;
   # These methods throw a C++ exception.
   fail(): i32;
   fail_void();

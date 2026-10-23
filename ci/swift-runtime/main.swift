@@ -1,5 +1,6 @@
 import Dispatch
-import DjinniSupport
+@testable import DjinniSupport
+import DjinniSupportCxx
 import Foundation
 
 final class Counter: @unchecked Sendable {
@@ -17,6 +18,11 @@ final class Doubler: RuntimeListener {
     init() { State.liveListeners.add(1) }
     deinit { State.liveListeners.add(-1) }
     func onValue(_ value: Int32) throws -> Int32 { value * 2 }
+    func delayedFuture(_ value: Int32, millis: Int32) throws -> DJFuture<Int32> {
+        return DJFuture<Int32> { promise in
+            DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(Int(millis))) { promise(.success(value)) }
+        }
+    }
     func makeData() throws -> NSData { Data((0..<256).map { UInt8($0) }) as NSData }
     func onFail() throws -> Int32 { throw HostFailure.boom }
     func onMaybe(_ flag: Bool) throws -> Result<Int32?, RuntimeError> { .success(flag ? 42 : nil) }
@@ -35,6 +41,8 @@ func check(_ condition: Bool, _ message: String) {
 
 func runTests() throws {
     let service = try RuntimeService_statics.create()
+    try runSafetyCases(service)
+    if onlyCase != nil { return }
     check(try service.add(2, b: 3) == 5, "add")
 
     // A Swift object that C++ calls back.
@@ -156,8 +164,216 @@ func expectCppException(_ name: String, _ call: () async throws -> Void) async {
     }
 }
 
+// RT_CASE=<name> runs one runtime safety case and nothing else. Without it, every case runs.
+let onlyCase = ProcessInfo.processInfo.environment["RT_CASE"]
+func enabled(_ name: String) -> Bool { onlyCase == nil || onlyCase == name }
+
+// Two protocols with one name, as in two Swift modules
+enum FirstModule { protocol Listener: AnyObject {} }
+enum SecondModule { protocol Listener: AnyObject {} }
+final class BothListeners: FirstModule.Listener, SecondModule.Listener {}
+
+// A cache entry whose release takes the cache lock, as every CppProxy does
+final class DropProbe {
+    private let key: UnsafeRawPointer
+    init(_ key: UnsafeRawPointer) { self.key = key }
+    deinit { CppProxyCache.shared.removeIfExpired(key) }
+}
+
+struct TimeoutError: Error {}
+
+// Runs the body and gives its result, or throws TimeoutError when it does not finish. A wait on a future is cancellable.
+func withTimeout<T: Sendable>(_ seconds: Double, _ body: @escaping @Sendable () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask { try await body() }
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TimeoutError()
+        }
+        defer { group.cancelAll() }
+        guard let first = try await group.next() else { throw TimeoutError() }
+        return first
+    }
+}
+
+func runSafetyCases(_ service: RuntimeService) throws {
+    // A null C++ interface for an interface that is not optional throws instead of trapping
+    if enabled("null_service") {
+        do {
+            _ = try RuntimeService_statics.nullService()
+            check(false, "a null C++ interface must throw")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("non-optional interface"), "null interface error: \(error.errorMessage)")
+        }
+    }
+
+    // A string that is not valid UTF-8 throws, and a leading byte order mark stays
+    if enabled("utf8") {
+        do {
+            let value = try service.invalidString()
+            check(false, "invalid UTF-8 must throw, got \(value)")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("UTF-8"), "invalid UTF-8 error: \(error.errorMessage)")
+        }
+        let bom = try service.bomString()
+        check(bom.utf8.count == 6 && bom.unicodeScalars.first == "\u{FEFF}", "the byte order mark stays: \(Array(bom.utf8))")
+    }
+
+    // A conversion that throws does not leak the reference of a DataRef, in both directions
+    if enabled("data_ref_leak") {
+        let before = try service.keptDataRetainCount()
+        for _ in 0..<10 {
+            do {
+                _ = try service.badBlob()
+                check(false, "badBlob must throw")
+            } catch is DjinniError {}
+        }
+        let after = try service.keptDataRetainCount()
+        check(after == before, "C++ to Swift: a failed conversion leaked \(after - before) references of a DataRef")
+
+        for payload in [NSData(data: Data(repeating: 3, count: 64)), NSMutableData(data: Data(repeating: 3, count: 64))] {
+            let retained = CFGetRetainCount(payload)
+            for _ in 0..<10 {
+                // The value is dropped without C++ that converts it, as when a later conversion of the call throws
+                _ = try DataRefMarshaller.toCpp(payload)
+            }
+            let now = CFGetRetainCount(payload)
+            check(now == retained, "Swift to C++: a dropped value leaked \(now - retained) references of a DataRef")
+        }
+    }
+
+    // C++ values of the wrong kind, or with too few members, throw DjinniError in every helper that Swift calls
+    if enabled("boundary") {
+        var composite = djinni.swift.makeCompositeValue()
+        djinni.swift.addMember(&composite, djinni.swift.I32.fromCpp(7))
+        try withUnsafePointer(to: composite) { p in
+            check(try compositeSize(p) == 1, "size of a composite")
+            check(djinni.swift.I32.toCpp(try compositeMember(p, 0)) == 7, "member of a composite")
+            do {
+                _ = try compositeMember(p, 5)
+                check(false, "a member out of range must throw")
+            } catch let error as DjinniError {
+                check(error.errorMessage.contains("member 5"), "member out of range: \(error.errorMessage)")
+            }
+        }
+        let scalar = djinni.swift.I32.fromCpp(1)
+        withUnsafePointer(to: scalar) { p in
+            do { _ = try compositeSize(p); check(false, "the size of a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
+            do { _ = try compositeMember(p, 0); check(false, "a member of a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
+            do { _ = try interfaceInfo(p); check(false, "the interface info of a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
+            check(String(djinni.swift.getError(p).msg).contains("not an error"), "the error of a value that is not an error")
+        }
+        do { _ = try binaryRange(scalar); check(false, "the range of a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
+        // An outcome with no members is malformed. Swift used to abort the process here.
+        do {
+            _ = try OutcomeMarshaller<I32Marshaller, RuntimeErrorMarshaller>.fromCpp(djinni.swift.makeCompositeValue())
+            check(false, "a malformed outcome must throw")
+        } catch is DjinniError {}
+        // A map with an odd number of members is malformed
+        do {
+            _ = try MapMarshaller<I32Marshaller, I32Marshaller>.fromCpp(composite)
+            check(false, "a map with an odd number of members must throw")
+        } catch is DjinniError {}
+    }
+
+    // Two protocols with the same name do not share a proxy
+    if enabled("interface_key") {
+        let both = BothListeners()
+        check(String(describing: (any FirstModule.Listener).self) == String(describing: (any SecondModule.Listener).self),
+              "the two protocols have the same name")
+        let first = ProtocolWrapperContext<any FirstModule.Listener>(inst: both, vtbl: [])
+        let second = ProtocolWrapperContext<any SecondModule.Listener>(inst: both, vtbl: [])
+        check(first.interface != second.interface, "the proxy cache key tells two protocols with one name apart")
+        let firstProxy = try swiftInterfaceToCpp(both as any FirstModule.Listener) { try RuntimeListenerMarshaller.toCpp(Doubler()) }
+        let secondProxy = try swiftInterfaceToCpp(both as any SecondModule.Listener) { try RuntimeListenerMarshaller.toCpp(Doubler()) }
+        withUnsafePointer(to: firstProxy) { p in
+            withUnsafePointer(to: secondProxy) { q in
+                check(djinni.swift.getInterfaceInfo(p).cppPointer != djinni.swift.getInterfaceInfo(q).cppPointer,
+                      "one object, two protocols with one name: each protocol gets its own proxy")
+            }
+        }
+    }
+
+    // A create function that throws after it built a proxy does not deadlock on the cache lock
+    if enabled("cache_lock") {
+        let storage = UnsafeMutablePointer<UInt8>.allocate(capacity: 1)
+        defer { storage.deallocate() }
+        let key = UncheckedSendable(UnsafeRawPointer(storage))
+        let finished = DispatchSemaphore(value: 0)
+        Thread.detachNewThread {
+            do {
+                _ = try CppProxyCache.shared.getOrCreate(key.value) {
+                    let probe = DropProbe(key.value)
+                    _ = probe
+                    throw HostFailure.boom
+                }
+            } catch {}
+            finished.signal()
+        }
+        check(finished.wait(timeout: .now() + 10) == .success, "getOrCreate deadlocks when create throws after it built a proxy")
+    }
+
+    // The message of the C++ exception shows in logs and in localizedDescription
+    if enabled("error_description") {
+        let error = DjinniError("boom detail")
+        check("\(error)".contains("boom detail"), "description of a DjinniError: \(error)")
+        check(error.localizedDescription == "boom detail", "localizedDescription of a DjinniError: \(error.localizedDescription)")
+    }
+}
+
+func runAsyncSafetyCases(_ service: RuntimeAsync) async throws {
+    // The future of a promise that C++ drops fails. The await does not wait for ever.
+    if enabled("dropped_promise") {
+        do {
+            _ = try await withTimeout(10) { try await service.dropped() }
+            check(false, "a dropped promise must fail the future")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("broken promise"), "dropped promise error: \(error.errorMessage)")
+        } catch is TimeoutError {
+            check(false, "the await of a dropped promise does not return")
+        }
+    }
+
+    // A second call before complete_pending replaces the promise of the first call. The first call fails, and the second works.
+    if enabled("pending_overwrite") {
+        let firstCall = Task { try await service.pending() }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        let secondCall = Task { try await service.pending() }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        do {
+            _ = try await withTimeout(10) { try await firstCall.value }
+            check(false, "the first call must fail when a second call replaces its promise")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("broken promise"), "replaced promise error: \(error.errorMessage)")
+        } catch is TimeoutError {
+            check(false, "the first call waits for ever when a second call replaces its promise")
+        }
+        try await service.completePending(7)
+        let value = try await withTimeout(10) { try await secondCall.value }
+        check(value == 7, "the second call completes: \(value)")
+    }
+
+    // A handler on the future of a Swift host throws an exception outside std::exception. The caller gets it.
+    if enabled("future_chain") {
+        let message = try await withTimeout(10) { try await service.describeFutureFailure(Doubler()) }
+        check(message == "int 42", "C++ catches the exception of the handler: \(message)")
+    }
+
+    // A promise that is called twice keeps its first result and does not stop the process
+    if enabled("double_fulfil") {
+        let twice = DJFuture<Int32> { promise in
+            promise(.success(1))
+            promise(.success(2))
+        }
+        let value = try await twice.value
+        check(value == 1, "the first result of a future stays: \(value)")
+    }
+}
+
 func runAsyncTests() async throws {
     let service = try RuntimeAsync_statics.create()
+    try await runAsyncSafetyCases(service)
+    if onlyCase != nil { return }
     check(try await service.add(2, b: 3) == 5, "async add")
 
     // An outcome error is thrown as its own type.

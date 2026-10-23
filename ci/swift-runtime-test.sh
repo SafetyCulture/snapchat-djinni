@@ -51,6 +51,19 @@ out="$work/out"
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_error.djinni)
 
+# Swift calls the make function of a Swift proxy directly, so it needs an exception boundary
+made=0
+for f in "$out"/swiftxx/*.cpp; do
+  if grep -q '::make(void\* instance' "$f"; then
+    made=$((made + 1))
+    if ! grep -A12 '::make(void\* instance' "$f" | grep -q 'catch (\.\.\.)'; then
+      echo "FAIL: the make function in $f has no catch (...)" >&2
+      exit 1
+    fi
+  fi
+done
+[ "$made" -gt 0 ] || { echo "FAIL: no make function was generated" >&2; exit 1; }
+
 # Legacy records have var fields. The record crosses the C++ boundary in both directions.
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$out/cpp" --cpp-namespace rt \
@@ -95,9 +108,10 @@ run_mode() { # <swiftc flags>
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
   echo "== [$flags]"
+  # -enable-testing lets main.swift reach the internal proxy caches with @testable import
   # shellcheck disable=SC2086
   swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-    -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
+    -enable-testing -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
   # shellcheck disable=SC2086
   swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out"/swift/*.swift "$src/main.swift" \
     "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test"

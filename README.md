@@ -465,6 +465,33 @@ IDL changes:
   them in member position: `Type`, `Protocol`, `self`, `Self`, `init`, `deinit`,
   `subscript`. The list is `SwiftIdent` in `SwiftMarshal.scala`.
 
+Runtime safety (Swift):
+
+- No Swift runtime function traps on a C++ value. A C++ value of the wrong kind,
+  a composite with too few members and a string that is not valid UTF-8 throw
+  `DjinniError`. The C++ helpers that Swift calls do not throw C++ exceptions.
+- A C++ method that returns a null pointer for an interface that is not
+  optional throws `DjinniError("null value for a non-optional interface")`.
+  An optional interface is `nil`.
+- A string that is not valid UTF-8 throws. A leading byte order mark stays in
+  the string.
+- A C++ future whose promise C++ drops (see `BrokenPromiseException`) throws
+  `DjinniError`. A C++ exception of any type in a continuation becomes a
+  `DjinniError`, and the promise is completed once.
+- A `DataRef` value owns its reference to the data until it is destroyed. A
+  conversion that throws does not leak it, in both directions.
+- `DjinniError` has a `description` and conforms to `LocalizedError`. Both show
+  the message of the C++ exception.
+- The proxy cache key of a Swift object is its object address and the
+  `ObjectIdentifier` of the protocol. Two protocols with the same name in two
+  modules do not share a proxy.
+- The closure of `Future.getResult` is `@Sendable`, because it runs on a global
+  queue. A promise that is called twice keeps its first result.
+- Known limit: Swift compares strings by canonical equivalence. A `Set` or a
+  `Dictionary` with a string key merges two keys that Swift treats as equal,
+  such as `"é"` (U+00E9) and `"e\u{301}"`, although C++ treats the byte
+  sequences as two keys. The generated types do not change for this.
+
 Extern yaml files have two new blocks. A type without them cannot be used in Swift.
 
 ```yaml
@@ -627,9 +654,17 @@ select the newest cached jar, and CI pins 1.10.2 (`ci/kotlin-ci.sh`).
   call.
 - A method that returns `outcome<T, E>` is not unwrapped. It returns
   `com.snapchat.djinni.Outcome<T, E>`.
-- A C++ exception is thrown as the exception that `jniSetPendingFromCurrent`
-  makes (`RuntimeException` by default). A failed future always throws
-  `RuntimeException`. `--java-cpp-exception` only adds `@Throws`.
+- `JNI_TRANSLATE_EXCEPTIONS_RETURN` catches every C++ exception and sets a
+  `com.snapchat.djinni.DjinniCppException`. It is a subclass of
+  `RuntimeException`, so existing `catch (e: RuntimeException)` blocks still
+  work. The message is `what()` of a `std::exception`, or `unknown C++
+  exception` for any other type. Before this change a `std::exception` gave a
+  `RuntimeException`, and any other type stopped the JVM. Without
+  `DjinniCppException` on the class path the JNI code sets a `RuntimeException`.
+- A failed future throws `DjinniCppException`, also when C++ rejects it with
+  an exception that does not derive from `std::exception`, and when the C++
+  promise is dropped without a value (`BrokenPromiseException`).
+  `--java-cpp-exception` only adds `@Throws`.
 - A static method stays a normal method.
 
 `ci/kotlin-jni-check.sh` generates Java, JNI and Kotlin for the Crux assets IDL
@@ -664,7 +699,8 @@ JVM with `-Xcheck:jni`. The script fails when `-Xcheck:jni` prints a warning.
 The first program checks these items:
 
 - calls from Kotlin to C++ and from C++ to a Kotlin object
-- records, enums, outcomes, futures and C++ exceptions
+- records, enums, outcomes, futures and C++ exceptions, including a promise that C++
+  drops and an exception that does not derive from `std::exception`
 - the proxy of a C++ object that goes back to C++
 - an extern type with the Kotlin keys that goes between its Kotlin class and
   C++, alone, in a list and as an optional field
@@ -792,6 +828,16 @@ builtin `Promise` type (and therefore supports the `await` syntax).
 The C++ `Future` type has optional support for coroutines. If coroutines are
 availble (eg. compiling with C++20 or C++17 with -fcoroutines-ts), then you can
 use `co_await` on future objects.
+
+A `Promise` that is destroyed without a value or an exception completes its
+future with `djinni::BrokenPromiseException`. A waiter on the other side of
+the language boundary then gets an error and does not wait for ever: a Swift
+`await` throws `DjinniError`, a Kotlin `suspend` function and a Java
+`Future.get` throw `DjinniCppException`. Keep the promise alive until you
+complete it. When a second call replaces a stored promise, the future of the
+first call breaks. A handler that `Future::then` runs can throw any type. The
+future that `then` returns gets the exception, and the completion of the
+first future does not fail.
 
 ## FAQ
 
