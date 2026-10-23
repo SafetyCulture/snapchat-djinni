@@ -331,7 +331,17 @@ swift_options_relative="djinni/swift_options.djinni"
     --swiftxx-out "$temp_out_relative/swift-features/host/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_host_relative" && \
+    --idl "$swift_host_relative"
+) >"$temp_out/swift-host.log" 2>&1 || { cat "$temp_out/swift-host.log" 1>&2; exit 1; }
+cat "$temp_out/swift-host.log"
+# An interface with +o but not +sw gets no Swift proxy, and the generator says so once.
+if [ "$(grep -cF -- "Warning: interface objc_host_listener has +o but not +sw. The generator makes no Swift proxy for it." "$temp_out/swift-host.log")" -ne 1 ] || \
+   [ "$(grep -c "^Warning: interface .* has +o but not +sw" "$temp_out/swift-host.log")" -ne 1 ]; then
+    echo "Missing, repeated or extra warning for an interface with +o but not +sw." 1>&2
+    cat "$temp_out/swift-host.log" 1>&2
+    exit 1
+fi
+(cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --cpp-out "$temp_out_relative/swift-features/idents/cpp" \
     --cpp-namespace testsuite \
