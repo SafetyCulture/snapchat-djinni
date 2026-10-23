@@ -658,7 +658,7 @@ Check the library of the two sets:
 
 ```
 nm -D --defined-only libcrux.so | awk '/ Java_/{print $3}' | sort | uniq -d   # prints nothing
-nm -C libcrux.so | grep 'vtable for djinni_generated\|vtable for djinni_generated_kt'  # one vtable for each set
+nm -C libcrux.so | grep 'vtable for djinni_generated\|vtable for djinni_generated_kt'  # one vtable for each +j JavaProxy class in each set
 ```
 
 On macOS, use `nm -gU` in place of `nm -D --defined-only`.
