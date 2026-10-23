@@ -10,13 +10,13 @@ public enum SwiftResultErrorMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftResultError
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let message = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let message = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(message: message)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.message))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.message))
         return ret
     }
 }

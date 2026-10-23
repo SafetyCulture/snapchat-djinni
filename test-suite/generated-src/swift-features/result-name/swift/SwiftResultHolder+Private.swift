@@ -10,15 +10,15 @@ public enum SwiftResultHolderMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftResultHolder
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let outcome = try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftResultErrorMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
-            let value = try ResultMarshaller.fromCpp(djinni.swift.getMember(p, 1))
+            let outcome = try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftResultErrorMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let value = try ResultMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
             return SwiftType(outcome: outcome, value: value)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftResultErrorMarshaller>.toCpp(s.outcome))
-        djinni.swift.addMember(&ret, try ResultMarshaller.toCpp(s.value))
+        try DjinniSupport.addMember(&ret, DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftResultErrorMarshaller>.toCpp(s.outcome))
+        try DjinniSupport.addMember(&ret, ResultMarshaller.toCpp(s.value))
         return ret
     }
 }
