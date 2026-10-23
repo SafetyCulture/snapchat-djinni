@@ -36,8 +36,8 @@ object SwiftIdent {
     else if (keywords.contains(ident)) "`" + ident + "`"
     else ident
 
-  // An argument label at a call site does not need backticks, except for inout, var and let.
-  def label(ident: String): String = if (Set("`inout`", "`var`", "`let`").contains(ident)) ident else ident.replace("`", "")
+  // An argument label at a call site does not need backticks, except for inout.
+  def label(ident: String): String = if (ident == "`inout`") ident else ident.replace("`", "")
 
   // The name without escaping, for identifiers that are part of a longer name.
   def plain(ident: String): String = IdentStyle.camelLower(ident)

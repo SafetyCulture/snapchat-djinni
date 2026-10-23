@@ -482,6 +482,34 @@ if [ -n "$options_missing" ]; then
     exit 1
 fi
 
+# A nested --swiftxx-namespace is valid C++ and the generated Swift calls it with dots.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/nested-ns/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/nested-ns/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/nested-ns/swiftxx" \
+    --swiftxx-namespace "djinni_options::nested" \
+    \
+    --idl "$swift_options_relative" \
+)
+if ! grep -qx "namespace djinni_options::nested {" "$temp_out"/swift-features/nested-ns/swiftxx/*.hpp; then
+    echo "The nested-namespace case does not write the C++ namespace." 1>&2
+    exit 1
+fi
+if ! grep -q "djinni_options\.nested\." "$temp_out"/swift-features/nested-ns/swift/*+Private.swift; then
+    echo "The nested-namespace case does not call the namespace with dots in Swift." 1>&2
+    exit 1
+fi
+# The interface constant of the options case is on the _statics class.
+if ! grep -qF "static let maxCount" "$temp_out"/swift-features/options/swift/SwiftOptionsService+Private.swift; then
+    echo "The interface constant is not on the _statics class." 1>&2
+    exit 1
+fi
+
 # A label prefix that would break the generated string literal is rejected.
 prefix_log="$temp_out/swift-async-wrap-prefix.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
@@ -809,8 +837,41 @@ fi
     --java-package $java_package \
     --java-implement-android-os-parcelable true \
     --idl "djinni/kotlin_extern.djinni" \
+    --idl "djinni/kotlin_extern_parceler_name.djinni" \
     --idl-include-path "djinni/vendor" \
 )
+
+# An internal record with the name of the Parceler of an extern type is rejected before any file is written.
+parceler_collision_log="$temp_out/kotlin-jni-extern-parceler-collision.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-parceler-collision/kotlin" \
+    --java-package $java_package \
+    --java-implement-android-os-parcelable true \
+    --idl "djinni/kotlin_extern_parceler_collision.djinni" \
+    --idl-include-path "djinni/vendor") >"$parceler_collision_log" 2>&1; then
+    echo "The generator accepted an IDL type with the name of a Parceler." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "The Parceler name ExternKotlinMessageParceler collides with an IDL type of the same name." "$parceler_collision_log"; then
+    echo "Missing error message for a Parceler name collision." 1>&2
+    cat "$parceler_collision_log" 1>&2
+    exit 1
+fi
+
+# array<extern> with a Java primitive is a primitive array; with a Kotlin key it is Array<T>.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-array/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern-array/jni" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_extern_array.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+if ! grep -qF -- "val mBytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
+   ! grep -qF -- "val mKeyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
+    echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2
+    exit 1
+fi
 
 # With --jni-out, --kotlin-jni-package must equal --java-package.
 (cd "$base_dir" && \

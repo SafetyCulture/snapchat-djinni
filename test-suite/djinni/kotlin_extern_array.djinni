@@ -1,0 +1,12 @@
+@extern "vendor/third-party/kotlin_extern_byte.yaml"
+@extern "vendor/third-party/kotlin_extern_byte_keyed.yaml"
+
+# array<extern> with a Java primitive maps to a primitive array; with a Kotlin key, to Array<T>.
+kotlin_extern_arrays = record {
+  bytes: array<extern_byte>;
+  keyed: array<extern_byte_keyed>;
+}
+
+kotlin_extern_arrays_service = interface +c {
+  static echo(a: kotlin_extern_arrays): kotlin_extern_arrays;
+}
