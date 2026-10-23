@@ -22,6 +22,16 @@ fun check(condition: Boolean, message: String) {
     }
 }
 
+// Future.get(timeout) of djinni waits without a limit, so a test polls isDone() against a deadline
+fun <T> Future<T>.getWithin(seconds: Long): T {
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds)
+    while (!isDone()) {
+        if (System.nanoTime() > deadline) throw TimeoutException("no result after $seconds s")
+        Thread.sleep(5)
+    }
+    return get()
+}
+
 fun main(args: Array<String>) {
     System.load(args[0])
     // A watchdog fails the run when the runtime deadlocks.
@@ -99,7 +109,7 @@ fun main(args: Array<String>) {
 
     // A promise that C++ drops fails the future. It does not wait for ever.
     try {
-        service.dropped().get(10, TimeUnit.SECONDS)
+        service.dropped().getWithin(10)
         check(false, "a dropped promise must fail the future")
     } catch (e: ExecutionException) {
         check(e.cause is DjinniCppException && e.cause?.message?.contains("broken promise") == true, "dropped promise error: ${e.cause}")
@@ -109,12 +119,22 @@ fun main(args: Array<String>) {
 
     // A future that C++ rejects with an exception outside std::exception fails too.
     try {
-        service.unknownFuture().get(10, TimeUnit.SECONDS)
+        service.unknownFuture().getWithin(10)
         check(false, "an unknown rejection must fail the future")
     } catch (e: ExecutionException) {
         check(e.cause is DjinniCppException && e.cause?.message == "unknown C++ exception", "unknown rejection error: ${e.cause}")
     } catch (e: TimeoutException) {
         check(false, "the future of an unknown rejection never completes")
+    }
+
+    // A C++ exception whose message is not valid UTF-8 has no Java string. The future fails all the same.
+    try {
+        service.badMessageFuture().getWithin(10)
+        check(false, "a rejection with a message that is not UTF-8 must fail the future")
+    } catch (e: ExecutionException) {
+        check(e.cause is DjinniCppException && e.cause?.message?.contains("not valid UTF-8") == true, "rejection with a message that is not UTF-8: ${e.cause}")
+    } catch (e: TimeoutException) {
+        check(false, "the future of a rejection with a message that is not UTF-8 never completes")
     }
 
     // Float fields compare as in Java and C++ (IEEE), not by total order.

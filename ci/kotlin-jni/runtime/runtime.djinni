@@ -112,6 +112,8 @@ kj_service = interface +c {
   dropped(): future<i32>;
   # A future that C++ rejects with an exception that does not derive from std::exception
   unknown_future(): future<i32>;
+  # A future that C++ rejects with a message that is not valid UTF-8
+  bad_message_future(): future<i32>;
   busy(millis: i32);
   max_concurrent(): i32;
   invert(color: kj_color): kj_color;
