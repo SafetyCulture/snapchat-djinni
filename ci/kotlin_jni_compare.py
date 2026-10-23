@@ -19,7 +19,7 @@ The script runs `javap -p -s` on both class trees and checks:
      methods of the Kotlin classes (name and descriptor).
 
 A lookup of a class that the Java tree does not have, such as the hand-written subclass of a record with +j,
-is skipped.
+is skipped. A Java tree without classes of the package checks the Kotlin classes against the JNI code alone.
 """
 import glob
 import os
@@ -42,6 +42,9 @@ def class_names(root: str, package: str) -> list[str]:
 
 def javap(root: str, names: list[str], substitutions=()) -> dict[str, dict]:
     """Returns {class: {"fields": set, "methods": set}}, where a member is (name, descriptor, flags)."""
+    # A case without Java classes checks the Kotlin classes against the JNI code alone.
+    if not names:
+        return {}
     out = subprocess.run(["javap", "-p", "-s", "-cp", root] + names, capture_output=True, text=True, check=True).stdout
     classes, current, pending = {}, None, None
     for line in out.splitlines():
@@ -157,7 +160,8 @@ def main() -> None:
         native_count += len(j)
         if j != k:
             failures.append(f"native methods differ in {name}: Java only {sorted(j - k)[:3]}, Kotlin only {sorted(k - j)[:3]}")
-    extra = [n for n in kotlin if n not in java and natives(kotlin[n])]
+    # Without Java classes, check 3 compares the Kotlin natives with the JNI functions alone.
+    extra = [n for n in kotlin if n not in java and natives(kotlin[n])] if java_names else []
     if extra:
         failures.append(f"natives in classes that Java does not have: {extra}")
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")

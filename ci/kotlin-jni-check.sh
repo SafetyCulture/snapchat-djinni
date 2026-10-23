@@ -202,6 +202,15 @@ kotlinc -Werror -d "$work/$name/probe-classes" -cp "$work/$name/kotlin-classes:$
   "$repo_root/ci/kotlin-jni/parceler/ParcelerProbe.kt"
 java -cp "$work/$name/probe-classes:$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/parcelize-runtime.jar:$kotlin_lib/kotlin-stdlib.jar" \
   com.dropbox.djinni.test.ParcelerProbeKt
+
+# 5. array<extern>: an extern with a Java primitive is a primitive array, and kotlin.jniTypename wins over the Java
+# primitive. The Java class uses the Java primitive for both fields, so the reference is the JNI code alone.
+name=extern-array
+mkdir -p "$work/$name/java"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --jni-out "$work/$name/jni" --java-package "$package" \
+  --idl djinni/kotlin_extern_array.djinni --idl-include-path djinni/vendor)
+compile_and_compare "$name" "$package" "" "$repo_root/ci/kotlin-jni/extern-array" com.dropbox.djinni.testextern
 # The compare tool must reject a JNI lookup that it cannot parse, so a change in the shape of the generated C++
 # cannot turn a lookup into a silent skip. The mutant has one lookup split over two lines.
 mutant="$work/compare-mutant"
