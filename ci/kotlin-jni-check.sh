@@ -196,4 +196,30 @@ if ! grep -qF "JNI lookups are not parsed" "$mutant/out.log"; then
   exit 1
 fi
 echo "compare tool: an unparsed JNI lookup is rejected"
+
+# A lookup with white space before the parenthesis is still a lookup: the tool must count it as the same one.
+spaced="$work/compare-spaced"
+mkdir -p "$spaced"
+cp -R "$work/suite/jni" "$spaced/jni"
+python3 - "$spaced/jni" <<'PY'
+import glob, re, sys
+changed = 0
+for path in sorted(glob.glob(sys.argv[1] + "/*")):
+    text = open(path).read()
+    new = re.sub(r"\b(jni(?:GetFieldID|GetMethodID|GetStaticMethodID))\(", r"\1 (", text)
+    if new != text:
+        open(path, "w").write(new)
+        changed += 1
+if not changed:
+    sys.exit("no lookup to change")
+PY
+plain_count="$(python3 "$repo_root/ci/kotlin_jni_compare.py" "$work/suite/java-classes" "$work/suite/kotlin-classes" "$work/suite/jni" "$package" | grep '^4\. JNI lookups')"
+spaced_count="$(python3 "$repo_root/ci/kotlin_jni_compare.py" "$work/suite/java-classes" "$work/suite/kotlin-classes" "$spaced/jni" "$package" | grep '^4\. JNI lookups')"
+if [ -z "$plain_count" ] || [ "$plain_count" != "$spaced_count" ]; then
+  echo "FAIL: the compare tool counts a different number of lookups when there is white space before the parenthesis" >&2
+  echo "plain:  $plain_count" >&2
+  echo "spaced: $spaced_count" >&2
+  exit 1
+fi
+echo "compare tool: a lookup with white space before the parenthesis is counted ($plain_count)"
 echo "KOTLIN JNI CHECK OK"
