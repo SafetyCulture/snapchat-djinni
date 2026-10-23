@@ -52,7 +52,7 @@ if [ ! -f "$spb_mod/SwiftProtobuf.swiftmodule" ]; then
   [ -d "$cache/swift-protobuf-$protobuf_tag" ] || git clone --quiet --depth 1 --branch "$protobuf_tag" https://github.com/apple/swift-protobuf "$cache/swift-protobuf-$protobuf_tag"
   mkdir -p "$spb_mod"
   swiftc -emit-module -emit-module-path "$spb_mod/SwiftProtobuf.swiftmodule" -module-name SwiftProtobuf \
-    -parse-as-library -swift-version 5 -wmo -Onone "$cache"/swift-protobuf-$protobuf_tag/Sources/SwiftProtobuf/*.swift
+    -parse-as-library -swift-version 5 -package-name SwiftProtobuf -wmo -Onone "$cache"/swift-protobuf-$protobuf_tag/Sources/SwiftProtobuf/*.swift
 fi
 
 # Fixtures and generation

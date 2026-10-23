@@ -119,8 +119,8 @@ public enum BinaryMarshaller: Marshaller {
 
 public enum DateMarshaller: Marshaller {
     public typealias SwiftType = Date
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
-        let millisecondsSinceEpoch = I64Marshaller.fromCpp(v)
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
+        let millisecondsSinceEpoch = try I64Marshaller.fromCpp(v)
         return Date(timeIntervalSince1970: Double(millisecondsSinceEpoch) / 1000)
     }
     static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {

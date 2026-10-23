@@ -212,7 +212,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"public enum ${marshal.typename(ident, r)}Marshaller: DjinniSupport.Marshaller").braced {
         w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, r)}")
         w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType").braced {
-          w.wl("return withUnsafePointer(to: c) { p in").nested {
+          w.wl("return try withUnsafePointer(to: c) { p in").nested {
             for ((f, i) <- r.fields.view.zipWithIndex) {
               val swiftExp = s"djinni.swift.getMember(p, $i)"
               w.wl(s"let ${idSwift.field(f.ident)} = try ${marshal.fromCpp(f.ty, swiftExp)}")
