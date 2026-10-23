@@ -3,6 +3,8 @@ package rt.kj
 import com.dropbox.djinni.testextern.ExternKotlinMessage
 import java.util.EnumSet
 import com.snapchat.djinni.DjinniCppException
+import com.snapchat.djinni.Future
+import com.snapchat.djinni.Promise
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -56,6 +58,17 @@ fun main(args: Array<String>) {
     check(failed.errorOrNull()?.mCode == 7, "outcome error")
 
     check(service.callListener(Doubler(), 21) == 42, "call into Kotlin")
+
+    // A Kotlin future that C++ waits for. A failure without a message gives C++ the toString() text.
+    val valueSource = object : KjFutureSource() {
+        override fun produce(): Future<Int> = Promise<Int>().apply { setValue(4) }.future
+    }
+    check(service.awaitSource(valueSource) == "value 4", "a Kotlin future with a value")
+    val failingSource = object : KjFutureSource() {
+        override fun produce(): Future<Int> = Promise<Int>().apply { setException(IllegalStateException()) }.future
+    }
+    val text = service.awaitSource(failingSource)
+    check(text == "java.lang.IllegalStateException", "a Kotlin future that fails without a message gives C++ the toString() text, not \"$text\"")
 
     check(service.delayed(7, 50).get() == 7, "future")
 

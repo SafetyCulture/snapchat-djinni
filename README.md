@@ -735,7 +735,8 @@ C++ and a C++ implementation into a library, and runs Kotlin against it on the
 JVM with `-Xcheck:jni`. The script fails when `-Xcheck:jni` prints a warning.
 The first program checks these items:
 
-- calls from Kotlin to C++ and from C++ to a Kotlin object
+- calls from Kotlin to C++ and from C++ to a Kotlin object, and a Kotlin future
+  that C++ waits for, with a value and with a failure that has no message
 - records, enums, outcomes, futures and C++ exceptions, including a promise that C++
   drops and an exception that does not derive from `std::exception`
 - the proxy of a C++ object that goes back to C++

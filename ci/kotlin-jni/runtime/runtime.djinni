@@ -57,6 +57,11 @@ kj_listener = interface +j {
   on_value(value: i32): i32;
 }
 
+# Kotlin implements this one and returns a future to C++.
+kj_future_source = interface +j {
+  produce(): future<i32>;
+}
+
 # C++ and Kotlin can implement this one.
 kj_both = interface +c +j {
   value(): i32;
@@ -77,6 +82,8 @@ kj_service = interface +c {
   echo_message_box(box: kj_message_box): kj_message_box;
   divide(a: i32, b: i32): outcome<i32, kj_error>;
   call_listener(listener: kj_listener, value: i32): i32;
+  # Waits for the future of the source. Returns "value <n>", or the text of the C++ exception of a failed future.
+  await_source(source: kj_future_source): string;
   delayed(value: i32, millis: i32): future<i32>;
   # A future of an outcome: C++ completes it after the delay with a value, or with the error for division by zero.
   divide_later(a: i32, b: i32, millis: i32): future<outcome<i32, kj_error>>;
