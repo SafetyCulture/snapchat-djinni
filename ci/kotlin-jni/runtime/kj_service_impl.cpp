@@ -55,11 +55,17 @@ public:
         return future;
     }
 
+    // A second call before complete_pending replaces the promise of the first call. The first future breaks with
+    // BrokenPromiseException instead of waiting for ever. The old promise is destroyed outside the lock, because its
+    // handler runs when it is destroyed.
     djinni::Future<int32_t> pending() override {
         pendingStarted.fetch_add(1);
+        std::unique_ptr<djinni::Promise<int32_t>> previous;
         std::lock_guard<std::mutex> lock(_mutex);
+        previous = std::move(_pending);
         _pending = std::make_unique<djinni::Promise<int32_t>>();
-        return _pending->getFuture();
+        auto future = _pending->getFuture();
+        return future;
     }
 
     int32_t pending_started() override { return pendingStarted.load(); }
@@ -87,6 +93,17 @@ public:
     }
 
     int32_t fail() override { throw std::runtime_error("boom"); }
+
+    int32_t fail_unknown() override { throw 42; }
+
+    djinni::Future<int32_t> dropped() override {
+        djinni::Promise<int32_t> promise;
+        return promise.getFuture();
+    }
+
+    djinni::Future<int32_t> unknown_future() override {
+        return djinni::Promise<int32_t>::reject(std::make_exception_ptr(42));
+    }
 
     void busy(int32_t millis) override {
         const int32_t active = ++_active;

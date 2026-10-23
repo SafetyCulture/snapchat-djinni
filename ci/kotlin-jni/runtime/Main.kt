@@ -2,10 +2,12 @@ package rt.kj
 
 import com.dropbox.djinni.testextern.ExternKotlinMessage
 import java.util.EnumSet
+import com.snapchat.djinni.DjinniCppException
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.TimeoutException
 
 class Doubler : KjListener() {
     override fun onValue(value: Int): Int = value * 2
@@ -61,6 +63,7 @@ fun main(args: Array<String>) {
         service.fail()
         check(false, "a C++ exception must throw")
     } catch (e: RuntimeException) {
+        check(e is DjinniCppException, "a C++ exception is a DjinniCppException, not ${e::class}")
         check(e.message?.contains("boom") == true, "exception message: ${e.message}")
     }
 
@@ -73,6 +76,33 @@ fun main(args: Array<String>) {
     // Integer literals for float constants compile and read as floats.
     check(KjConstants.F32_ONE == 1.0f, "f32 constant from an integer literal")
     check(KjConstants.F64_MINUS_TWO == -2.0, "f64 constant from an integer literal")
+    // An exception that does not derive from std::exception must not stop the JVM.
+    try {
+        service.failUnknown()
+        check(false, "an unknown C++ exception must throw")
+    } catch (e: DjinniCppException) {
+        check(e.message == "unknown C++ exception", "message of an unknown C++ exception: ${e.message}")
+    }
+
+    // A promise that C++ drops fails the future. It does not wait for ever.
+    try {
+        service.dropped().get(10, TimeUnit.SECONDS)
+        check(false, "a dropped promise must fail the future")
+    } catch (e: ExecutionException) {
+        check(e.cause is DjinniCppException && e.cause?.message?.contains("broken promise") == true, "dropped promise error: ${e.cause}")
+    } catch (e: TimeoutException) {
+        check(false, "the future of a dropped promise never completes")
+    }
+
+    // A future that C++ rejects with an exception outside std::exception fails too.
+    try {
+        service.unknownFuture().get(10, TimeUnit.SECONDS)
+        check(false, "an unknown rejection must fail the future")
+    } catch (e: ExecutionException) {
+        check(e.cause is DjinniCppException && e.cause?.message == "unknown C++ exception", "unknown rejection error: ${e.cause}")
+    } catch (e: TimeoutException) {
+        check(false, "the future of an unknown rejection never completes")
+    }
 
     // Many threads call one object.
     val pool = Executors.newFixedThreadPool(8)

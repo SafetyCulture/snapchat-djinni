@@ -1,5 +1,6 @@
 package rt.kj
 
+import com.snapchat.djinni.DjinniCppException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
@@ -12,6 +13,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.lang.ref.WeakReference
 import kotlin.coroutines.coroutineContext
 
@@ -115,6 +117,49 @@ fun main(args: Array<String>) {
             check(e.message == "failed future", "message of a failed future: ${e.message}")
         }
         service.done()
+
+        // A C++ exception is a DjinniCppException. An exception outside std::exception does not stop the JVM.
+        try {
+            service.fail()
+            check(false, "a C++ exception must throw")
+        } catch (e: DjinniCppException) {
+            check(e.message?.contains("boom") == true, "exception message: ${e.message}")
+        }
+        try {
+            service.failUnknown()
+            check(false, "an unknown C++ exception must throw")
+        } catch (e: DjinniCppException) {
+            check(e.message == "unknown C++ exception", "message of an unknown C++ exception: ${e.message}")
+        }
+
+        // A promise that C++ drops fails the call. A rejection with an exception outside std::exception fails it too.
+        try {
+            withTimeout(10_000) { service.dropped() }
+            check(false, "a dropped promise must fail the call")
+        } catch (e: DjinniCppException) {
+            check(e.message?.contains("broken promise") == true, "dropped promise error: ${e.message}")
+        } catch (e: CancellationException) {
+            check(false, "the call on a dropped promise never returns")
+        }
+        try {
+            withTimeout(10_000) { service.unknownFuture() }
+            check(false, "an unknown rejection must fail the call")
+        } catch (e: DjinniCppException) {
+            check(e.message == "unknown C++ exception", "unknown rejection error: ${e.message}")
+        } catch (e: CancellationException) {
+            check(false, "the call on an unknown rejection never returns")
+        }
+
+        // A second call before complete_pending replaces the promise of the first call. The first call fails, and the
+        // second call is not blocked.
+        val firstCall = async(Dispatchers.Default) { runCatching { service.pending() } }
+        delay(200)
+        val secondCall = async(Dispatchers.Default) { service.pending() }
+        delay(200)
+        val firstResult = withTimeoutOrNull(10_000) { firstCall.await() }
+        check(firstResult?.exceptionOrNull() is DjinniCppException, "the first call fails when a second call replaces its promise: $firstResult")
+        service.completePending(5)
+        check(withTimeoutOrNull(10_000) { secondCall.await() } == 5, "the second call completes")
 
         // A late result is dropped.
         val late = launch(Dispatchers.Default) { service.delayed(3, 300) }

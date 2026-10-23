@@ -1,6 +1,10 @@
+#include "runtime_error.hpp"
+#include "runtime_blob.hpp"
 #include "runtime_listener.hpp"
 #include "runtime_error.hpp"
 #include "runtime_service.hpp"
+
+#include <CoreFoundation/CoreFoundation.h>
 
 #include <memory>
 
@@ -41,8 +45,21 @@ public:
     }
     std::chrono::system_clock::time_point date_roundtrip(const std::chrono::system_clock::time_point& d) override { return d; }
     rt::RuntimeColor unknown_color() override { return static_cast<rt::RuntimeColor>(99); }
+    // "\xC0\xAF" is an overlong encoding of "/", which is not valid UTF-8
+    std::string invalid_string() override { return std::string("ab\xC0\xAF"); }
+    // The byte order mark U+FEFF and "abc"
+    std::string bom_string() override { return std::string("\xEF\xBB\xBF" "abc"); }
+    rt::RuntimeBlob bad_blob() override { return rt::RuntimeBlob(static_cast<rt::RuntimeColor>(42), keptData()); }
+    int32_t kept_data_retain_count() override {
+        return static_cast<int32_t>(CFGetRetainCount(static_cast<CFTypeRef>(keptData().platformObj())));
+    }
 
 private:
+    // One CFData that every call shares, so that the test counts its references
+    static const djinni::DataRef& keptData() {
+        static const djinni::DataRef data(std::vector<uint8_t>(16, 1));
+        return data;
+    }
     std::shared_ptr<rt::RuntimeListener> _kept;
 };
 
@@ -55,4 +72,8 @@ std::shared_ptr<rt::RuntimeService> rt::RuntimeService::create() {
 std::shared_ptr<rt::RuntimeService> rt::RuntimeService::shared() {
     static const std::shared_ptr<RuntimeServiceImpl> instance = std::make_shared<RuntimeServiceImpl>();
     return instance;
+}
+
+std::shared_ptr<rt::RuntimeService> rt::RuntimeService::null_service() {
+    return nullptr;
 }
