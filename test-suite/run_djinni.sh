@@ -659,6 +659,33 @@ if [ -e "$base_dir/$temp_out_relative/swift-features/async-without-module" ]; th
     exit 1
 fi
 
+# The Swift glue and the Objective-C++ glue define the same helper symbols when they share a namespace.
+# The default namespaces differ. Equal namespaces fail the run before any file is written.
+namespace_out="$temp_out/swiftxx-namespace-equal"
+namespace_log="$namespace_out.log"
+rm -rf "$namespace_out"
+set +e
+(cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swiftxx-namespace-equal/cpp" \
+    --cpp-namespace testsuite \
+    --objcpp-out "$temp_out_relative/swiftxx-namespace-equal/objc" \
+    --objc-type-prefix DB \
+    --swiftxx-out "$temp_out_relative/swiftxx-namespace-equal/swiftxx" \
+    --swiftxx-namespace djinni_generated \
+    --swift-out "$temp_out_relative/swiftxx-namespace-equal/swift" \
+    --swift-module TestSuite \
+    --idl "$swift_types_relative") >"$namespace_log" 2>&1
+namespace_status=$?
+set -e
+if [ "$namespace_status" -ne 1 ] || \
+   ! grep -qF -- 'Error: --swiftxx-namespace and --objcpp-namespace are both "djinni_generated".' "$namespace_log" || \
+   [ -e "$namespace_out" ]; then
+    echo "The generator accepted equal --swiftxx-namespace and --objcpp-namespace, or wrote files (exit $namespace_status)." 1>&2
+    cat "$namespace_log" 1>&2
+    exit 1
+fi
+rm -f "$namespace_log"
+
 # Kotlin classes for the JNI code. The Kotlin JNI check compiles them with the Java classes of the same IDL.
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \

@@ -3,7 +3,7 @@
 
 #include "swift_kind.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

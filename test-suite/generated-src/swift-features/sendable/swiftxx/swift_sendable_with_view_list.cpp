@@ -4,7 +4,7 @@
 #include "swift_sendable_with_view_list.hpp"  // my header
 #include "Data_swift.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableWithViewList::fromCpp(const ::testsuite::SwiftSendableWithViewList& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -16,4 +16,4 @@ djinni::swift::AnyValue SwiftSendableWithViewList::fromCpp(const ::testsuite::Sw
     return ::testsuite::SwiftSendableWithViewList(::djinni::swift::List<::djinni::swift::DataViewAdaptor>::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

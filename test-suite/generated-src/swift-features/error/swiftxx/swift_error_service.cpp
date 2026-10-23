@@ -7,11 +7,11 @@
 #include "swift_error_item.hpp"
 #include "swift_error_observer.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftErrorService_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftErrorService::create();
-    return ::djinni_generated::SwiftErrorService::fromCpp(ret);
+    return ::djinni_generated_swift::SwiftErrorService::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -23,7 +23,7 @@ djinni::swift::AnyValue SwiftErrorService_fetch(const djinni::swift::ParameterLi
     auto inst = SwiftErrorService::toCpp(params->getValue(0));
     auto _id = ::djinni::swift::String::toCpp(params->getValue(1));
     auto ret = inst->fetch(std::move(_id));
-    return ::djinni::swift::OutcomeAdaptor<::djinni_generated::SwiftErrorItem, ::djinni_generated::CruxError>::fromCpp(ret);
+    return ::djinni::swift::OutcomeAdaptor<::djinni_generated_swift::SwiftErrorItem, ::djinni_generated_swift::CruxError>::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -34,7 +34,7 @@ catch (...) {
 djinni::swift::AnyValue SwiftErrorService_count(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftErrorService::toCpp(params->getValue(0));
     auto ret = inst->count();
-    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated::CruxError>::fromCpp(ret);
+    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated_swift::CruxError>::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -44,9 +44,9 @@ catch (...) {
 }
 djinni::swift::AnyValue SwiftErrorService_watch(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftErrorService::toCpp(params->getValue(0));
-    auto _observer = ::djinni_generated::SwiftErrorObserver::toCpp(params->getValue(1));
+    auto _observer = ::djinni_generated_swift::SwiftErrorObserver::toCpp(params->getValue(1));
     auto ret = inst->watch(std::move(_observer));
-    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::Bool, ::djinni_generated::CruxError>::fromCpp(ret);
+    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::Bool, ::djinni_generated_swift::CruxError>::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -55,4 +55,4 @@ catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

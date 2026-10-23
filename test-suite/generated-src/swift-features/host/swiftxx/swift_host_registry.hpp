@@ -6,7 +6,7 @@
 #include "../cpp/swift_host_registry.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftHostRegistry = djinni::swift::Interface<::testsuite::SwiftHostRegistry>;
 
@@ -14,4 +14,4 @@ djinni::swift::AnyValue SwiftHostRegistry_create(const djinni::swift::ParameterL
 djinni::swift::AnyValue SwiftHostRegistry_registerListener(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftHostRegistry_notifyValue(const djinni::swift::ParameterList* params);
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

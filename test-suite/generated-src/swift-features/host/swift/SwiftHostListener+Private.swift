@@ -29,6 +29,6 @@ public enum SwiftHostListenerMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftHostListener has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftHostListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftHostListenerMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftHostListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftHostListenerMethods), dispatcherProtocalCall)})
     }
 }

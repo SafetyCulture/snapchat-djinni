@@ -6,7 +6,7 @@
 #include "../cpp/swift_error_observer.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftErrorObserver = djinni::swift::Interface<::testsuite::SwiftErrorObserver>;
 
@@ -17,4 +17,4 @@ public:
     void on_item(const ::testsuite::SwiftErrorItem & item) override;
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

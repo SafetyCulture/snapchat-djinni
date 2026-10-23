@@ -3,7 +3,7 @@
 
 #include "swift_async_shared.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftAsyncShared_value(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncShared::toCpp(params->getValue(0));
@@ -24,4 +24,4 @@ int32_t SwiftAsyncSharedSwiftProxy::value() {
     return ::djinni::swift::I32::toCpp(callProtocol(0, &params));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

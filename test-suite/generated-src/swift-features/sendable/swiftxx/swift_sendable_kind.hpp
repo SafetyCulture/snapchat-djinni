@@ -6,8 +6,8 @@
 #include "../cpp/swift_sendable_kind.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftSendableKind = djinni::swift::Enum<::testsuite::swift_sendable_kind>;
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

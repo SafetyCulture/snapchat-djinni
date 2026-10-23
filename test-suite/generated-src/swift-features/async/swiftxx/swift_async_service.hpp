@@ -6,7 +6,7 @@
 #include "../cpp/swift_async_service.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftAsyncService = djinni::swift::Interface<::testsuite::SwiftAsyncService>;
 
@@ -25,4 +25,4 @@ djinni::swift::AnyValue SwiftAsyncService_names(const djinni::swift::ParameterLi
 djinni::swift::AnyValue SwiftAsyncService_futureNames(const djinni::swift::ParameterList* params);
 djinni::swift::AnyValue SwiftAsyncService_attach(const djinni::swift::ParameterList* params);
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

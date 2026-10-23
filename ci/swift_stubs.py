@@ -65,7 +65,7 @@ def cxx_header(out: str, *swiftxx_dirs: str) -> None:
             decls.append(
                 f"struct {proxy} {{ static djinni::swift::AnyValue make(void* instance, djinni::swift::DispatchFunc dispatcher); }};"
             )
-    namespace = os.environ.get("SWIFTXX_NAMESPACE", "djinni_generated")
+    namespace = os.environ.get("SWIFTXX_NAMESPACE", "djinni_generated_swift")
     if not re.fullmatch(r"[A-Za-z_]\w*(::[A-Za-z_]\w*)*", namespace):
         raise SystemExit(f"invalid SWIFTXX_NAMESPACE: {namespace!r}")
     with open(out, "w") as f:

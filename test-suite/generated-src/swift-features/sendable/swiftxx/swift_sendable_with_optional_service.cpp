@@ -4,16 +4,16 @@
 #include "swift_sendable_with_optional_service.hpp"  // my header
 #include "swift_sendable_service.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableWithOptionalService::fromCpp(const ::testsuite::SwiftSendableWithOptionalService& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
-    ret->addValue(::djinni::swift::Optional<std::optional, ::djinni_generated::SwiftSendableService>::fromCpp(c.service));
+    ret->addValue(::djinni::swift::Optional<std::optional, ::djinni_generated_swift::SwiftSendableService>::fromCpp(c.service));
     return {ret};
 }
 ::testsuite::SwiftSendableWithOptionalService SwiftSendableWithOptionalService::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftSendableWithOptionalService(::djinni::swift::Optional<std::optional, ::djinni_generated::SwiftSendableService>::toCpp(p->getValue(0)));
+    return ::testsuite::SwiftSendableWithOptionalService(::djinni::swift::Optional<std::optional, ::djinni_generated_swift::SwiftSendableService>::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

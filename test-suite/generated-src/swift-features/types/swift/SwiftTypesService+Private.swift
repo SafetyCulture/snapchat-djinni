@@ -12,7 +12,7 @@ final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTy
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try I32Marshaller.toCpp(value))
-        var ret = djinni_generated.SwiftTypesService_compute(&_params)
+        var ret = djinni_generated_swift.SwiftTypesService_compute(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftErrorMarshaller>.fromCpp(ret)
     }
@@ -20,21 +20,21 @@ final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTy
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try StringMarshaller.toCpp(id))
-        var ret = djinni_generated.SwiftTypesService_load(&_params)
+        var ret = djinni_generated_swift.SwiftTypesService_load(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.FutureMarshaller<SwiftPayloadMarshaller>.fromCpp(ret)
     }
     func reset() throws -> DjinniSupport.DJFuture<Void> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftTypesService_reset(&_params)
+        var ret = djinni_generated_swift.SwiftTypesService_reset(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.FutureMarshaller<Void_Marshaller>.fromCpp(ret)
     }
     func getPayload() throws -> TestSuite.SwiftPayload {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftTypesService_getPayload(&_params)
+        var ret = djinni_generated_swift.SwiftTypesService_getPayload(&_params)
         try handleCppErrors(&ret)
         return try SwiftPayloadMarshaller.fromCpp(ret)
     }
@@ -42,7 +42,7 @@ final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTy
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try DjinniSupport.DataViewMarshaller.toCpp(view))
-        var ret = djinni_generated.SwiftTypesService_sendView(&_params)
+        var ret = djinni_generated_swift.SwiftTypesService_sendView(&_params)
         try handleCppErrors(&ret)
         return try BinaryMarshaller.fromCpp(ret)
     }
@@ -74,13 +74,13 @@ public enum SwiftTypesServiceMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { SwiftTypesServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftTypesServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftTypesServiceMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftTypesServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftTypesServiceMethods), dispatcherProtocalCall)})
     }
 }
 public class SwiftTypesService_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftTypesService {
         var _params = djinni.swift.ParameterList()
-        var ret = djinni_generated.SwiftTypesService_create(&_params)
+        var ret = djinni_generated_swift.SwiftTypesService_create(&_params)
         try handleCppErrors(&ret)
         return try SwiftTypesServiceMarshaller.fromCpp(ret)
     }

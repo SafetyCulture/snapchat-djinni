@@ -4,17 +4,17 @@
 #include "swift_sendable_nested.hpp"  // my header
 #include "swift_sendable_plain.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableNested::fromCpp(const ::testsuite::SwiftSendableNested& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
-    ret->addValue(::djinni_generated::SwiftSendablePlain::fromCpp(c.plain));
-    ret->addValue(::djinni::swift::List<::djinni_generated::SwiftSendablePlain>::fromCpp(c.items));
+    ret->addValue(::djinni_generated_swift::SwiftSendablePlain::fromCpp(c.plain));
+    ret->addValue(::djinni::swift::List<::djinni_generated_swift::SwiftSendablePlain>::fromCpp(c.items));
     return {ret};
 }
 ::testsuite::SwiftSendableNested SwiftSendableNested::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftSendableNested(::djinni_generated::SwiftSendablePlain::toCpp(p->getValue(0)), ::djinni::swift::List<::djinni_generated::SwiftSendablePlain>::toCpp(p->getValue(1)));
+    return ::testsuite::SwiftSendableNested(::djinni_generated_swift::SwiftSendablePlain::toCpp(p->getValue(0)), ::djinni::swift::List<::djinni_generated_swift::SwiftSendablePlain>::toCpp(p->getValue(1)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

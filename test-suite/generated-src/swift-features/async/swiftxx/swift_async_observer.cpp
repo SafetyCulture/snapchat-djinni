@@ -4,15 +4,15 @@
 #include "swift_async_observer.hpp"  // my header
 #include "swift_async_item.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftAsyncObserverSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
     return {std::make_shared<SwiftAsyncObserverSwiftProxy>(instance, dispatcher)};
 }
 void SwiftAsyncObserverSwiftProxy::on_item(const ::testsuite::SwiftAsyncItem & item) {
     djinni::swift::ParameterList params;
-    params.addValue(::djinni_generated::SwiftAsyncItem::fromCpp(item));
+    params.addValue(::djinni_generated_swift::SwiftAsyncItem::fromCpp(item));
     callProtocol(0, &params);
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

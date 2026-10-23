@@ -20,6 +20,6 @@ public enum SwiftAsyncObserverMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftAsyncObserver has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftAsyncObserverSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncObserverMethods), dispatcherProtocalCall)})
     }
 }

@@ -4,7 +4,7 @@
 #include "swift_sendable_with_data.hpp"  // my header
 #include "Data_swift.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableWithData::fromCpp(const ::testsuite::SwiftSendableWithData& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -16,4 +16,4 @@ djinni::swift::AnyValue SwiftSendableWithData::fromCpp(const ::testsuite::SwiftS
     return ::testsuite::SwiftSendableWithData(::djinni::swift::DataRefAdaptor::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

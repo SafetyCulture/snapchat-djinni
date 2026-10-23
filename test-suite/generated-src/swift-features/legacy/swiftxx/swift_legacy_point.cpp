@@ -3,7 +3,7 @@
 
 #include "swift_legacy_point.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftLegacyPoint::fromCpp(const ::testsuite::SwiftLegacyPoint& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -16,4 +16,4 @@ djinni::swift::AnyValue SwiftLegacyPoint::fromCpp(const ::testsuite::SwiftLegacy
     return ::testsuite::SwiftLegacyPoint(::djinni::swift::I32::toCpp(p->getValue(0)), ::djinni::swift::I32::toCpp(p->getValue(1)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

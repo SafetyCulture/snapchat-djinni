@@ -3,7 +3,7 @@
 
 #include "swift_sendable_service.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableService_ping(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftSendableService::toCpp(params->getValue(0));
@@ -24,4 +24,4 @@ void SwiftSendableServiceSwiftProxy::ping() {
     callProtocol(0, &params);
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

@@ -3,7 +3,7 @@
 
 #include "swift_error_item.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftErrorItem::fromCpp(const ::testsuite::SwiftErrorItem& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -15,4 +15,4 @@ djinni::swift::AnyValue SwiftErrorItem::fromCpp(const ::testsuite::SwiftErrorIte
     return ::testsuite::SwiftErrorItem(::djinni::swift::String::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

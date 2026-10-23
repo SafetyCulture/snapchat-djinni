@@ -3,7 +3,7 @@
 
 #include "objc_host_listener.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

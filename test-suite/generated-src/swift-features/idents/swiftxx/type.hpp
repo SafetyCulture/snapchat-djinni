@@ -6,7 +6,7 @@
 #include "../cpp/type.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct Type {
     using CppType = ::testsuite::Type;
@@ -14,4 +14,4 @@ struct Type {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

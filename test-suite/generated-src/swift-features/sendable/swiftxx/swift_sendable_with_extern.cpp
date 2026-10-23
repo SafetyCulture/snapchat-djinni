@@ -4,7 +4,7 @@
 #include "swift_sendable_with_extern.hpp"  // my header
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableWithExtern::fromCpp(const ::testsuite::SwiftSendableWithExtern& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -16,4 +16,4 @@ djinni::swift::AnyValue SwiftSendableWithExtern::fromCpp(const ::testsuite::Swif
     return ::testsuite::SwiftSendableWithExtern(::djinni::swift::Date::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

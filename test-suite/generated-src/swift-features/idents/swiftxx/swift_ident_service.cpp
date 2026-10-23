@@ -4,14 +4,14 @@
 #include "swift_ident_service.hpp"  // my header
 #include "type.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftIdentService_init(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftIdentService::toCpp(params->getValue(0));
     auto _is = ::djinni::swift::I32::toCpp(params->getValue(1));
     auto _internal = ::djinni::swift::String::toCpp(params->getValue(2));
     auto ret = inst->init(std::move(_is), std::move(_internal));
-    return ::djinni_generated::Type::fromCpp(ret);
+    return ::djinni_generated_swift::Type::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -32,7 +32,7 @@ catch (...) {
 }
 djinni::swift::AnyValue SwiftIdentService_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftIdentService::create();
-    return ::djinni_generated::SwiftIdentService::fromCpp(ret);
+    return ::djinni_generated_swift::SwiftIdentService::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -41,4 +41,4 @@ catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

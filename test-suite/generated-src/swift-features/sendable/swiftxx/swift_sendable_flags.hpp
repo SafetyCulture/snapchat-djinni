@@ -6,8 +6,8 @@
 #include "../cpp/swift_sendable_flags.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftSendableFlags = djinni::swift::Enum<::testsuite::swift_sendable_flags>;
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

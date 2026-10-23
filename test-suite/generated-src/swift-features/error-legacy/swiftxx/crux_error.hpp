@@ -6,7 +6,7 @@
 #include "../cpp/crux_error.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct CruxError {
     using CppType = ::testsuite::CruxError;
@@ -14,4 +14,4 @@ struct CruxError {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

@@ -342,7 +342,7 @@ Command line switches:
   Swift classes with `async` methods
 - `--swift-error-type <name>`: the Swift name of the error record. See below.
 - `--swiftxx-out`: output folder for the C++ glue code
-- `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated`)
+- `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated_swift`). The generator stops when `--objcpp-out` and `--swiftxx-out` are both on and the two namespaces are equal, because both glue sets would define the same record helpers.
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
 - `--swiftxx-include-cpp-prefix`: path prefix for includes of the main C++ headers
 - `--swiftxx-base-lib-module`: Swift module that exposes the support library to

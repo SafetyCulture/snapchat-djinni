@@ -6,8 +6,8 @@
 #include "../cpp/objc_host_listener.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using ObjcHostListener = djinni::swift::Interface<::testsuite::ObjcHostListener>;
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

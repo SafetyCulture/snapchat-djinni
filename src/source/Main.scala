@@ -114,7 +114,7 @@ object Main {
     var swiftPrivateInSameModule: Boolean = false
     var swiftIdentStyle = IdentStyle.swiftDefault
     var swiftxxOutFolder: Option[File] = None
-    var swiftxxNamespace: String = "djinni_generated"
+    var swiftxxNamespace: String = "djinni_generated_swift"
     var swiftxxIncludePrefix: String = ""
     var swiftxxBaseLibModule: String = "DjinniSupportCxx"
     var swiftxxClassIdentStyleOptional: Option[IdentConverter] = None
@@ -306,7 +306,7 @@ object Main {
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
-        .text("The C++ namespace for Swift/C++ interop files (default: \"djinni_generated\").")
+        .text("The C++ namespace for Swift/C++ interop files (default: \"djinni_generated_swift\"). It must differ from --objcpp-namespace when both outputs are on.")
       opt[String]("swiftxx-include-prefix").valueName("<prefix>").foreach(swiftxxIncludePrefix = _)
         .text("The prefix for #includes of Swift C++ header files.")
       opt[String]("swiftxx-include-cpp-prefix").valueName("<prefix>").foreach(swiftxxIncludeCppPrefix = _)
@@ -421,6 +421,11 @@ object Main {
     // The JNI code binds the classes of one package; a different Kotlin package breaks the binding
     if (kotlinJniOutFolder.isDefined && jniOutFolder.isDefined && kotlinJniPackage.exists(p => !javaPackage.contains(p))) {
       System.err.println("Error: --kotlin-jni-package must equal --java-package when the JNI code binds the classes.")
+      System.exit(1); return
+    }
+
+    if (swiftxxOutFolder.isDefined && objcppOutFolder.isDefined && swiftxxNamespace == objcppNamespace) {
+      System.err.println("Error: --swiftxx-namespace and --objcpp-namespace are both \"" + swiftxxNamespace + "\". The two glue sets would define the same symbols. Set one of them to another namespace.")
       System.exit(1); return
     }
 

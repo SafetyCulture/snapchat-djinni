@@ -11,7 +11,7 @@ final class SwiftAsyncChildCppProxy: DjinniSupport.CppProxy, @unchecked Sendable
     func name() throws -> String {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncChild_name(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncChild_name(&_params)
         try handleCppErrors(&ret)
         return try StringMarshaller.fromCpp(ret)
     }
