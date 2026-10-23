@@ -1,0 +1,9 @@
+# A type with the name of the Swift module (--swift-module TestSuite) hides the module in every qualified name.
+
+test_suite = record {
+  value: i32;
+}
+
+other_record = record {
+  value: i32;
+}

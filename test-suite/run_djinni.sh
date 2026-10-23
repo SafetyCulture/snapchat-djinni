@@ -1033,6 +1033,23 @@ if grep -qF "constant fine" "$escape_log" || [ -e "$base_dir/$temp_out_relative/
     exit 1
 fi
 
+# A type with the name of the Swift module hides the module in every qualified name.
+module_name_log="$temp_out/swift-module-name-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-module-name-negative/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_module_name_negative.djinni") >"$module_name_log" 2>&1; then
+    echo "The generator accepted a type with the name of the Swift module." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "test_suite is TestSuite in Swift, the name of the Swift module." "$module_name_log" || \
+   grep -qF "other_record" "$module_name_log" || [ -e "$base_dir/$temp_out_relative/swift-module-name-negative" ]; then
+    echo "Missing error message for a type with the name of the Swift module, or files were written." 1>&2
+    cat "$module_name_log" 1>&2
+    exit 1
+fi
+
 # The glue headers have the names of the C++ headers by default. Without an include prefix a glue header includes
 # itself, and in one folder the glue files overwrite the C++ files.
 glue_name_log="$temp_out/swiftxx-file-names.log"

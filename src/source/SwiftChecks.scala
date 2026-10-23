@@ -12,7 +12,7 @@ object SwiftChecks {
     val interns = idl.collect { case d: InternTypeDecl => d }
     val swiftxx = if (spec.swiftxxOutFolder.isDefined) futureFieldProblems(interns) ++ fileNameProblems(interns, spec) else Seq()
     val swift = if (spec.swiftOutFolder.isDefined) {
-      outcomeErrorProblems(interns, spec) ++ codableProblems(interns) ++ reservedNameProblems(interns, spec) ++ constantProblems(interns)
+      moduleNameProblems(interns, spec) ++ outcomeErrorProblems(interns, spec) ++ codableProblems(interns) ++ reservedNameProblems(interns, spec) ++ constantProblems(interns)
     } else Seq()
     val all = swiftxx ++ swift
     if (all.isEmpty) None else Some(all.mkString("\n"))
@@ -59,6 +59,13 @@ object SwiftChecks {
     } else Seq()
     include ++ folder
   }
+
+  // The generated Swift names a type with the module name in front. A type with the name of the module hides the
+  // module in that name, so every reference breaks.
+  private def moduleNameProblems(interns: Seq[InternTypeDecl], spec: Spec): Seq[String] =
+    interns.filter(td => spec.swiftIdentStyle.ty(td.ident.name) == spec.swiftModule).map { td =>
+      s"${td.ident.name} is ${spec.swiftModule} in Swift, the name of the Swift module. The generated code names a type with the module in front, so the type hides the module. Rename the type, or set --swift-module."
+    }
 
   // Swift's Result needs an error type that conforms to Error. The generator adds that conformance to a record
   // that derives error, and to the record of --swift-error-type.
