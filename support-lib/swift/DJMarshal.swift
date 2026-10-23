@@ -11,8 +11,12 @@ public protocol Marshaller {
 // Djinni generated enums are always backed by Int32
 public enum EnumMarshaller<T: RawRepresentable>: Marshaller where T.RawValue == Int32 {
     public typealias SwiftType = T
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
-        return SwiftType(rawValue: djinni.swift.I32.toCpp(v))!
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
+        let raw = djinni.swift.I32.toCpp(v)
+        guard let value = SwiftType(rawValue: raw) else {
+            throw DjinniError("unknown \(SwiftType.self) value \(raw)")
+        }
+        return value
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
         return djinni.swift.I32.fromCpp(s.rawValue)
@@ -21,8 +25,12 @@ public enum EnumMarshaller<T: RawRepresentable>: Marshaller where T.RawValue == 
 // All integer types smaller than 32-bit are handled by this
 public enum SmallIntMarshaller<T: BinaryInteger>: Marshaller {
     public typealias SwiftType = T
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
-        return SwiftType(exactly: djinni.swift.I32.toCpp(v))!
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
+        let raw = djinni.swift.I32.toCpp(v)
+        guard let value = SwiftType(exactly: raw) else {
+            throw DjinniError("\(SwiftType.self) value out of range: \(raw)")
+        }
+        return value
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
         return djinni.swift.I32.fromCpp(Int32(s))
@@ -31,8 +39,12 @@ public enum SmallIntMarshaller<T: BinaryInteger>: Marshaller {
 // 64-bit integer
 public enum I64Marshaller: Marshaller {
     public typealias SwiftType = Int64
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
-        return SwiftType(exactly: djinni.swift.I64.toCpp(v))!
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
+        let raw = djinni.swift.I64.toCpp(v)
+        guard let value = SwiftType(exactly: raw) else {
+            throw DjinniError("\(SwiftType.self) value out of range: \(raw)")
+        }
+        return value
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
         return djinni.swift.I64.fromCpp(s)
@@ -78,7 +90,9 @@ public enum StringMarshaller: Marshaller {
     static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
         let bytes = s.utf8CString
         return bytes.withUnsafeBufferPointer { ptr in
-            return djinni.swift.makeStringValue(UnsafeMutableRawPointer(mutating: ptr.baseAddress!),
+            // utf8CString always has a buffer with the terminator
+            guard let base = ptr.baseAddress else { return djinni.swift.makeStringValue(nil, 0) }
+            return djinni.swift.makeStringValue(UnsafeMutableRawPointer(mutating: base),
                                                 ptr.count - 1) // minus terminating \0
         }
     }
@@ -126,39 +140,39 @@ public enum Void_Marshaller: Marshaller {
 
 public enum OptionalMarshaller<T: Marshaller>: Marshaller {
     public typealias SwiftType = T.SwiftType?
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
-        return withUnsafePointer(to: v) { p in
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
+        return try withUnsafePointer(to: v) { p in
             if (djinni.swift.isVoidValue(p)) {
                 return nil
             }
-            return T.fromCpp(v)
+            return try T.fromCpp(v)
         }
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         if (s == nil) {
             return djinni.swift.makeVoidValue()
         } else {
-            return T.toCpp(s!)
+            return try T.toCpp(s!)
         }
     }
 }
 
 public enum ListMarshaller<T: Marshaller>: Marshaller {
     public typealias SwiftType = [T.SwiftType]
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         var array = SwiftType()
-        withUnsafePointer(to: v) { p in
+        try withUnsafePointer(to: v) { p in
             let size = djinni.swift.getSize(p)
             for i in 0..<size {
-                array.append(T.fromCpp(djinni.swift.getMember(p, i)))
+                array.append(try T.fromCpp(djinni.swift.getMember(p, i)))
             }
         }
         return array
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var composite = djinni.swift.makeCompositeValue()
         for item in s {
-            djinni.swift.addMember(&composite, T.toCpp(item))
+            djinni.swift.addMember(&composite, try T.toCpp(item))
         }
         return composite
     }
@@ -169,20 +183,20 @@ public typealias ArrayMarshaller<T: Marshaller> = ListMarshaller<T>
 
 public enum SetMarshaller<T: Marshaller>: Marshaller where T.SwiftType: Hashable {
     public typealias SwiftType = Set<T.SwiftType>
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         var s = SwiftType()
-        withUnsafePointer(to: v) { p in
+        try withUnsafePointer(to: v) { p in
             let size = djinni.swift.getSize(p)
             for i in 0..<size {
-                s.insert(T.fromCpp(djinni.swift.getMember(p, i)))
+                s.insert(try T.fromCpp(djinni.swift.getMember(p, i)))
             }
         }
         return s
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var composite = djinni.swift.makeCompositeValue()
         for item in s {
-            djinni.swift.addMember(&composite, T.toCpp(item))
+            djinni.swift.addMember(&composite, try T.toCpp(item))
         }
         return composite
     }
@@ -190,22 +204,22 @@ public enum SetMarshaller<T: Marshaller>: Marshaller where T.SwiftType: Hashable
 
 public enum MapMarshaller<K: Marshaller, V: Marshaller>: Marshaller where K.SwiftType: Hashable {
     public typealias SwiftType = Dictionary<K.SwiftType, V.SwiftType>
-    static public func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         var s = SwiftType()
-        withUnsafePointer(to: v) { p in
+        try withUnsafePointer(to: v) { p in
             let size = djinni.swift.getSize(p)
             for i in stride(from: 0, to: size, by: 2) {
-                s.updateValue(V.fromCpp(djinni.swift.getMember(p, i+1)),
-                              forKey: K.fromCpp(djinni.swift.getMember(p, i)))
+                try s.updateValue(V.fromCpp(djinni.swift.getMember(p, i+1)),
+                                  forKey: K.fromCpp(djinni.swift.getMember(p, i)))
             }
         }
         return s
     }
-    static public func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var composite = djinni.swift.makeCompositeValue()
         for (k, v) in s {
-            djinni.swift.addMember(&composite, K.toCpp(k))
-            djinni.swift.addMember(&composite, V.toCpp(v))
+            djinni.swift.addMember(&composite, try K.toCpp(k))
+            djinni.swift.addMember(&composite, try V.toCpp(v))
         }
         return composite
     }
