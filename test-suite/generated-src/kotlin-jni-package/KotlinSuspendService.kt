@@ -100,14 +100,14 @@ abstract class KotlinSuspendService {
         override suspend fun flush() {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
             val djinni_future = withContext(this.dispatcher) { native_flush(this@CppProxy.nativeRef) }
-            return suspendCancellableCoroutine<Unit> { djinni_continuation ->
+            return suspendCancellableCoroutine<kotlin.Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
                 djinni_future.then(Future.FutureHandler<Void> { djinni_result ->
                     val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
                     djinni_waiting.resumeWith(try {
                         djinni_result.get()
-                        kotlin.Result.success(Unit)
+                        kotlin.Result.success(kotlin.Unit)
                     } catch (djinni_e: ExecutionException) {
                         kotlin.Result.failure(djinni_e.cause ?: djinni_e)
                     } catch (djinni_e: Throwable) {

@@ -3,7 +3,7 @@
 
 import Foundation
 
-public struct SwiftSendableWithServiceList: @unchecked Sendable {
+public struct SwiftSendableWithServiceList: Sendable {
     public let services: Array<TestSuite.SwiftSendableService>
 
     public init(services: Array<TestSuite.SwiftSendableService>)
