@@ -340,6 +340,8 @@ Command line switches:
 - `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
 - `--swift-async-wrap <label-prefix>`: wrap the interfaces that C++ implements in
   Swift classes with `async` methods
+- `--swift-async-queue <expression>`: the `DispatchQueue` of the blocking C++
+  calls of the async wrappers. See below.
 - `--swift-error-type <name>`: the Swift name of the error record. See below.
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated`)
@@ -372,9 +374,12 @@ Async wrappers (`--swift-async-wrap`):
 - An interface with `+c` and without `+sw` becomes a `public final class`. It has
   the name of the interface, so there is no protocol for it. An interface that
   has `+sw` stays a protocol, because the host implements it.
-- The class has one serial `DispatchQueue` with the label
-  `<label-prefix>.<interfaceName>`. Every instance method calls C++ on that queue.
-  The method is `async throws`, and it returns when C++ returns.
+- Every instance method runs its blocking C++ call on a shared queue. The queue
+  is `DispatchQueue.global(qos: .userInitiated)`. `--swift-async-queue
+  <expression>` sets another `DispatchQueue`, for example a queue of the
+  application. The flag needs `--swift-async-wrap`. The generator does not use
+  the label prefix of `--swift-async-wrap`. The method is `async throws`, and it
+  returns when C++ returns.
 - A C++ exception is never fatal. The generated proxy throws `DjinniError`, and
   the wrapper method gives it to the caller. `DjinniError.errorMessage` is the
   message of the exception. The shim catches `std::exception` and every other
@@ -390,12 +395,18 @@ Async wrappers (`--swift-async-wrap`):
   `--swift-error-type`, `future<outcome<T, E>>` is rejected at generation.
 - Any other method is `async throws -> T`, or `async throws` for a method with no
   return value. It throws `DjinniError` when C++ throws.
-- A C++ object has one wrapper, so its calls run one after another on one queue
-  (first in, first out). Two values from C++ that name the same object are the
-  same Swift object. The callback of a future runs on the queue of the wrapper
-  that started the call, not on the actor of the caller. A cancelled task stops
-  waiting at once, but a C++ call that already runs on the queue cannot be
-  stopped: the queue slot is occupied until C++ returns.
+- A C++ object has one wrapper. Two values from C++ that name the same object
+  are the same Swift object.
+- The calls to one C++ object are not serialized. Two calls to the same object
+  can run at the same time, so a `cancel()` call does not wait for the blocking
+  call that it stops. The C++ object must be thread-safe, as it is for the calls
+  of the other languages. An adapter that needs one call at a time must
+  serialize the calls itself, for example on a serial queue.
+- A task that is cancelled before the C++ call throws `CancellationError` and
+  does not call C++. A C++ call that runs cannot be stopped. The method waits
+  for it and returns its result.
+- The value of a future arrives on a thread of `DispatchQueue.global()`. The
+  caller then continues on its own executor.
 - Static methods stay synchronous, in `<Interface>_statics`.
 - The wrapper needs `--swift-private-in-same-module`. The generator stops with an
   error without it.
@@ -531,7 +542,8 @@ Three scripts check the Swift support. They read the Crux IDL from
   of generated interfaces, and runs it in both Swift modes. The program checks
   calls in both directions, the identity of proxies and the release of host
   objects. It also checks the async wrappers, typed errors, C++ exceptions of
-  wrapped methods, Swift errors that C++ catches, task cancellation and many
+  wrapped methods, Swift errors that C++ catches, task cancellation, the queue of
+  `--swift-async-queue`, calls to one object that run at the same time, and many
   threads. A watchdog fails the run when it deadlocks.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
@@ -746,7 +758,7 @@ changes.
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
 | `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |
-| `--swift-error-type` with `--swift-legacy-records` and `--swift-async-wrap` | `swift_error` | `swift-features/error-legacy` |
+| `--swift-error-type` with `--swift-legacy-records`, `--swift-async-wrap` and `--swift-async-queue` | `swift_error` | `swift-features/error-legacy` |
 | `--swiftxx-out`, `--swiftxx-include-cpp-prefix` | all Swift cases | `swift-features/*/swiftxx` |
 | `--swiftxx-namespace`, `--swiftxx-include-prefix`, `--swiftxx-base-lib-module`, `--swiftxx-base-lib-include-prefix` | `swift_options` | `swift-features/options` |
 | `--kotlin-jni-out` | `kotlin_jni` | `kotlin-jni` |
@@ -755,7 +767,8 @@ changes.
 | `kotlin.jniTypename`, `jni.kotlin*` of an extern type, with `--kotlin-jni-out` and with `--jni-out` alone | `kotlin_extern` | `kotlin-jni-extern/kotlin`, `kotlin-jni-extern/jni`, `kotlin-jni-extern/jni-java` |
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
-`--swift-private-in-same-module`, `--swift-error-type` with a method that has no
+`--swift-private-in-same-module`, `--swift-async-queue` without
+`--swift-async-wrap`, `--swift-error-type` with a method that has no
 `outcome<>`, `--kotlin-suspend-wrap` without `--kotlin-jni-out`,
 `--kotlin-suspend-dispatcher` without `--kotlin-suspend-wrap`, `--java-out`
 with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys,
