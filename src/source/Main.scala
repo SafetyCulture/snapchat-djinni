@@ -295,7 +295,7 @@ object Main {
       opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
         .text("Wrap the interfaces that C++ implements in a Swift class with async methods. Each wrapper has a serial queue labelled <label-prefix>.<interface>. Needs --swift-private-in-same-module.")
       opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
-        .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E. The record conforms to Error.")
+        .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E; future<outcome<T, E>> is rejected. The record conforms to Error.")
       opt[File]("kotlin-jni-out").valueName("<out-folder>").foreach(x => kotlinJniOutFolder = Some(x))
         .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))

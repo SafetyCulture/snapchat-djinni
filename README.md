@@ -399,10 +399,12 @@ Error type (`--swift-error-type <name>`):
 
 - `<name>` is the Swift name of the error record. For the IDL record
   `crux_error`, the name is `CruxError`.
-- Each instance method of an interface with `+c` must return `outcome<T, E>`,
-  or `future<outcome<T, E>>`. The Swift name of `E` must be `<name>`. If not,
-  the generator stops before it writes a file. It names the interface, the
-  method and the error type it found, and it exits with code 1.
+- Each instance method of an interface with `+c` must return `outcome<T, E>`.
+  The Swift name of `E` must be `<name>`. `future<outcome<T, E>>` is not
+  allowed: it has two error channels, and a cancelled wait has no `E` to throw.
+  If a method breaks the rule, the generator stops before it writes a file. It
+  names the interface, the method and the error type it found, and it exits
+  with code 1.
 - The error record conforms to `Error`. It does not need `deriving(error)`.
 - With `--swift-async-wrap`, a method that returns `outcome<T, E>` is
   `async throws(<name>) -> T`. A C++ exception of this method becomes a

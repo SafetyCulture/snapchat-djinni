@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "Future.hpp"
 #include "expected.hpp"
 #include <cstdint>
 #include <memory>
@@ -25,8 +24,6 @@ public:
     virtual djinni::expected<SwiftErrorItem, CruxError> fetch(const std::string & id) = 0;
 
     virtual djinni::expected<int32_t, CruxError> count() = 0;
-
-    virtual ::djinni::Future<djinni::expected<SwiftErrorItem, CruxError>> load(const std::string & id) = 0;
 
     virtual djinni::expected<bool, CruxError> watch(const /*not-null*/ std::shared_ptr<SwiftErrorObserver> & observer) = 0;
 };

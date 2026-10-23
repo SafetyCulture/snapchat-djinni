@@ -27,16 +27,6 @@ public final class SwiftErrorService: @unchecked Sendable {
         }
         return try result.get()
     }
-
-    public func load(_ id: String) async throws -> Result<TestSuite.SwiftErrorItem, TestSuite.CruxError> {
-        let future: DjinniSupport.DJFuture<Result<TestSuite.SwiftErrorItem, TestSuite.CruxError>> = try await withCheckedThrowingContinuation { _continuation in
-            self.queue.async { [_proxy = self.proxy] in
-                _continuation.resume(with: Result { try _proxy.load(id) })
-            }
-        }
-        return try await future.value
-    }
-
     public func watch(_ observer: TestSuite.SwiftErrorObserver) async throws(TestSuite.CruxError) -> Bool {
         let result: Result<Bool, TestSuite.CruxError> = await withCheckedContinuation { _continuation in
             self.queue.async { [_proxy = self.proxy] in

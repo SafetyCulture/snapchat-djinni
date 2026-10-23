@@ -489,6 +489,31 @@ for swift_flag in --swift-out --swiftxx-out; do
     rm -f "$protobuf_negative_out.log"
 done
 
+# An extern yaml without the swift/swiftxx blocks must fail the run before any file is written.
+swift_extern_negative_relative="djinni/swift_extern_negative.djinni"
+for swift_flag in --swift-out --swiftxx-out; do
+    extern_negative_out="$temp_out/swift-extern-negative-${swift_flag#--}"
+    rm -rf "$extern_negative_out"
+    set +e
+    (cd "$base_dir" && \
+    "$base_dir/../src/run-assume-built" \
+        --cpp-out "$extern_negative_out/cpp" \
+        --cpp-namespace testsuite \
+        "$swift_flag" "$extern_negative_out/swift" \
+        --swift-module TestSuite \
+        --idl "$swift_extern_negative_relative") > "$extern_negative_out.log" 2>&1
+    extern_negative_status=$?
+    set -e
+    if [ "$extern_negative_status" -ne 1 ] || \
+       ! grep -q "Extern type extern_no_swift has no 'swift'/'swiftxx' blocks in its manifest, but Swift output is enabled." "$extern_negative_out.log" || \
+       [ -e "$extern_negative_out" ]; then
+        echo "The generator accepted an extern yaml without swift blocks, or wrote files ($swift_flag, exit $extern_negative_status)." 1>&2
+        cat "$extern_negative_out.log" 1>&2
+        exit 1
+    fi
+    rm -f "$extern_negative_out.log"
+done
+
 # The generator must reject methods without outcome<> and write no file.
 negative_out="$temp_out_relative/swift-features/error-negative"
 negative_log="$temp_out/error-negative.log"
@@ -508,6 +533,7 @@ for expected in \
     "interface swift_error_bad_service, method nothing: --swift-error-type needs a return type outcome<T, CruxError>" \
     "interface swift_error_bad_service, method wrong_error: the error type of the outcome is OtherError, but --swift-error-type is CruxError" \
     "interface swift_error_bad_service, method load: --swift-error-type needs a return type outcome<T, CruxError>" \
+    "interface swift_error_bad_service, method future_outcome: --swift-error-type does not support a return type future<outcome<T, CruxError>>" \
     "interface swift_error_bad_shared, method value: --swift-error-type needs a return type outcome<T, CruxError>"; do
     if ! grep -qF "$expected" "$negative_log"; then
         echo "Missing error message: $expected" 1>&2

@@ -23,15 +23,7 @@ final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         try handleCppErrors(&ret)
         return DjinniSupport.OutcomeMarshaller<I32Marshaller, CruxErrorMarshaller>.fromCpp(ret)
     }
-    func load(_ id: String) throws -> DjinniSupport.DJFuture<Result<TestSuite.SwiftErrorItem, TestSuite.CruxError>> {
-        var _params = djinni.swift.ParameterList()
-        _params.addValue(inst)
-        _params.addValue(StringMarshaller.toCpp(id))
-        var ret = djinni_generated.SwiftErrorService_load(&_params)
-        try handleCppErrors(&ret)
-        return DjinniSupport.FutureMarshaller<DjinniSupport.OutcomeMarshaller<SwiftErrorItemMarshaller, CruxErrorMarshaller>>.fromCpp(ret)
-    }
-    func watch(_ observer: TestSuite.SwiftErrorObserver) throws -> Result<Bool, TestSuite.CruxError> {
+    func watch(_ observer: TestSuite.SwiftErrorObserver) -> Result<Bool, TestSuite.CruxError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(SwiftErrorObserverMarshaller.toCpp(observer))
