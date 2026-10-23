@@ -714,7 +714,7 @@ The script has a third pass for the suspend functions of
 `--kotlin-suspend-wrap`. It compiles the generated Kotlin with
 kotlinx-coroutines and runs the same checks. It prints the coroutines jar that
 it selects. Two more passes check `--kotlin-error-type`: the test-suite cases
-`kotlin_error` and `kotlin_error_async`, and the whole Crux IDL (`main.djinni`)
+`kotlin_error_sync` and `kotlin_error_async`, and the whole Crux IDL (`main.djinni`)
 with `--kotlin-suspend-wrap` and a synthetic `crux_error` record. The natives
 keep their JVM names, so the checks are the same. `KOTLIN_JNI_CHECK_CRUX=0`
 skips the two Crux passes. The Crux passes remove the Kotlin keys from the copy
@@ -902,7 +902,7 @@ changes.
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
 | `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |
-| `--kotlin-error-type`, with and without `--kotlin-suspend-wrap` | `kotlin_error`, `kotlin_error_async`, `kotlin_error_negative` | `kotlin-jni-error/sync`, `kotlin-jni-error/suspend` |
+| `--kotlin-error-type`, with and without `--kotlin-suspend-wrap` | `kotlin_error`, `kotlin_error_sync`, `kotlin_error_async`, `kotlin_error_negative`, `kotlin_error_any_negative`, `kotlin_error_any_suspend_negative` | `kotlin-jni-error/sync`, `kotlin-jni-error/suspend` |
 | `--swift-error-type` with `--swift-legacy-records`, `--swift-async-wrap` and `--swift-async-queue` | `swift_error` | `swift-features/error-legacy` |
 | `--swiftxx-out`, `--swiftxx-include-cpp-prefix` | all Swift cases | `swift-features/*/swiftxx` |
 | `--swiftxx-namespace`, `--swiftxx-include-prefix`, `--swiftxx-base-lib-module`, `--swiftxx-base-lib-include-prefix` | `swift_options` | `swift-features/options` |
@@ -919,7 +919,8 @@ changes.
 `--kotlin-jni-out`, `--kotlin-suspend-dispatcher` without
 `--kotlin-suspend-wrap` and with a value that closes a comment,
 `--kotlin-error-type` without `--kotlin-jni-out`, with a `future<>` method and
-without `--kotlin-suspend-wrap`, and with two error types, `--java-out`
+without `--kotlin-suspend-wrap`, with two error types, and with a static or a
+suspend method with the name of a member of `Any`, `--java-out`
 with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys,
 two Kotlin classes with one simple name in a parcelable record, and a Protobuf
 message without a `swift` block with `--swift-out` or `--swiftxx-out`, equal
