@@ -66,6 +66,10 @@ kj_service = interface +c {
   static create(): kj_service;
   # The number of C++ services that are alive.
   static live_count(): i32;
+  # Static methods for --kotlin-error-type: a C++ exception, an outcome and a future.
+  static fail_static(): i32;
+  static divide_static(a: i32, b: i32): outcome<i32, kj_error>;
+  static delayed_static(value: i32, millis: i32): future<i32>;
   add(a: i32, b: i32): i32;
   echo(item: kj_item): kj_item;
   echo_blob(blob: kj_blob): kj_blob;
@@ -74,6 +78,8 @@ kj_service = interface +c {
   divide(a: i32, b: i32): outcome<i32, kj_error>;
   call_listener(listener: kj_listener, value: i32): i32;
   delayed(value: i32, millis: i32): future<i32>;
+  # A future of an outcome: C++ completes it after the delay with a value, or with the error for division by zero.
+  divide_later(a: i32, b: i32, millis: i32): future<outcome<i32, kj_error>>;
   pending(): future<i32>;
   failing_future(): future<i32>;
   done(): future<void>;

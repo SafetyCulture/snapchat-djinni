@@ -1,0 +1,16 @@
+@extern "../../support-lib/future.yaml"
+@import "kotlin_error.djinni"
+
+# Futures for --kotlin-error-type with --kotlin-suspend-wrap.
+kotlin_error_async_service = interface +c {
+  static create(): kotlin_error_async_service;
+  static load_static(id: string): future<kotlin_error_item>;
+  static fetch_static(id: string): future<outcome<kotlin_error_item, kotlin_error_error>>;
+  ping();
+  count(): i32;
+  fetch(id: string): outcome<kotlin_error_item, kotlin_error_error>;
+  load(id: string): future<kotlin_error_item>;
+  load_optional(id: string): future<optional<kotlin_error_item>>;
+  fetch_later(id: string): future<outcome<kotlin_error_item, kotlin_error_error>>;
+  flush(): future<void>;
+}

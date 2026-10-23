@@ -129,6 +129,7 @@ object Main {
     var kotlinJniPackage: Option[String] = None
     var kotlinSuspendWrap: Boolean = false
     var kotlinSuspendDispatcher: Option[String] = None
+    var kotlinErrorType: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -311,6 +312,9 @@ object Main {
       opt[String]("kotlin-suspend-dispatcher").valueName("<expression>").foreach(x => kotlinSuspendDispatcher = Some(x))
         .validate(x => if (x.trim.nonEmpty && !x.exists(c => c == '\n' || c == '\r') && !x.contains("*/")) success else failure("--kotlin-suspend-dispatcher needs a Kotlin expression on one line."))
         .text("With --kotlin-suspend-wrap, the CoroutineDispatcher of the blocking C++ calls, as a Kotlin expression with qualified names (default: Dispatchers.IO).")
+      opt[String]("kotlin-error-type").valueName("<qualified class>").foreach(x => kotlinErrorType = Some(x))
+        .validate(x => if (x.matches("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*")) success else failure("--kotlin-error-type needs a qualified Kotlin class name."))
+        .text("With --kotlin-jni-out, the Exception class that each Kotlin call into C++ throws: the instance methods of the interfaces with +c and without +j, and the static methods. outcome<T, E> returns T and throws the class with the constructor (error: E); a C++ exception throws it with the constructor (cause: DjinniCppException). A future<T> or future<outcome<T, E>> method needs --kotlin-suspend-wrap.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -442,6 +446,11 @@ object Main {
       System.exit(1); return
     }
 
+    if (kotlinErrorType.isDefined && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-error-type needs --kotlin-jni-out.")
+      System.exit(1); return
+    }
+
     val yamlOptions = YamlOptions(enableKotlinWarnings = kotlinOutFolder.isDefined)
 
     // Resolve names in IDL file, check types.
@@ -570,6 +579,7 @@ object Main {
       kotlinJniPackage,
       kotlinSuspendWrap,
       kotlinSuspendDispatcher,
+      kotlinErrorType,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

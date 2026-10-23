@@ -648,6 +648,55 @@ if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher" ]; then
     exit 1
 fi
 
+# The error type flag needs the Kotlin JNI output.
+error_type_log="$temp_out/kotlin-error-type-without-out.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-error-type "com.dropbox.djinni.test.KotlinErrorException" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_error.djinni") >"$error_type_log" 2>&1; then
+    echo "The generator accepted --kotlin-error-type without --kotlin-jni-out." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --kotlin-error-type needs --kotlin-jni-out." "$error_type_log"; then
+    echo "Missing error message for --kotlin-error-type." 1>&2
+    cat "$error_type_log" 1>&2
+    exit 1
+fi
+
+# kotlin_expect_failure <log name> <idl> <expected message>... : --kotlin-error-type rejects the IDL before it writes a file.
+kotlin_expect_failure() {
+    local name=$1 idl=$2
+    shift 2
+    local log="$temp_out/$name.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --kotlin-jni-out "$temp_out_relative/$name" \
+        --kotlin-error-type "com.dropbox.djinni.test.KotlinErrorException" \
+        --java-package $java_package \
+        --idl "$idl") >"$log" 2>&1; then
+        echo "The generator accepted $idl with --kotlin-error-type." 1>&2
+        exit 1
+    fi
+    for expected in "$@"; do
+        if ! grep -qF -- "$expected" "$log"; then
+            echo "Missing error message: $expected" 1>&2
+            cat "$log" 1>&2
+            exit 1
+        fi
+    done
+    if [ -e "$base_dir/$temp_out_relative/$name" ]; then
+        echo "The generator wrote files for $idl with --kotlin-error-type." 1>&2
+        exit 1
+    fi
+}
+# A future needs a suspend function, for an instance method and for a static method.
+kotlin_expect_failure kotlin-error-future "djinni/kotlin_error_async.djinni" \
+    "interface kotlin_error_async_service, method load: --kotlin-error-type needs --kotlin-suspend-wrap for a method that returns future<T>" \
+    "interface kotlin_error_async_service, method fetch_later: --kotlin-error-type needs --kotlin-suspend-wrap for a method that returns future<T>" \
+    "interface kotlin_error_async_service, method load_static: --kotlin-error-type needs --kotlin-suspend-wrap for a method that returns future<T>"
+# The class has one constructor (error: E), so the outcomes must have one error type.
+kotlin_expect_failure kotlin-error-mixed "djinni/kotlin_error_negative.djinni" \
+    "--kotlin-error-type com.dropbox.djinni.test.KotlinErrorException has one constructor (error: E), but the outcomes have 2 error types: KotlinErrorFirst (interface kotlin_error_mixed, method first), KotlinErrorSecond (interface kotlin_error_mixed, method second)"
+
 # The queue flag needs the async wrappers.
 queue_log="$temp_out/queue-without-wrap.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
@@ -716,6 +765,31 @@ fi
     --ident-java-field mFooBar \
     --jni-use-on-load-initializer false \
     --idl "djinni/kotlin_suspend.djinni" \
+)
+
+# The error type of the application: blocking functions, and suspend functions for the futures.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-error/sync" \
+    --kotlin-error-type "com.dropbox.djinni.test.KotlinErrorException" \
+    --java-package $java_package \
+    --java-nullable-annotation "javax.annotation.CheckForNull" \
+    --java-nonnull-annotation "javax.annotation.Nonnull" \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_error.djinni" \
+)
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-error/suspend" \
+    --kotlin-suspend-wrap \
+    --kotlin-error-type "com.dropbox.djinni.test.KotlinErrorException" \
+    --java-package $java_package \
+    --java-nullable-annotation "javax.annotation.CheckForNull" \
+    --java-nonnull-annotation "javax.annotation.Nonnull" \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_error_async.djinni" \
 )
 
 # Kotlin classes in a package other than the Java package, with the dispatcher of the application.
@@ -876,6 +950,7 @@ mirror "swift-features" "$temp_out/swift-features" "$base_dir/generated-src/swif
 mirror "kotlin-jni" "$temp_out/kotlin-jni" "$base_dir/generated-src/kotlin-jni"
 mirror "kotlin-jni-suspend" "$temp_out/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-suspend"
 mirror "kotlin-jni-package" "$temp_out/kotlin-jni-package" "$base_dir/generated-src/kotlin-jni-package"
+mirror "kotlin-jni-error" "$temp_out/kotlin-jni-error" "$base_dir/generated-src/kotlin-jni-error"
 mirror "kotlin-jni-extern" "$temp_out/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-extern"
 
 date > "$gen_stamp"

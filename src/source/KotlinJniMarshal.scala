@@ -63,6 +63,19 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
     case _ => None
   }
 
+  // The argument of a future<T>, if the type is a future.
+  def futureArg(tm: MExpr): Option[MExpr] = tm.base match {
+    case e: MExtern if e.name == "future" && tm.args.size == 1 => Some(tm.args.head)
+    case _ => None
+  }
+
+  // The Kotlin types of the value and the error of an outcome<T, E>, if the type is an outcome. The value of outcome<void, E> is Unit.
+  def outcomeTypes(tm: MExpr): Option[(String, String)] = tm.base match {
+    case e: MExtern if e.name == "outcome" && tm.args.size == 2 =>
+      Some((if (tm.args.head.base == MVoid) "Unit" else valueType(tm.args.head, None), valueType(tm.args(1), None)))
+    case _ => None
+  }
+
   private def isInterface(tm: MExpr): Boolean = tm.base match {
     case d: MDef => d.defType == DInterface
     case e: MExtern => e.defType == DInterface
