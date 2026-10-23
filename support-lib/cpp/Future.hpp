@@ -21,6 +21,7 @@
 #include <memory>
 #include <optional>
 #include <condition_variable>
+#include <stdexcept>
 #include <mutex>
 #include <cassert>
 
@@ -46,6 +47,14 @@ namespace djinni {
 
 template <typename T>
 class Future;
+
+// The error of a future whose promise was destroyed before it got a value or an exception. Without it, the
+// handler of the future never runs and the waiter on the other side (a Swift task or a Kotlin coroutine)
+// waits for ever.
+class BrokenPromiseException : public std::logic_error {
+public:
+    BrokenPromiseException() : std::logic_error("broken promise: the promise was destroyed without a value") {}
+};
 
 namespace detail {
 
@@ -110,8 +119,23 @@ using SharedStatePtr = std::shared_ptr<SharedState<T>>;
 template <typename T>
 class PromiseBase {
 public:
-    Future<T> getFuture();
+    PromiseBase() = default;
+    PromiseBase(PromiseBase&& other) noexcept
+        : _sharedState(std::move(other._sharedState)), _sharedStateReadOnly(std::move(other._sharedStateReadOnly)) {}
+    PromiseBase& operator=(PromiseBase&& other) noexcept {
+        if (this != &other) {
+            breakPromise();
+            _sharedState = std::move(other._sharedState);
+            _sharedStateReadOnly = std::move(other._sharedStateReadOnly);
+        }
+        return *this;
+    }
+    PromiseBase(const PromiseBase&) = delete;
+    PromiseBase& operator=(const PromiseBase&) = delete;
+    // A promise that was not completed (and not moved from) completes its future with BrokenPromiseException.
+    ~PromiseBase() { breakPromise(); }
 
+    Future<T> getFuture();
     // Use to immediately resolve a promise and return the resulting future.
     // Useful for returning from trivial cases in functions that return djinni::Future<>
     // Examples:
@@ -205,6 +229,17 @@ private:
         } else {
             // otherwise unblock potential waiters
             sharedState->cv.notify_all();
+        }
+    }
+
+    // The shared state is null after a completion or a move, so only a live, uncompleted promise breaks. A
+    // destructor must not throw: the handler of a future can throw, and its error has no receiver here.
+    void breakPromise() noexcept {
+        if (std::atomic_load(&_sharedState)) {
+            try {
+                setException(std::make_exception_ptr(BrokenPromiseException()));
+            } catch (...) {
+            }
         }
     }
 };
@@ -312,15 +347,26 @@ public:
         auto nextPromise = std::make_unique<Promise<HandlerReturnType>>();
         auto nextFuture = nextPromise->getFuture();
         auto continuation = [handler = std::forward<FUNC>(handler), nextPromise = std::move(nextPromise)] (detail::SharedStatePtr<T> x) mutable {
+            // The handler runs inside the try block and the next promise completes outside it. A completion runs the
+            // handlers of the next future in this thread, and a second completion of a used promise is undefined.
+            std::exception_ptr error;
+            [[maybe_unused]] std::optional<typename detail::ValueHolder<HandlerReturnType>::type> result;
             try {
                 if constexpr(std::is_void_v<HandlerReturnType>) {
                     handler(Future<T>(x));
-                    nextPromise->setValue();
+                    result = true;
                 } else {
-                    nextPromise->setValue(handler(Future<T>(x)));
+                    result.emplace(handler(Future<T>(x)));
                 }
-            } catch (const std::exception& e) {
-                nextPromise->setException(std::current_exception());
+            } catch (...) {
+                error = std::current_exception();
+            }
+            if (error) {
+                nextPromise->setException(error);
+            } else if constexpr(std::is_void_v<HandlerReturnType>) {
+                nextPromise->setValue();
+            } else {
+                nextPromise->setValue(std::move(*result));
             }
         };
         detail::SharedStatePtr<T> sharedStateForReadyFuture;
