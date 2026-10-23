@@ -24,6 +24,14 @@ public:
         }
         return sum;
     }
+    djinni::expected<std::optional<int32_t>, rt::RuntimeError> maybe(bool flag) override {
+        if (flag) {
+            return std::optional<int32_t>(42);
+        }
+        return djinni::expected<std::optional<int32_t>, rt::RuntimeError>(std::optional<int32_t>());
+    }
+    std::chrono::system_clock::time_point date_roundtrip(const std::chrono::system_clock::time_point& d) override { return d; }
+    rt::RuntimeColor unknown_color() override { return static_cast<rt::RuntimeColor>(99); }
 
 private:
     std::shared_ptr<rt::RuntimeListener> _kept;

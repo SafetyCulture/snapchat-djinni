@@ -4,6 +4,8 @@
 
 # Types for the Swift runtime test. C++ implements the service, and Swift implements the listener.
 
+runtime_color = enum { red; green; blue; }
+
 runtime_listener = interface +o +j +sw {
   on_value(value: i32): i32;
   make_data(): DataRef;
@@ -20,6 +22,12 @@ runtime_service = interface +c +sw {
   same_service(): runtime_service;
   data_size(data: DataRef): i32;
   listener_data_sum(listener: runtime_listener): i32;
+  # nil success of an outcome of an optional, both directions
+  maybe(flag: bool): outcome<optional<i32>, runtime_error>;
+  # A date with a sub-second part; the round trip must keep one millisecond
+  date_roundtrip(d: date): date;
+  # C++ sends an enum value that Swift does not know; Swift must throw, not trap
+  unknown_color(): runtime_color;
 }
 
 runtime_error = record {

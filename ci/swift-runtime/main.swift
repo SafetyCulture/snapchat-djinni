@@ -70,6 +70,28 @@ func runTests() throws {
         check(try service.listenerDataSum(Doubler()) == 32640, "listenerDataSum")
     }
 
+    // nil success of outcome<optional<i32>> decodes as success in both directions
+    switch try service.maybe(flag: false) {
+    case .success(let value): check(value == nil, "maybe(false) is a nil success")
+    case .failure(let error): check(false, "maybe(false) failed: \(error)")
+    }
+    switch try service.maybe(flag: true) {
+    case .success(let value): check(value == 42, "maybe(true) carries the value")
+    case .failure(let error): check(false, "maybe(true) failed: \(error)")
+    }
+
+    // A date keeps one millisecond across the boundary
+    let epochMs = Date(timeIntervalSince1970: 1_700_000_000.001)
+    check(try service.dateRoundtrip(d: epochMs) == epochMs, "date round trip keeps 1 ms")
+
+    // An enum value that Swift does not know throws instead of trapping
+    do {
+        _ = try service.unknownColor()
+        check(false, "unknown enum value must throw")
+    } catch let error as DjinniError {
+        check(error.errorMessage.contains("RuntimeColor"), "unknown enum error names the type: \(error.errorMessage)")
+    }
+
     // Many threads create, pass and release host objects.
     DispatchQueue.concurrentPerform(iterations: 2000) { i in
         do {
