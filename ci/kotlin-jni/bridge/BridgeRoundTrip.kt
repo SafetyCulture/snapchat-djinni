@@ -3,6 +3,7 @@
 
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeBoth as JavaBoth
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeColor as JavaColor
+import com.dropbox.djinni.bridgejava.KotlinJavaBridgeContainers as JavaContainers
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeError as JavaError
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeEverything as JavaEverything
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeFlags as JavaFlags
@@ -10,6 +11,7 @@ import com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf as JavaLeaf
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener as JavaListener
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeBoth as KotlinBoth
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeColor as KotlinColor
+import com.dropbox.djinni.bridgekt.KotlinJavaBridgeContainers as KotlinContainers
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeError as KotlinError
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeEverything as KotlinEverything
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeFlags as KotlinFlags
@@ -193,6 +195,22 @@ fun main() {
     check(sameJava(javaEverything().toKotlinJni().toJava(), javaEverything()), "Java -> Kotlin -> Java")
     check(KotlinLeaf(7, "seven").toJava() == JavaLeaf(7, "seven"), "leaf Kotlin -> Java")
     check(JavaLeaf(7, "seven").toKotlinJni() == KotlinLeaf(7, "seven"), "leaf Java -> Kotlin")
+
+    // Nested containers: list<list<R>> and map<string, map<string, R>>.
+    val kotlinContainers = KotlinContainers(
+        ArrayList(listOf(
+            ArrayList(listOf(KotlinLeaf(40, "forty"), KotlinLeaf(41, "forty-one"))),
+            ArrayList(listOf(KotlinLeaf(42, "forty-two"))))),
+        HashMap(mapOf("outer" to HashMap(mapOf("inner" to KotlinLeaf(43, "forty-three"))))))
+    val javaContainers = JavaContainers(
+        ArrayList(listOf(
+            ArrayList(listOf(JavaLeaf(40, "forty"), JavaLeaf(41, "forty-one"))),
+            ArrayList(listOf(JavaLeaf(42, "forty-two"))))),
+        HashMap(mapOf("outer" to HashMap(mapOf("inner" to JavaLeaf(43, "forty-three"))))))
+    check(kotlinContainers.toJava() == javaContainers, "containers Kotlin -> Java")
+    check(javaContainers.toKotlinJni() == kotlinContainers, "containers Java -> Kotlin")
+    check(kotlinContainers.toJava().toKotlinJni() == kotlinContainers, "containers Kotlin -> Java -> Kotlin")
+    check(javaContainers.toKotlinJni().toJava() == javaContainers, "containers Java -> Kotlin -> Java")
 
     // Enums and flags.
     check(KotlinColor.RED.toJava() == JavaColor.RED, "enum")
