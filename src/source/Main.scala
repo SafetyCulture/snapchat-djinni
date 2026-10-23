@@ -375,10 +375,6 @@ object Main {
       cppIdentStyle = cppIdentStyle.copy(enumType = cppTypeEnumIdentStyle)
     }
 
-    if (kotlinSuspendWrap && kotlinJniOutFolder.isEmpty) {
-      System.err.println("Error: --kotlin-suspend-wrap needs --kotlin-jni-out.")
-      System.exit(1); return
-    }
     val swiftxxClassIdentStyle = swiftxxClassIdentStyleOptional.getOrElse(cppIdentStyle.ty)
     val swiftxxFileIdentStyle = swiftxxFileIdentStyleOptional.getOrElse(cppFileIdentStyle)
 
@@ -413,6 +409,11 @@ object Main {
 
     if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
       System.err.println("Error: --swift-async-wrap needs --swift-private-in-same-module.")
+      System.exit(1); return
+    }
+
+    if (kotlinSuspendWrap && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-suspend-wrap needs --kotlin-jni-out.")
       System.exit(1); return
     }
 
