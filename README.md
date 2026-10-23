@@ -631,29 +631,27 @@ kotlin:
 ### Kotlin coroutines
 
 `--kotlin-suspend-wrap` makes the instance methods of an interface `suspend`
-functions. It needs `--kotlin-jni-out` and kotlinx-coroutines in the consumer
-module. The classes are tested with kotlinx-coroutines 1.10; the check scripts
-select the newest cached jar, and CI pins 1.10.2 (`ci/kotlin-ci.sh`).
+functions. It needs `--kotlin-jni-out` and kotlinx-coroutines 1.9.0 or later in
+the consumer module. The classes are tested with kotlinx-coroutines 1.10; the
+check scripts select the newest cached jar, and CI pins 1.10.2
+(`ci/kotlin-ci.sh`).
 
 - It applies to an interface with `+c` and without `+j`. The JNI code calls only
   the native methods of such an interface. It calls the methods of an interface
   that Kotlin implements (`+j`) by their JVM signature, and a `suspend` function
   has another signature. So an interface with `+j` keeps its normal methods.
-- The generated class `CppProxy` runs the native call in
-  `withContext(dispatcher)`. The dispatcher is
-  `Dispatchers.IO.limitedParallelism(1)`. Each `CppProxy` has its own
-  dispatcher, and one C++ object has one `CppProxy`.
-- Each C++ object runs one native call at a time. The thread can change between
-  calls. The calls to different objects run in parallel. This is the same as the
-  queue of the Swift async wrapper. For a `future<T>` method, only the native
-  call is serialized: the wait for the result runs outside the dispatcher, so a
-  second call can start while the first future is pending.
-- Each object that is in a C++ call uses one thread. The 64-thread limit of
-  `Dispatchers.IO` does not apply to these views, so N objects that block use
-  N threads.
-- If a C++ call calls a Kotlin listener, and the listener calls `runBlocking` on
-  the same object, the call deadlocks. The object has one slot. The serial queue
-  of the Swift async wrapper behaves the same.
+- The generated class `CppProxy` runs the blocking native call in
+  `withContext(<dispatcher>)`. The dispatcher is `Dispatchers.IO`.
+  `--kotlin-suspend-dispatcher <expression>` sets another dispatcher, for
+  example the pool of the application. Write the expression with qualified
+  names, because the generator adds no import for it. The flag needs
+  `--kotlin-suspend-wrap`.
+- The calls to one C++ object are not serialized. Two calls to the same object
+  can run at the same time, so a `cancel()` call does not wait for the blocking
+  call that it stops. The C++ object must be thread-safe, as it is for the
+  calls of the Java classes. An adapter that needs one call at a time must
+  serialize the calls itself.
+- Each C++ call that blocks uses one thread of the dispatcher.
 - A method that returns `future<T>` is `suspend fun m(): T`. It uses
   `suspendCancellableCoroutine` over `com.snapchat.djinni.Future.then`.
 - A cancelled coroutine stops waiting and throws `CancellationException`. A
@@ -720,14 +718,17 @@ The first program checks these items:
 - many threads
 
 The second program uses the suspend functions of `--kotlin-suspend-wrap`. It
-checks these items:
+runs twice: with the default dispatcher and with `--kotlin-suspend-dispatcher`.
+It checks these items:
 
 - a `future<>` that completes, fails or has the type `void`
 - cancellation while a future waits, and a coroutine that is cancelled before
   the call
 - the release of a cancelled coroutine before the future completes
 - a late result and a timeout
-- the serialisation of the calls to one object
+- the thread of the dispatcher that runs the C++ call
+- calls to one object that run at the same time, and a call that does not wait
+  for a blocking call on the same object
 - 1000 concurrent coroutines
 
 The script skips with exit code 77 and a message when one of these parts is
@@ -756,13 +757,14 @@ changes.
 | `--swiftxx-out`, `--swiftxx-include-cpp-prefix` | all Swift cases | `swift-features/*/swiftxx` |
 | `--swiftxx-namespace`, `--swiftxx-include-prefix`, `--swiftxx-base-lib-module`, `--swiftxx-base-lib-include-prefix` | `swift_options` | `swift-features/options` |
 | `--kotlin-jni-out` | `kotlin_jni` | `kotlin-jni` |
-| `--kotlin-jni-package` with `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-package` |
+| `--kotlin-jni-package` and `--kotlin-suspend-dispatcher` with `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-package` |
 | `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-suspend` |
 | `kotlin.jniTypename`, `jni.kotlin*` of an extern type, with `--kotlin-jni-out` and with `--jni-out` alone | `kotlin_extern` | `kotlin-jni-extern/kotlin`, `kotlin-jni-extern/jni`, `kotlin-jni-extern/jni-java` |
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
 `--swift-private-in-same-module`, `--swift-error-type` with a method that has no
-`outcome<>`, `--kotlin-suspend-wrap` without `--kotlin-jni-out`, `--java-out`
+`outcome<>`, `--kotlin-suspend-wrap` without `--kotlin-jni-out`,
+`--kotlin-suspend-dispatcher` without `--kotlin-suspend-wrap`, `--java-out`
 with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys,
 two Kotlin classes with one simple name in a parcelable record, and a Protobuf
 message without a `swift` block with `--swift-out` or `--swiftxx-out`. It checks

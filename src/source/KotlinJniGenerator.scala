@@ -184,8 +184,9 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
     val suspendInstance = suspendWrap && i.methods.exists(m => !m.static)
     val suspendFuture = suspendWrap && i.methods.exists(m => !m.static && m.ret.exists(r => marshal.futureValueType(r).isDefined))
+    val dispatcher = spec.kotlinSuspendDispatcher.getOrElse("kotlinx.coroutines.Dispatchers.IO")
     if (suspendInstance) {
-      refs.imports ++= Seq("kotlinx.coroutines.Dispatchers", "kotlinx.coroutines.withContext")
+      refs.imports += "kotlinx.coroutines.withContext"
     }
     if (suspendFuture) {
       refs.imports ++= Seq("com.snapchat.djinni.Future", "java.util.concurrent.ExecutionException",
@@ -233,12 +234,15 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
 
         if (i.ext.cpp) {
           w.wl
+          if (suspendInstance) {
+            w.wl("/**")
+            w.wl(s" * Each suspend method runs its blocking C++ call on `$dispatcher`. Calls to one object can run at the same time.")
+            w.wl(" * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future")
+            w.wl(" * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.")
+            w.wl(" */")
+          }
           annotationHeader.foreach(w.wl)
           w.w(s"class CppProxy$typeParamList private constructor(private val nativeRef: Long) : $self$typeParamList()").braced {
-            if (suspendInstance) {
-              w.wl("private val dispatcher = Dispatchers.IO.limitedParallelism(1)")
-              w.wl
-            }
             w.w("init").braced {
               w.wl("if (nativeRef == 0L) throw RuntimeException(\"nativeRef is zero\")")
               w.wl("NativeObjectManager.register(this, nativeRef)")
@@ -254,7 +258,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                   m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
                     case Some((ret, value)) =>
                       // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
-                      w.wl(s"val djinni_future = withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
+                      w.wl(s"val djinni_future = withContext($dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
                       w.wl(s"return suspendCancellableCoroutine<$value> { djinni_continuation ->").nested {
                         w.wl("val djinni_target = AtomicReference(djinni_continuation)")
                         w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
@@ -280,7 +284,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                       }
                       w.wl("}")
                     case None =>
-                      w.wl(s"${returnStmt}withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
+                      w.wl(s"${returnStmt}withContext($dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
                   }
                 }
               } else {
