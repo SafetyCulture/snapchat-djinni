@@ -198,7 +198,8 @@ final class PromiseHolder<T: Marshaller>: AbstractPromiseHolder, @unchecked Send
             do {
                 promise(.success(try T.fromCpp(value.pointee)))
             } catch {
-                promise(.failure(DjinniError("\(error)")))
+                // An inner DjinniError keeps its message (for example the protobuf type name)
+                promise(.failure(error as? DjinniError ?? DjinniError(String(describing: error))))
             }
         } else {
             promise(.failure(DjinniError(djinni.swift.getError(value))))
@@ -251,7 +252,7 @@ public enum FutureMarshaller<T: Marshaller>: Marshaller {
                 } catch {
                     // A failed conversion becomes the error of the C++ future
                     var errorValue = djinni.swift.makeVoidValue()
-                    djinni.swift.setErrorValue(&errorValue, DjinniError("\(error)").wrapped)
+                    djinni.swift.setErrorValue(&errorValue, (error as? DjinniError ?? DjinniError(String(describing: error))).wrapped)
                     djinni.swift.setFutureResult(&futureValue, &errorValue)
                 }
             case .failure(let error):
