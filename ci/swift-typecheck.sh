@@ -180,10 +180,13 @@ swift_pass() { # <swiftc flags>
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build" -I "$spb_mod")
   swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-name S12Protos \
     -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosStubs.swift" "$work"/*.pb.swift
-  echo "== [$flags] DjinniSupport (support-lib/swift)"
+  # DjinniSupport is a package with its own settings; only the modules that use the generated code turn the
+  # upcoming feature on, so its nonisolated members stay concurrent.
+  local support_flags=${flags/ -enable-upcoming-feature NonisolatedNonsendingByDefault/}
+  echo "== [$flags] DjinniSupport (support-lib/swift, $support_flags)"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-    -parse-as-library $flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift
+    -parse-as-library $support_flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift
   # The closure of Future.getResult runs on a global queue. Strict concurrency must reject a main-actor closure there.
   case "$flags" in
     *strict-concurrency*)
