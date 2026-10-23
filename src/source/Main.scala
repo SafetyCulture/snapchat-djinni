@@ -122,6 +122,7 @@ object Main {
     var swiftxxIncludeCppPrefix: String = ""
     var swiftxxBaseLibIncludePrefix: String = ""
     var swiftLegacyRecords: Boolean = false
+    var swiftAsyncWrap: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -287,6 +288,8 @@ object Main {
         .text("Omit 'import <module>' in +Private Swift files (use when those files are compiled in the same module to avoid 'ignoring import' warnings).")
       opt[Unit]("swift-legacy-records").foreach(_ => swiftLegacyRecords = true)
         .text("Generate Swift records with `var` fields. The default is `let` fields.")
+      opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
+        .text("Wrap the interfaces that C++ implements in a Swift class with async methods. Each wrapper has a serial queue labelled <label-prefix>.<interface>. Needs --swift-private-in-same-module.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -390,6 +393,11 @@ object Main {
       if (!argParser.parse(flags.map({_.split(" ", 2)}).flatten :+ "--idl" :+ idlFile.getName())) {
         System.exit(1); return
       }
+    }
+
+    if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
+      System.err.println("Error: --swift-async-wrap needs --swift-private-in-same-module.")
+      System.exit(1); return
     }
 
     val yamlOptions = YamlOptions(enableKotlinWarnings = kotlinOutFolder.isDefined)
@@ -513,6 +521,7 @@ object Main {
       swiftxxIncludeCppPrefix,
       swiftxxBaseLibIncludePrefix,
       swiftLegacyRecords,
+      swiftAsyncWrap,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

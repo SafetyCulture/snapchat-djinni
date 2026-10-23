@@ -1,0 +1,48 @@
+@extern "../../support-lib/dataref.yaml"
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Interfaces for --swift-async-wrap.
+
+swift_async_error = record {
+  message: string;
+  code: i32;
+} deriving(eq, error)
+
+swift_async_item = record {
+  id: string;
+  count: i32;
+}
+
+# The host implements this one in Swift, so it is not wrapped.
+swift_async_observer = interface +o +j +sw {
+  on_item(item: swift_async_item);
+}
+
+# C++ implements this one, so it is wrapped. Its methods cover each kind of return type.
+swift_async_service = interface +c {
+  static create(): swift_async_service;
+  ping();
+  count(): i32;
+  find(id: string, limit: optional<i32>): swift_async_item;
+  fetch(id: string): outcome<swift_async_item, swift_async_error>;
+  stop_watching(): outcome<i32, swift_async_error>;
+  load(id: string): future<swift_async_item>;
+  flush(): future<void>;
+  send(data: DataRef, tags: list<string>);
+  watch(observer: swift_async_observer);
+  child(): swift_async_child;
+  # Parameters with the names of members of the wrapper.
+  names(proxy: i32, queue: i32, continuation: i32, result: i32, future: i32): outcome<i32, swift_async_error>;
+  future_names(future: i32, result: i32): future<i32>;
+  attach(child: swift_async_child, parent: optional<swift_async_service>);
+}
+
+swift_async_child = interface +c {
+  name(): string;
+}
+
+# C++ and Swift implement this one, so it is not wrapped.
+swift_async_shared = interface +c +sw {
+  value(): i32;
+}

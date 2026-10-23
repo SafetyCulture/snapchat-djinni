@@ -191,6 +191,15 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
     }
 }
 
+// Returns the one wrapper of a C++ object, so that all calls to the object use the queue of that wrapper.
+public func cppWrapperToSwift<W: AnyObject>(_ c: djinni.swift.AnyValue,
+                                            _ newWrapper: () -> W) -> W {
+    return withUnsafePointer(to: c) { p in
+        let info = djinni.swift.getInterfaceInfo(p)
+        return CppProxyCache.shared.getOrCreate(info.cppPointer) { newWrapper() } as! W
+    }
+}
+
 // 1. object is a an existing cpp proxy  : unwrap swift proxy
 // 2. object is a an existing swift proxy: return existing
 // 3. need to create a new proxy         : call newProxyFunc
@@ -231,4 +240,17 @@ public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws 
     if (djinni.swift.isError(ret)) {
         throw DjinniError(djinni.swift.getError(ret))
     }
+}
+
+// Called by the proxy of a wrapped interface. A C++ exception stops the program.
+public func handleCppErrorsAsFatal(_ ret: UnsafePointer<djinni.swift.AnyValue>, _ method: String) {
+    if (djinni.swift.isError(ret)) {
+        fatalError("\(method) threw a C++ exception: \(String(djinni.swift.getError(ret).msg))")
+    }
+}
+
+// Carries a value across a concurrency boundary when the caller guarantees that the use is safe.
+public struct UncheckedSendable<Value>: @unchecked Sendable {
+    public let value: Value
+    public init(_ value: Value) { self.value = value }
 }

@@ -338,6 +338,8 @@ Command line switches:
 - `--swift-private-in-same-module`: omit `import <module>` in the `+Private`
   files, for use when all generated Swift files are in one module
 - `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
+- `--swift-async-wrap <label-prefix>`: wrap the interfaces that C++ implements in
+  Swift classes with `async` methods
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated`)
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
@@ -363,6 +365,29 @@ Swift 6 defaults:
   `final` class with immutable state, or mark it `@unchecked Sendable`.
 - `deriving(sendable)` adds no Swift conformance. The resolver still requires it
   on field records.
+
+Async wrappers (`--swift-async-wrap`):
+
+- An interface with `+c` and without `+sw` becomes a `public final class`. It has
+  the name of the interface, so there is no protocol for it. An interface that
+  has `+sw` stays a protocol, because the host implements it.
+- The class has one serial `DispatchQueue` with the label
+  `<label-prefix>.<interfaceName>`. Every instance method calls C++ on that queue.
+  The method is `async`, and it returns when C++ returns.
+- A method that returns `outcome<T, E>` is `async throws(E) -> T`.
+- A method that returns `future<T>` is `async throws -> T`. It awaits
+  `DJFuture.value`. A cancelled task stops waiting and throws `CancellationError`.
+  The C++ future is not cancelled. A C++ exception that is thrown before the
+  future exists is thrown as `DjinniError`.
+- Any other method is `async -> T`. A C++ exception stops the program for these
+  methods and for the methods that return `outcome<T, E>`, because the proxy
+  methods of these methods do not throw. With `--swift-async-wrap`, every method
+  should return `outcome<>`.
+- A C++ object has one wrapper, so its calls run one after another on one queue.
+  Two values from C++ that name the same object are the same Swift object.
+- Static methods stay synchronous, in `<Interface>_statics`.
+- The wrapper needs `--swift-private-in-same-module`. The generator stops with an
+  error without it.
 
 IDL changes:
 
@@ -412,7 +437,8 @@ Three scripts check the Swift support. They read the Crux IDL from
   the same for the Swift cases of the test suite (`test-suite/djinni/swift_*.djinni`).
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces, and runs it in both Swift modes. The program checks
-  calls in both directions, the identity of proxies, the release of host objects,
+  calls in both directions, the identity of proxies and the release of host
+  objects. It also checks the async wrappers, typed errors, task cancellation
   and many threads. A watchdog fails the run when it deadlocks.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.

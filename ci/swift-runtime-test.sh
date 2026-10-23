@@ -39,7 +39,7 @@ fi
 out="$work/out"
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$out/cpp" --cpp-namespace rt \
-  --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module \
+  --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
 
@@ -68,7 +68,7 @@ cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-dec
 objs="$work/objs"
 mkdir -p "$objs"
 cxxflags=(-std=c++20 -Wno-deprecated-declarations -DDATAREF_OBJC=1 -I "$out/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib")
-for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp" "$out"/swiftxx/*.cpp "$src/runtime_service_impl.cpp"; do
+for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp" "$out"/swiftxx/*.cpp "$src/runtime_service_impl.cpp" "$src/runtime_async_impl.cpp"; do
   "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$objs/$(basename "$f").o"
 done
 

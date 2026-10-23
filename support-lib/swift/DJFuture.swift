@@ -20,11 +20,6 @@ public final class Cancellable: @unchecked Sendable {
 
 public typealias Lock = NSLock
 
-// Carries a value across a concurrency boundary when the caller guarantees that the use is safe.
-struct UncheckedSendable<Value>: @unchecked Sendable {
-    let value: Value
-    init(_ value: Value) { self.value = value }
-}
 
 public final class Future<Output, Failure>: @unchecked Sendable where Failure : Error {
     public typealias Promise = (Result<Output, Failure>) -> Void
@@ -73,17 +68,26 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
         }
     }
 
+    // A cancelled task stops waiting and throws CancellationError. The future is not cancelled.
     public var value: Output {
         get async throws {
             let token = generateToken()
+            let waiter = Waiter<Output, Failure>()
             return try await withTaskCancellationHandler {
                 return try await withCheckedThrowingContinuation { continuation in
-                    self.subscribe(token: token) { result in
-                        nonisolated(unsafe) let unchecked = result
-                        continuation.resume(with: unchecked)
+                    if waiter.install(continuation) {
+                        self.subscribe(token: token) { result in
+                            waiter.fulfill(result)
+                        }
+                        // onCancel can run before the subscription exists.
+                        if waiter.isCancelled {
+                            self.cancel(token: token)
+                        }
                     }
                 }
             } onCancel: {
+                // Cancel the waiter first. Then a body that is between install and subscribe sees isCancelled.
+                waiter.cancel()
                 self.cancel(token: token)
             }
         }
@@ -115,6 +119,60 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
         self.lock.lock()
         self.subscriptions[token] = nil
         self.lock.unlock()
+    }
+}
+
+// Resumes the continuation of `Future.value` exactly once, with a result or with CancellationError.
+private final class Waiter<Output, Failure: Error>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Output, Error>?
+    private var cancelled = false
+    private var done = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+
+    // Returns false when the task was cancelled before, and the continuation is resumed.
+    func install(_ continuation: CheckedContinuation<Output, Error>) -> Bool {
+        lock.lock()
+        if cancelled {
+            done = true
+            lock.unlock()
+            continuation.resume(throwing: CancellationError())
+            return false
+        }
+        self.continuation = continuation
+        lock.unlock()
+        return true
+    }
+
+    func fulfill(_ result: Result<Output, Failure>) {
+        lock.lock()
+        guard !done, let continuation else {
+            lock.unlock()
+            return
+        }
+        done = true
+        self.continuation = nil
+        lock.unlock()
+        nonisolated(unsafe) let unchecked = result
+        continuation.resume(with: unchecked)
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        guard !done, let continuation else {
+            lock.unlock()
+            return
+        }
+        done = true
+        self.continuation = nil
+        lock.unlock()
+        continuation.resume(throwing: CancellationError())
     }
 }
 

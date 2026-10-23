@@ -1,4 +1,6 @@
 @extern "../../support-lib/dataref.yaml"
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
 
 # Types for the Swift runtime test. C++ implements the service, and Swift implements the listener.
 
@@ -17,4 +19,24 @@ runtime_service = interface +c +sw {
   same_service(): runtime_service;
   data_size(data: DataRef): i32;
   listener_data_sum(listener: runtime_listener): i32;
+}
+
+runtime_error = record {
+  message: string;
+  code: i32;
+} deriving(eq, error)
+
+# C++ implements this interface and Swift calls it through the async wrapper.
+runtime_async = interface +c {
+  static create(): runtime_async;
+  add(a: i32, b: i32): i32;
+  divide(a: i32, b: i32): outcome<i32, runtime_error>;
+  delayed(value: i32, millis: i32): future<i32>;
+  pending(): future<i32>;
+  complete_pending(value: i32);
+  static shared(): runtime_async;
+  same(): runtime_async;
+  busy(millis: i32);
+  fail_future(): future<i32>;
+  max_concurrent(): i32;
 }
