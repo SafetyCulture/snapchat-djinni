@@ -3,7 +3,7 @@
 
 package com.dropbox.djinni.bridgejava;
 
-/** Records, enums and a +j interface for the Java <-> Kotlin JNI converters. */
+/** Records, enums and interfaces for the Java <-> Kotlin JNI converters. */
 public enum KotlinJavaBridgeColor {
     RED,
     GREEN,

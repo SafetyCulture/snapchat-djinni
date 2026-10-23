@@ -6,7 +6,7 @@ package com.dropbox.djinni.bridgejava;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-/** Containers that need the nested form and the interface form of the converters. */
+/** Containers that need the nested form of the converters. */
 public final class KotlinJavaBridgeContainers {
 
 
@@ -14,19 +14,11 @@ public final class KotlinJavaBridgeContainers {
 
     /*package*/ final HashMap<String, HashMap<String, KotlinJavaBridgeLeaf>> mNestedTable;
 
-    /*package*/ final ArrayList<KotlinJavaBridgeListener> mListeners;
-
-    /*package*/ final KotlinJavaBridgeListener mMaybeListener;
-
     public KotlinJavaBridgeContainers(
             ArrayList<ArrayList<KotlinJavaBridgeLeaf>> nestedItems,
-            HashMap<String, HashMap<String, KotlinJavaBridgeLeaf>> nestedTable,
-            ArrayList<KotlinJavaBridgeListener> listeners,
-            KotlinJavaBridgeListener maybeListener) {
+            HashMap<String, HashMap<String, KotlinJavaBridgeLeaf>> nestedTable) {
         this.mNestedItems = nestedItems;
         this.mNestedTable = nestedTable;
-        this.mListeners = listeners;
-        this.mMaybeListener = maybeListener;
     }
 
     public ArrayList<ArrayList<KotlinJavaBridgeLeaf>> getNestedItems() {
@@ -37,21 +29,11 @@ public final class KotlinJavaBridgeContainers {
         return mNestedTable;
     }
 
-    public ArrayList<KotlinJavaBridgeListener> getListeners() {
-        return mListeners;
-    }
-
-    public KotlinJavaBridgeListener getMaybeListener() {
-        return mMaybeListener;
-    }
-
     @Override
     public String toString() {
         return "KotlinJavaBridgeContainers{" +
                 "mNestedItems=" + mNestedItems +
                 "," + "mNestedTable=" + mNestedTable +
-                "," + "mListeners=" + mListeners +
-                "," + "mMaybeListener=" + mMaybeListener +
         "}";
     }
 

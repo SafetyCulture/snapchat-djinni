@@ -3,7 +3,6 @@
 
 package com.dropbox.djinni.bridgekt
 
-/** The Java bridge implements these methods for the other leg: value, optional, list, future and outcome. */
 data class KotlinJavaBridgeError(
     val mMessage: String,
     val mCode: Int
