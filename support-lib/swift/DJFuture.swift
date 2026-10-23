@@ -21,7 +21,7 @@ public final class Cancellable: @unchecked Sendable {
 public typealias Lock = NSLock
 
 
-public final class Future<Output, Failure>: @unchecked Sendable where Failure : Error {
+public final class Future<Output, Failure> where Failure : Error {
     public typealias Promise = (Result<Output, Failure>) -> Void
 
     // The token only needs to be unique within the scope of the Future object
@@ -121,6 +121,9 @@ public final class Future<Output, Failure>: @unchecked Sendable where Failure : 
         self.lock.unlock()
     }
 }
+
+// A future crosses concurrency domains only when its value is Sendable
+extension Future: @unchecked Sendable where Output: Sendable {}
 
 // Resumes the continuation of `Future.value` exactly once, with a result or with CancellationError.
 private final class Waiter<Output, Failure: Error>: @unchecked Sendable {
