@@ -39,6 +39,9 @@ djinni::swift::AnyValue SwiftErrorService_count(const djinni::swift::ParameterLi
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
 }
+catch (...) {
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
+}
 djinni::swift::AnyValue SwiftErrorService_watch(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftErrorService::toCpp(params->getValue(0));
     auto _observer = ::djinni_generated::SwiftErrorObserver::toCpp(params->getValue(1));

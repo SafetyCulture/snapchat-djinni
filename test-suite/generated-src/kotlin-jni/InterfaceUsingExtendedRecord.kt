@@ -25,7 +25,7 @@ abstract class InterfaceUsingExtendedRecord {
 
         override fun meth(er: ExtendedRecord): ExtendedRecord {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_meth(nativeRef, er)
+            return native_meth(this.nativeRef, er)
         }
         private external fun native_meth(_nativeRef: Long, er: ExtendedRecord): ExtendedRecord
 

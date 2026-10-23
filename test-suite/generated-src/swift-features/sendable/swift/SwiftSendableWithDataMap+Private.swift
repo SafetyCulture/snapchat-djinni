@@ -8,15 +8,15 @@ import TestSuiteCxx
 
 public enum SwiftSendableWithDataMapMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithDataMap
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return withUnsafePointer(to: c) { p in
-            let byId = MapMarshaller<StringMarshaller, DjinniSupport.DataRefMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
+            let byId = try MapMarshaller<StringMarshaller, DjinniSupport.DataRefMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
             return SwiftType(byId: byId)
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, MapMarshaller<StringMarshaller, DjinniSupport.DataRefMarshaller>.toCpp(s.byId))
+        djinni.swift.addMember(&ret, try MapMarshaller<StringMarshaller, DjinniSupport.DataRefMarshaller>.toCpp(s.byId))
         return ret
     }
 }

@@ -5,7 +5,7 @@ import Foundation
 
 /** An outcome is Sendable when its arguments are. */
 public struct SwiftSendableWithOutcome: Sendable {
-    public let djinniResult: Result<Int32, TestSuite.SwiftSendableError>
+    public let result: Result<Int32, TestSuite.SwiftSendableError>
 
     public init(result: Result<Int32, TestSuite.SwiftSendableError>)
     {

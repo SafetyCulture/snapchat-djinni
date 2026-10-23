@@ -8,17 +8,17 @@ import TestSuiteCxx
 
 public enum SwiftSendableNestedMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableNested
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return withUnsafePointer(to: c) { p in
-            let plain = SwiftSendablePlainMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let items = ListMarshaller<SwiftSendablePlainMarshaller>.fromCpp(djinni.swift.getMember(p, 1))
+            let plain = try SwiftSendablePlainMarshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let items = try ListMarshaller<SwiftSendablePlainMarshaller>.fromCpp(djinni.swift.getMember(p, 1))
             return SwiftType(plain: plain, items: items)
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, SwiftSendablePlainMarshaller.toCpp(s.plain))
-        djinni.swift.addMember(&ret, ListMarshaller<SwiftSendablePlainMarshaller>.toCpp(s.items))
+        djinni.swift.addMember(&ret, try SwiftSendablePlainMarshaller.toCpp(s.plain))
+        djinni.swift.addMember(&ret, try ListMarshaller<SwiftSendablePlainMarshaller>.toCpp(s.items))
         return ret
     }
 }

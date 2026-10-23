@@ -21,13 +21,13 @@ abstract class ConflictUser {
 
         override fun Conflict(): Conflict? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_Conflict(nativeRef)
+            return native_Conflict(this.nativeRef)
         }
         private external fun native_Conflict(_nativeRef: Long): Conflict?
 
         override fun conflictArg(cs: HashSet<Conflict>): Boolean {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_conflictArg(nativeRef, cs)
+            return native_conflictArg(this.nativeRef, cs)
         }
         private external fun native_conflictArg(_nativeRef: Long, cs: HashSet<Conflict>): Boolean
 

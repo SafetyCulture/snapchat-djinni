@@ -26,13 +26,13 @@ abstract class VarnameInterface {
 
         override fun Rmethod(RArg: VarnameRecord): VarnameRecord {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_Rmethod(nativeRef, RArg)
+            return native_Rmethod(this.nativeRef, RArg)
         }
         private external fun native_Rmethod(_nativeRef: Long, RArg: VarnameRecord): VarnameRecord
 
         override fun Imethod(IArg: VarnameInterface?): VarnameInterface? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_Imethod(nativeRef, IArg)
+            return native_Imethod(this.nativeRef, IArg)
         }
         private external fun native_Imethod(_nativeRef: Long, IArg: VarnameInterface?): VarnameInterface?
 

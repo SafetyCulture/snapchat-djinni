@@ -11,11 +11,11 @@ final class SwiftIdentServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftId
     func init_(_ `is`: Int32, `internal`: String) throws -> TestSuite.Type_ {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        _params.addValue(I32Marshaller.toCpp(`is`))
-        _params.addValue(StringMarshaller.toCpp(`internal`))
+        _params.addValue(try I32Marshaller.toCpp(`is`))
+        _params.addValue(try StringMarshaller.toCpp(`internal`))
         var ret = djinni_generated.SwiftIdentService_init(&_params)
         try handleCppErrors(&ret)
-        return Type_Marshaller.fromCpp(ret)
+        return try Type_Marshaller.fromCpp(ret)
     }
     func deinit_() throws -> Void {
         var _params = djinni.swift.ParameterList()
@@ -26,11 +26,11 @@ final class SwiftIdentServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftId
 }
 public enum SwiftIdentServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftIdentService
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return cppInterfaceToSwift(c, { SwiftIdentServiceCppProxy(c) as SwiftType })
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return swiftInterfaceToCpp(s, { fatalError("SwiftIdentService has no Swift host implementation: add +sw to the interface") })
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
+        return swiftInterfaceToCpp(s, { throw DjinniError("SwiftIdentService has no Swift host implementation: add +sw to the interface") })
     }
 }
 public class SwiftIdentService_statics: @unchecked Sendable {
@@ -38,6 +38,6 @@ public class SwiftIdentService_statics: @unchecked Sendable {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_generated.SwiftIdentService_create(&_params)
         try handleCppErrors(&ret)
-        return SwiftIdentServiceMarshaller.fromCpp(ret)
+        return try SwiftIdentServiceMarshaller.fromCpp(ret)
     }
 }

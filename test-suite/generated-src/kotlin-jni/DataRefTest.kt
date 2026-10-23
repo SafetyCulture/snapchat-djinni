@@ -38,49 +38,49 @@ abstract class DataRefTest {
 
         override fun sendData(data: java.nio.ByteBuffer) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_sendData(nativeRef, data)
+            native_sendData(this.nativeRef, data)
         }
         private external fun native_sendData(_nativeRef: Long, data: java.nio.ByteBuffer)
 
         override fun retriveAsBin(): ByteArray {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_retriveAsBin(nativeRef)
+            return native_retriveAsBin(this.nativeRef)
         }
         private external fun native_retriveAsBin(_nativeRef: Long): ByteArray
 
         override fun sendMutableData(data: java.nio.ByteBuffer) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            native_sendMutableData(nativeRef, data)
+            native_sendMutableData(this.nativeRef, data)
         }
         private external fun native_sendMutableData(_nativeRef: Long, data: java.nio.ByteBuffer)
 
         override fun generateData(): java.nio.ByteBuffer {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_generateData(nativeRef)
+            return native_generateData(this.nativeRef)
         }
         private external fun native_generateData(_nativeRef: Long): java.nio.ByteBuffer
 
         override fun dataFromVec(): java.nio.ByteBuffer {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_dataFromVec(nativeRef)
+            return native_dataFromVec(this.nativeRef)
         }
         private external fun native_dataFromVec(_nativeRef: Long): java.nio.ByteBuffer
 
         override fun dataFromStr(): java.nio.ByteBuffer {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_dataFromStr(nativeRef)
+            return native_dataFromStr(this.nativeRef)
         }
         private external fun native_dataFromStr(_nativeRef: Long): java.nio.ByteBuffer
 
         override fun sendDataView(data: java.nio.ByteBuffer): ByteArray {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_sendDataView(nativeRef, data)
+            return native_sendDataView(this.nativeRef, data)
         }
         private external fun native_sendDataView(_nativeRef: Long, data: java.nio.ByteBuffer): ByteArray
 
         override fun recvDataView(): java.nio.ByteBuffer {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_recvDataView(nativeRef)
+            return native_recvDataView(this.nativeRef)
         }
         private external fun native_recvDataView(_nativeRef: Long): java.nio.ByteBuffer
 

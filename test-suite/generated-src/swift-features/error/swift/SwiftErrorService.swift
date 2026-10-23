@@ -27,6 +27,7 @@ public final class SwiftErrorService: @unchecked Sendable {
         }
         return try djinniResult.get()
     }
+
     public func watch(_ observer: TestSuite.SwiftErrorObserver) async throws(TestSuite.CruxError) -> Bool {
         let djinniResult: Result<Bool, TestSuite.CruxError> = await withCheckedContinuation { djinniContinuation in
             self.djinniQueue.async { [djinniProxy = self.djinniProxy] in

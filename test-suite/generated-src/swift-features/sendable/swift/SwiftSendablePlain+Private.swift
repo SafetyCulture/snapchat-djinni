@@ -8,29 +8,29 @@ import TestSuiteCxx
 
 public enum SwiftSendablePlainMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendablePlain
-    public static func fromCpp(_ c: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return withUnsafePointer(to: c) { p in
-            let count = I32Marshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let name = OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 1))
-            let tags = ListMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 2))
-            let scores = MapMarshaller<StringMarshaller, F64Marshaller>.fromCpp(djinni.swift.getMember(p, 3))
-            let when = DateMarshaller.fromCpp(djinni.swift.getMember(p, 4))
-            let bytes = BinaryMarshaller.fromCpp(djinni.swift.getMember(p, 5))
-            let kind = SwiftSendableKindMarshaller.fromCpp(djinni.swift.getMember(p, 6))
-            let flags = SwiftSendableFlagsMarshaller.fromCpp(djinni.swift.getMember(p, 7))
+            let count = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let name = try OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 1))
+            let tags = try ListMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 2))
+            let scores = try MapMarshaller<StringMarshaller, F64Marshaller>.fromCpp(djinni.swift.getMember(p, 3))
+            let when = try DateMarshaller.fromCpp(djinni.swift.getMember(p, 4))
+            let bytes = try BinaryMarshaller.fromCpp(djinni.swift.getMember(p, 5))
+            let kind = try SwiftSendableKindMarshaller.fromCpp(djinni.swift.getMember(p, 6))
+            let flags = try SwiftSendableFlagsMarshaller.fromCpp(djinni.swift.getMember(p, 7))
             return SwiftType(count: count, name: name, tags: tags, scores: scores, when: when, bytes: bytes, kind: kind, flags: flags)
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, I32Marshaller.toCpp(s.count))
-        djinni.swift.addMember(&ret, OptionalMarshaller<StringMarshaller>.toCpp(s.name))
-        djinni.swift.addMember(&ret, ListMarshaller<StringMarshaller>.toCpp(s.tags))
-        djinni.swift.addMember(&ret, MapMarshaller<StringMarshaller, F64Marshaller>.toCpp(s.scores))
-        djinni.swift.addMember(&ret, DateMarshaller.toCpp(s.when))
-        djinni.swift.addMember(&ret, BinaryMarshaller.toCpp(s.bytes))
-        djinni.swift.addMember(&ret, SwiftSendableKindMarshaller.toCpp(s.kind))
-        djinni.swift.addMember(&ret, SwiftSendableFlagsMarshaller.toCpp(s.flags))
+        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.count))
+        djinni.swift.addMember(&ret, try OptionalMarshaller<StringMarshaller>.toCpp(s.name))
+        djinni.swift.addMember(&ret, try ListMarshaller<StringMarshaller>.toCpp(s.tags))
+        djinni.swift.addMember(&ret, try MapMarshaller<StringMarshaller, F64Marshaller>.toCpp(s.scores))
+        djinni.swift.addMember(&ret, try DateMarshaller.toCpp(s.when))
+        djinni.swift.addMember(&ret, try BinaryMarshaller.toCpp(s.bytes))
+        djinni.swift.addMember(&ret, try SwiftSendableKindMarshaller.toCpp(s.kind))
+        djinni.swift.addMember(&ret, try SwiftSendableFlagsMarshaller.toCpp(s.flags))
         return ret
     }
 }

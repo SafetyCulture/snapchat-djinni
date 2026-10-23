@@ -28,19 +28,19 @@ abstract class ReverseClientInterface {
 
         override fun returnStr(): String {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_returnStr(nativeRef)
+            return native_returnStr(this.nativeRef)
         }
         private external fun native_returnStr(_nativeRef: Long): String
 
         override fun methTakingInterface(i: ReverseClientInterface?): String {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_methTakingInterface(nativeRef, i)
+            return native_methTakingInterface(this.nativeRef, i)
         }
         private external fun native_methTakingInterface(_nativeRef: Long, i: ReverseClientInterface?): String
 
         override fun methTakingOptionalInterface(i: ReverseClientInterface?): String {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_methTakingOptionalInterface(nativeRef, i)
+            return native_methTakingOptionalInterface(this.nativeRef, i)
         }
         private external fun native_methTakingOptionalInterface(_nativeRef: Long, i: ReverseClientInterface?): String
 

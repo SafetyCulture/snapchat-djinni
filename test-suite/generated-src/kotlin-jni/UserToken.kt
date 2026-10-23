@@ -19,7 +19,7 @@ abstract class UserToken {
 
         override fun whoami(): String {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return native_whoami(nativeRef)
+            return native_whoami(this.nativeRef)
         }
         private external fun native_whoami(_nativeRef: Long): String
 
