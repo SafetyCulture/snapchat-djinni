@@ -66,6 +66,10 @@ public final class KotlinJavaBridgeEverything {
 
     /*package*/ final KotlinJavaBridgeLeaf mLeaf;
 
+    /*package*/ final String mOtherText;
+
+    /*package*/ final int mOtherCount;
+
     /*package*/ final com.dropbox.djinni.testextern.ExternJavaMessage mMessage;
 
     public KotlinJavaBridgeEverything(
@@ -96,6 +100,8 @@ public final class KotlinJavaBridgeEverything {
             EnumSet<KotlinJavaBridgeFlags> flags,
             EnumSet<KotlinJavaBridgeFlags> maybeFlags,
             KotlinJavaBridgeLeaf leaf,
+            String otherText,
+            int otherCount,
             com.dropbox.djinni.testextern.ExternJavaMessage message) {
         this.mB = b;
         this.mEight = eight;
@@ -124,6 +130,8 @@ public final class KotlinJavaBridgeEverything {
         this.mFlags = flags;
         this.mMaybeFlags = maybeFlags;
         this.mLeaf = leaf;
+        this.mOtherText = otherText;
+        this.mOtherCount = otherCount;
         this.mMessage = message;
     }
 
@@ -235,6 +243,14 @@ public final class KotlinJavaBridgeEverything {
         return mLeaf;
     }
 
+    public String getOtherText() {
+        return mOtherText;
+    }
+
+    public int getOtherCount() {
+        return mOtherCount;
+    }
+
     public com.dropbox.djinni.testextern.ExternJavaMessage getMessage() {
         return mMessage;
     }
@@ -272,6 +288,8 @@ public final class KotlinJavaBridgeEverything {
                 this.mFlags == other.mFlags &&
                 ((this.mMaybeFlags == null && other.mMaybeFlags == null) || (this.mMaybeFlags != null && this.mMaybeFlags.equals(other.mMaybeFlags))) &&
                 this.mLeaf.equals(other.mLeaf) &&
+                this.mOtherText.equals(other.mOtherText) &&
+                this.mOtherCount == other.mOtherCount &&
                 this.mMessage.equals(other.mMessage);
     }
 
@@ -306,6 +324,8 @@ public final class KotlinJavaBridgeEverything {
         hashCode = hashCode * 31 + mFlags.hashCode();
         hashCode = hashCode * 31 + (mMaybeFlags == null ? 0 : mMaybeFlags.hashCode());
         hashCode = hashCode * 31 + mLeaf.hashCode();
+        hashCode = hashCode * 31 + mOtherText.hashCode();
+        hashCode = hashCode * 31 + mOtherCount;
         hashCode = hashCode * 31 + (mMessage.hashCode());
         return hashCode;
     }
@@ -340,6 +360,8 @@ public final class KotlinJavaBridgeEverything {
                 "," + "mFlags=" + mFlags +
                 "," + "mMaybeFlags=" + mMaybeFlags +
                 "," + "mLeaf=" + mLeaf +
+                "," + "mOtherText=" + mOtherText +
+                "," + "mOtherCount=" + mOtherCount +
                 "," + "mMessage=" + mMessage +
         "}";
     }
