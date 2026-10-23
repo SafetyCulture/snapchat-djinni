@@ -55,11 +55,14 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
   private def javaPrimitiveArrayName(e: MExtern): Option[String] =
     javaPrimitiveArrays.get(e.java.typename)
 
+  // The Kotlin type that stands for a future<void>. It is qualified: an IDL record named unit is a class Unit in the package.
+  val voidFutureValue = "kotlin.Unit"
+
   // The Kotlin type of the value of a future<T>, if the type is a future.
   def futureValueType(ty: TypeRef): Option[String] = ty.resolved.base match {
     case e: MExtern if e.name == "future" && ty.resolved.args.size == 1 =>
       val arg = ty.resolved.args.head
-      Some(if (arg.base == MVoid) "Unit" else valueType(arg, None))
+      Some(if (arg.base == MVoid) voidFutureValue else valueType(arg, None))
     case _ => None
   }
 
@@ -88,7 +91,12 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
   private def externName(name: String) = javaToKotlin.getOrElse(name, name)
 
   private def toKotlinType(tm: MExpr, pkg: Option[String]): String = {
-    def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(f(_, true)).mkString("<", ", ", ">")
+    // A flags type is an EnumSet at run time, also as a type argument.
+    def arg(a: MExpr): String = {
+      val name = f(a, true)
+      if (javaMarshal.isEnumFlags(a)) s"EnumSet<${stripNullable(name)}>" + (if (name.endsWith("?")) "?" else "") else name
+    }
+    def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(arg).mkString("<", ", ", ">")
     def f(tm: MExpr, needRef: Boolean): String = {
       tm.base match {
         case MOptional =>
