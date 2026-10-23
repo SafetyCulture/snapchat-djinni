@@ -75,7 +75,7 @@ private fun kotlinEverything(): KotlinEverything = KotlinEverything(
     HashMap(mapOf(KotlinColor.GREEN to KotlinLeaf(19, "nineteen"))),
     KotlinColor.GREEN, KotlinColor.BLUE,
     EnumSet.of(KotlinFlags.FIRST, KotlinFlags.THIRD), EnumSet.of(KotlinFlags.SECOND),
-    KotlinLeaf(14, "fourteen"), ExternKotlinMessage(byteArrayOf(9, 8)))
+    KotlinLeaf(14, "fourteen"), "other text", 77, ExternKotlinMessage(byteArrayOf(9, 8)))
 
 private fun javaEverything(): JavaEverything = JavaEverything(
     true, 8, 16, 32, 64, 1.5f, 2.5, "text", byteArrayOf(1, 2, 3), Date(1_700_000_000_000L),
@@ -91,7 +91,7 @@ private fun javaEverything(): JavaEverything = JavaEverything(
     HashMap(mapOf(JavaColor.GREEN to JavaLeaf(19, "nineteen"))),
     JavaColor.GREEN, JavaColor.BLUE,
     EnumSet.of(JavaFlags.FIRST, JavaFlags.THIRD), EnumSet.of(JavaFlags.SECOND),
-    JavaLeaf(14, "fourteen"), ExternJavaMessage(byteArrayOf(9, 8)))
+    JavaLeaf(14, "fourteen"), "other text", 77, ExternJavaMessage(byteArrayOf(9, 8)))
 
 private class KotlinListenerImpl : KotlinListener() {
     override fun value(value: Int): Int = value + 1
@@ -194,6 +194,8 @@ private fun sameJava(a: JavaEverything, b: JavaEverything): Boolean =
         a.flags.map { it.name }.toSet() == b.flags.map { it.name }.toSet() &&
         a.maybeFlags?.map { it.name }?.toSet() == b.maybeFlags?.map { it.name }?.toSet() &&
         a.leaf.name == b.leaf.name &&
+        a.otherText == b.otherText &&
+        a.otherCount == b.otherCount &&
         a.message.toByteArray().contentEquals(b.message.toByteArray())
 
 fun main() {

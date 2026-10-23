@@ -49,6 +49,8 @@ kotlin_java_bridge_everything = record {
   flags: kotlin_java_bridge_flags;
   maybe_flags: optional<kotlin_java_bridge_flags>;
   leaf: kotlin_java_bridge_leaf;
+  other_text: string;
+  other_count: i32;
   message: extern_kotlin_message;
 } deriving(eq)
 

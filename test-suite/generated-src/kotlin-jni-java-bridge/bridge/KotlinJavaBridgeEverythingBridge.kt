@@ -31,6 +31,8 @@ fun com.dropbox.djinni.bridgejava.KotlinJavaBridgeEverything.toKotlinJni(): com.
     this.getFlags().let { djinni_flags0 -> java.util.EnumSet.noneOf(com.dropbox.djinni.bridgekt.KotlinJavaBridgeFlags::class.java).apply { djinni_flags0.forEach { djinni_option0 -> add(djinni_option0.toKotlinJni()) } } },
     this.getMaybeFlags()?.let { djinni_value0 -> djinni_value0.let { djinni_flags1 -> java.util.EnumSet.noneOf(com.dropbox.djinni.bridgekt.KotlinJavaBridgeFlags::class.java).apply { djinni_flags1.forEach { djinni_option1 -> add(djinni_option1.toKotlinJni()) } } } },
     this.getLeaf().toKotlinJni(),
+    this.getOtherText(),
+    this.getOtherCount(),
     com.dropbox.djinni.testextern.ExternKotlinMessage.parseFrom(this.getMessage().toByteArray())
 )
 
@@ -62,5 +64,7 @@ fun com.dropbox.djinni.bridgekt.KotlinJavaBridgeEverything.toJava(): com.dropbox
     this.mFlags.let { djinni_flags0 -> java.util.EnumSet.noneOf(com.dropbox.djinni.bridgejava.KotlinJavaBridgeFlags::class.java).apply { djinni_flags0.forEach { djinni_option0 -> add(djinni_option0.toJava()) } } },
     this.mMaybeFlags?.let { djinni_value0 -> djinni_value0.let { djinni_flags1 -> java.util.EnumSet.noneOf(com.dropbox.djinni.bridgejava.KotlinJavaBridgeFlags::class.java).apply { djinni_flags1.forEach { djinni_option1 -> add(djinni_option1.toJava()) } } } },
     this.mLeaf.toJava(),
+    this.mOtherText,
+    this.mOtherCount,
     com.dropbox.djinni.testextern.ExternJavaMessage.parseFrom(this.mMessage.toByteArray())
 )

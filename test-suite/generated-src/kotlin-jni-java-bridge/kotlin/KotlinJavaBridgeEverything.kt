@@ -34,12 +34,14 @@ data class KotlinJavaBridgeEverything(
     val mFlags: EnumSet<KotlinJavaBridgeFlags>,
     val mMaybeFlags: EnumSet<KotlinJavaBridgeFlags>?,
     val mLeaf: KotlinJavaBridgeLeaf,
+    val mOtherText: String,
+    val mOtherCount: Int,
     val mMessage: com.dropbox.djinni.testextern.ExternKotlinMessage
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is KotlinJavaBridgeEverything) return false
-        return this.mB == other.mB && this.mEight == other.mEight && this.mSixteen == other.mSixteen && this.mThirtytwo == other.mThirtytwo && this.mSixtyfour == other.mSixtyfour && this.mFthirtytwo == other.mFthirtytwo && this.mFsixtyfour == other.mFsixtyfour && this.mText == other.mText && this.mData.contentEquals(other.mData) && this.mWhen == other.mWhen && this.mMaybe == other.mMaybe && this.mMaybeText == other.mMaybeText && this.mMaybeLeaf == other.mMaybeLeaf && this.mItems == other.mItems && this.mNames == other.mNames && this.mKeys == other.mKeys && this.mTable == other.mTable && this.mNested == other.mNested && this.mLeafSet == other.mLeafSet && this.mColorSet == other.mColorSet && this.mLeafArray.contentEquals(other.mLeafArray) && this.mColorTable == other.mColorTable && this.mColor == other.mColor && this.mMaybeColor == other.mMaybeColor && this.mFlags == other.mFlags && this.mMaybeFlags == other.mMaybeFlags && this.mLeaf == other.mLeaf && this.mMessage == other.mMessage
+        return this.mB == other.mB && this.mEight == other.mEight && this.mSixteen == other.mSixteen && this.mThirtytwo == other.mThirtytwo && this.mSixtyfour == other.mSixtyfour && this.mFthirtytwo == other.mFthirtytwo && this.mFsixtyfour == other.mFsixtyfour && this.mText == other.mText && this.mData.contentEquals(other.mData) && this.mWhen == other.mWhen && this.mMaybe == other.mMaybe && this.mMaybeText == other.mMaybeText && this.mMaybeLeaf == other.mMaybeLeaf && this.mItems == other.mItems && this.mNames == other.mNames && this.mKeys == other.mKeys && this.mTable == other.mTable && this.mNested == other.mNested && this.mLeafSet == other.mLeafSet && this.mColorSet == other.mColorSet && this.mLeafArray.contentEquals(other.mLeafArray) && this.mColorTable == other.mColorTable && this.mColor == other.mColor && this.mMaybeColor == other.mMaybeColor && this.mFlags == other.mFlags && this.mMaybeFlags == other.mMaybeFlags && this.mLeaf == other.mLeaf && this.mOtherText == other.mOtherText && this.mOtherCount == other.mOtherCount && this.mMessage == other.mMessage
     }
 
     override fun hashCode(): Int {
@@ -71,6 +73,8 @@ data class KotlinJavaBridgeEverything(
         hashCode = hashCode * 31 + java.util.Objects.hashCode(mFlags)
         hashCode = hashCode * 31 + java.util.Objects.hashCode(mMaybeFlags)
         hashCode = hashCode * 31 + java.util.Objects.hashCode(mLeaf)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOtherText)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOtherCount)
         hashCode = hashCode * 31 + java.util.Objects.hashCode(mMessage)
         return hashCode
     }
