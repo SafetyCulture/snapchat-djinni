@@ -169,11 +169,12 @@ fun main(args: Array<String>) {
         }
 
         // A second call before complete_pending replaces the promise of the first call. The first call fails, and the
-        // second call is not blocked.
+        // second call is not blocked. The count of C++ orders the calls: the second call starts when the first one has
+        // stored its promise, also when the first call reaches C++ late.
+        val replacedBefore = service.pendingStarted()
         val firstCall = async(Dispatchers.Default) { runCatching { service.pending() } }
-        delay(200)
+        check(withTimeoutOrNull(10_000) { while (service.pendingStarted() == replacedBefore) delay(5) } != null, "the first call of pending() reaches C++")
         val secondCall = async(Dispatchers.Default) { service.pending() }
-        delay(200)
         val firstResult = withTimeoutOrNull(10_000) { firstCall.await() }
         check(firstResult?.exceptionOrNull() is DjinniCppException, "the first call fails when a second call replaces its promise: $firstResult")
         service.completePending(5)
