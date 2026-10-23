@@ -43,7 +43,7 @@ swift:
   translator.module: 'DjinniSupport'
 swiftxx:
   translator: '::djinni::swift::OutcomeAdaptor'
-  header: '"Outcome_swift.hpp"'
+  header: '"$Outcome_swift.hpp"'
 kotlin:
   typename: 'com.safetyculture.djinni.support.Outcome'
   isProtobufType: false

@@ -41,7 +41,7 @@ swift:
   translator.module: 'DjinniSupport'
 swiftxx:
   translator: '::djinni::swift::DataRefAdaptor'
-  header: '"Data_swift.hpp"'
+  header: '"$Data_swift.hpp"'
 kotlin:
   typename: 'com.safetyculture.djinni.support.ByteBuffer'
   isProtobufType: false
