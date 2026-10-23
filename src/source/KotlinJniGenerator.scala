@@ -321,9 +321,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   override def generate(idl: Seq[TypeDecl]) {
     super.generate(idl)
     for ((name, (fqn, origin)) <- parcelers.toSeq.sortBy(_._1)) {
-      writeKotlinFile(name, origin, List("android.os.Parcel", "kotlinx.parcelize.Parceler"), w => {
+      writeKotlinFile(name, origin, List("android.os.BadParcelableException", "android.os.Parcel", "kotlinx.parcelize.Parceler"), w => {
         w.w(s"${accessModifier}object $name : Parceler<$fqn>").braced {
-          w.wl(s"override fun create(parcel: Parcel): $fqn = $fqn.parseFrom(requireNotNull(parcel.createByteArray()))")
+          w.wl(s"override fun create(parcel: Parcel): $fqn =").nested {
+            w.wl(s"""$fqn.parseFrom(parcel.createByteArray() ?: throw BadParcelableException("The Parcel has no byte array for $fqn"))""")
+          }
           w.wl
           w.w(s"override fun $fqn.write(parcel: Parcel, flags: Int)").braced {
             w.wl("parcel.writeByteArray(toByteArray())")

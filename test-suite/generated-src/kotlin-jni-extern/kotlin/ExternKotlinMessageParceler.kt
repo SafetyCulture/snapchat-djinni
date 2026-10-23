@@ -3,11 +3,13 @@
 
 package com.dropbox.djinni.test
 
+import android.os.BadParcelableException
 import android.os.Parcel
 import kotlinx.parcelize.Parceler
 
 object ExternKotlinMessageParceler : Parceler<com.dropbox.djinni.testextern.ExternKotlinMessage> {
-    override fun create(parcel: Parcel): com.dropbox.djinni.testextern.ExternKotlinMessage = com.dropbox.djinni.testextern.ExternKotlinMessage.parseFrom(requireNotNull(parcel.createByteArray()))
+    override fun create(parcel: Parcel): com.dropbox.djinni.testextern.ExternKotlinMessage =
+        com.dropbox.djinni.testextern.ExternKotlinMessage.parseFrom(parcel.createByteArray() ?: throw BadParcelableException("The Parcel has no byte array for com.dropbox.djinni.testextern.ExternKotlinMessage"))
 
     override fun com.dropbox.djinni.testextern.ExternKotlinMessage.write(parcel: Parcel, flags: Int) {
         parcel.writeByteArray(toByteArray())

@@ -635,7 +635,8 @@ kotlin:
   `optional<>`, a `list<>` or a `map<>`), the generator writes the object
   `<Class>Parceler` and the annotation `@TypeParceler<Class, <Class>Parceler>()`
   on the record. The Parceler writes `toByteArray()` and reads
-  `parseFrom(ByteArray)`, the same methods as the JNI translator. Two classes
+  `parseFrom(ByteArray)`, the same methods as the JNI translator. A `Parcel`
+  without a byte array throws `android.os.BadParcelableException`. Two classes
   with the same simple name need different Parceler names. The generator
   reports them before it writes a file. The Java output does not change.
 - `deriving(ord)` on a record with such a field needs a Kotlin class that is
@@ -804,7 +805,8 @@ These combinations have no test beyond the checked-in output:
   are not run at run time.
 - The Parceler of a Kotlin class of an extern type: the `Parcel` of the check is a
   stub that returns null, so no program writes and reads a record. The check
-  compiles the generated Kotlin with the Parcelize plugin.
+  compiles the generated Kotlin with the Parcelize plugin, and checks that the
+  Parceler throws `BadParcelableException` for the null byte array.
 - The typecheck of the options case does not prove `--swiftxx-include-prefix`
   and `--swiftxx-base-lib-module`, because the module map of the case also has
   `DjinniSupportCxx`. The `grep` for the import and the checked-in output cover
