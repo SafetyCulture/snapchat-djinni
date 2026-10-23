@@ -313,6 +313,8 @@ swift_options_relative="djinni/swift_options.djinni"
 swift_result_name_relative="djinni/swift_result_name.djinni"
 swift_naming_relative="djinni/swift_naming.djinni"
 swift_deriving_relative="djinni/swift_deriving.djinni"
+swift_labels_relative="djinni/swift_labels.djinni"
+swift_recursive_relative="djinni/swift_recursive.djinni"
 swift_const_strings_relative="djinni/swift_const_strings.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
@@ -521,8 +523,45 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/const-strings/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_const_strings_relative" \
+    --idl "$swift_const_strings_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/labels/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/labels/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/labels/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_labels_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/recursive/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/recursive/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    \
+    --idl "$swift_recursive_relative" \
 )
+# A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
+# finds the DataView behind the loop.
+for name in View First Second; do
+    recursive_file="$temp_out/swift-features/recursive/swift/SwiftRecursive$name.swift"
+    if grep -qE "^public struct SwiftRecursive$name\b.*Sendable" "$recursive_file" || grep -q "@unchecked" "$recursive_file"; then
+        echo "SwiftRecursive$name holds a DataView behind a record loop, but it claims Sendable." 1>&2
+        exit 1
+    fi
+done
+for name in Plain Left Right; do
+    recursive_file="$temp_out/swift-features/recursive/swift/SwiftRecursive$name.swift"
+    if ! grep -qE "^public struct SwiftRecursive$name: .*\bSendable\b" "$recursive_file" || grep -q "@unchecked" "$recursive_file"; then
+        echo "SwiftRecursive$name holds no DataView, so it must be Sendable without @unchecked." 1>&2
+        exit 1
+    fi
+done
 # A Java escape becomes the Swift escape for the same character.
 const_strings="$temp_out/swift-features/const-strings/swift"
 for expected in \
