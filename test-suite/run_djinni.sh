@@ -463,6 +463,7 @@ fi
     --swift-private-in-same-module \
     --swift-legacy-records \
     --swift-async-wrap "djinni.testsuite" \
+    --swift-async-queue "DispatchQueue.global(qos: .utility)" \
     --swift-error-type CruxError \
     --swiftxx-out "$temp_out_relative/swift-features/error-legacy/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
@@ -660,6 +661,27 @@ if ! grep -qF -- "Error: --kotlin-suspend-dispatcher needs --kotlin-suspend-wrap
     exit 1
 fi
 if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher" ]; then
+    echo "The generator wrote files for a rejected flag." 1>&2
+    exit 1
+fi
+
+# The queue flag needs the async wrappers.
+queue_log="$temp_out/queue-without-wrap.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-features/queue-without-wrap/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-queue "DispatchQueue.main" \
+    --idl "$swift_async_relative") >"$queue_log" 2>&1; then
+    echo "The generator accepted --swift-async-queue without --swift-async-wrap." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --swift-async-queue needs --swift-async-wrap." "$queue_log"; then
+    echo "Missing error message for --swift-async-queue." 1>&2
+    cat "$queue_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/swift-features/queue-without-wrap" ]; then
     echo "The generator wrote files for a rejected flag." 1>&2
     exit 1
 fi

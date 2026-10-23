@@ -57,7 +57,7 @@ public:
     // BrokenPromiseException instead of waiting for ever. The old promise is destroyed outside the lock, because
     // its handler runs when it is destroyed.
     djinni::Future<int32_t> pending() override {
-        _pendingCalls.fetch_add(1);
+        _pendingStarted.fetch_add(1);
         std::unique_ptr<djinni::Promise<int32_t>> previous;
         std::lock_guard<std::mutex> lock(_mutex);
         previous = std::move(_pending);
@@ -65,8 +65,6 @@ public:
         auto future = _pending->getFuture();
         return future;
     }
-
-    int32_t pending_calls() override { return _pendingCalls.load(); }
 
     djinni::Future<int32_t> dropped() override {
         djinni::Promise<int32_t> promise;
@@ -111,12 +109,18 @@ public:
 
     int32_t max_concurrent() override { return _maxActive.load(); }
 
+    int32_t pending_started() override { return _pendingStarted.load(); }
+
+    int32_t call_listener(const std::shared_ptr<rt::RuntimeListener>& listener, int32_t value) override {
+        return listener->on_value(value);
+    }
+
     std::shared_ptr<rt::RuntimeAsync> same() override { return shared_from_this(); }
 
 private:
     std::atomic<int32_t> _active{0};
     std::atomic<int32_t> _maxActive{0};
-    std::atomic<int32_t> _pendingCalls{0};
+    std::atomic<int32_t> _pendingStarted{0};
     std::mutex _mutex;
     std::unique_ptr<djinni::Promise<int32_t>> _pending;
 };

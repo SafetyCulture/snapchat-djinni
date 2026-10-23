@@ -43,9 +43,11 @@ if [ ! -f "$spb_mod/libSwiftProtobuf.a" ]; then
 fi
 
 out="$work/out"
+# The queue of the application runs the blocking C++ calls; the other runs use the default queue.
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$out/cpp" --cpp-namespace rt \
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-async-queue RuntimeQueues.blocking \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
 # The error type needs its own IDL, because every method of a C++ interface must return an outcome.

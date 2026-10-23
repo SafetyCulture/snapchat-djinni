@@ -63,9 +63,11 @@ runtime_async = interface +c {
   divide(a: i32, b: i32): outcome<i32, runtime_error>;
   delayed(value: i32, millis: i32): future<i32>;
   pending(): future<i32>;
-  # Calls of pending() that reached C++
-  pending_calls(): i32;
   complete_pending(value: i32);
+  # Calls of pending() that reached C++; a task that is cancelled before the call must not count
+  pending_started(): i32;
+  # C++ calls the listener on the thread of the call.
+  call_listener(listener: runtime_listener, value: i32): i32;
   static shared(): runtime_async;
   same(): runtime_async;
   busy(millis: i32);

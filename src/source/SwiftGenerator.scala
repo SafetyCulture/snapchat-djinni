@@ -255,11 +255,15 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
 
   private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
     val name = marshal.typename(ident, i)
-    writeDoc(w, doc)
+    val queue = spec.swiftAsyncQueue.getOrElse("DispatchQueue.global(qos: .userInitiated)")
+    val contract = Seq(
+      s" Each async method runs its blocking C++ call on `$queue`. Calls to one object can run at the same time.",
+      " A task that is cancelled before the call does not call C++. A task that waits for a C++ future resumes once,",
+      " with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.")
+    writeDoc(w, Doc(if (doc.lines.isEmpty) contract else doc.lines ++ Seq("") ++ contract))
     w.w(s"public final class $name: @unchecked Sendable").braced {
-      // Prefixed names: an IDL method named proxy or queue must not collide with the storage
+      // Prefixed name: an IDL method named proxy must not collide with the storage
       w.wl(s"let djinniProxy: ${name}CppProxy")
-      w.wl(s"""private let djinniQueue = DispatchQueue(label: "${spec.swiftAsyncWrap.get}.${SwiftIdent.plain(ident)}")""")
       w.wl
       w.wl(s"init(proxy: ${name}CppProxy) { self.djinniProxy = proxy }")
       for (m <- i.methods.filter(!_.static)) {
@@ -281,49 +285,15 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           for (p <- m.params if !marshal.isSendableArgument(p.ty.resolved)) {
             w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
           }
+          val capture = "[djinniProxy = self.djinniProxy] in"
           if (typedOutcome) {
-            w.wl(s"let djinniResult: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(returning: DjinniSupport.cppOutcome { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-            w.wl("return try djinniResult.get()")
+            w.wl(s"return try await DjinniSupport.djinniRun($queue) { $capture DjinniSupport.cppOutcome { try $call } }.get()")
           } else if (ret.exists(marshal.isOutcome)) {
-            w.wl(s"let djinniResult: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-            w.wl("return try djinniResult.get()")
+            w.wl(s"return try await DjinniSupport.djinniCall($queue) { $capture try $call }.get()")
           } else if (ret.exists(marshal.isFuture)) {
-            w.wl(s"let djinniFuture: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-            w.wl("return try await djinniFuture.value")
-          } else if (m.ret.isEmpty) {
-            w.wl("try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
+            w.wl(s"return try await DjinniSupport.djinniCallFuture($queue) { $capture try $call }")
           } else {
-            w.wl("return try await withCheckedThrowingContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
+            w.wl(s"return try await DjinniSupport.djinniCall($queue) { $capture try $call }")
           }
         }
       }

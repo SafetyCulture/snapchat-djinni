@@ -123,6 +123,7 @@ object Main {
     var swiftxxBaseLibIncludePrefix: String = ""
     var swiftLegacyRecords: Boolean = false
     var swiftAsyncWrap: Option[String] = None
+    var swiftAsyncQueue: Option[String] = None
     var swiftErrorType: Option[String] = None
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
@@ -295,7 +296,10 @@ object Main {
         .text("Generate Swift records with `var` fields. The default is `let` fields.")
       opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
         .validate(x => if (x.matches("[A-Za-z0-9_.-]+")) success else failure("--swift-async-wrap accepts only letters, digits, dot, underscore and hyphen."))
-        .text("Wrap the interfaces that C++ implements in a Swift class with async methods. Each wrapper has a serial queue labelled <label-prefix>.<interface>. Needs --swift-private-in-same-module.")
+        .text("Wrap the interfaces that C++ implements in a Swift class with async methods. The generator does not use the label prefix. Needs --swift-private-in-same-module.")
+      opt[String]("swift-async-queue").valueName("<expression>").foreach(x => swiftAsyncQueue = Some(x))
+        .validate(x => if (x.trim.nonEmpty && !x.exists(c => c == '\n' || c == '\r') && !x.contains("*/")) success else failure("--swift-async-queue needs a Swift expression on one line."))
+        .text("With --swift-async-wrap, the DispatchQueue of the blocking C++ calls, as a Swift expression (default: DispatchQueue.global(qos: .userInitiated)).")
       opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
         .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E; future<outcome<T, E>> is rejected. The record conforms to Error.")
       opt[File]("kotlin-jni-out").valueName("<out-folder>").foreach(x => kotlinJniOutFolder = Some(x))
@@ -414,6 +418,11 @@ object Main {
 
     if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
       System.err.println("Error: --swift-async-wrap needs --swift-private-in-same-module.")
+      System.exit(1); return
+    }
+
+    if (swiftAsyncQueue.isDefined && swiftAsyncWrap.isEmpty) {
+      System.err.println("Error: --swift-async-queue needs --swift-async-wrap.")
       System.exit(1); return
     }
 
@@ -560,6 +569,7 @@ object Main {
       swiftxxBaseLibIncludePrefix,
       swiftLegacyRecords,
       swiftAsyncWrap,
+      swiftAsyncQueue,
       swiftErrorType,
       kotlinJniOutFolder,
       kotlinJniPackage,

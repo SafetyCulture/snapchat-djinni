@@ -124,6 +124,7 @@ package object generatorTools {
                    swiftxxBaseLibIncludePrefix: String,
                    swiftLegacyRecords: Boolean,
                    swiftAsyncWrap: Option[String],
+                   swiftAsyncQueue: Option[String],
                    swiftErrorType: Option[String],
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],

@@ -14,10 +14,19 @@ enum State {
     static let liveListeners = Counter()
 }
 
-final class Doubler: RuntimeListener {
+final class Doubler: RuntimeListener, @unchecked Sendable {
+    private let lock = NSLock()
+    // The label of the queue that ran the last onValue call.
+    private var label = ""
+    var queueLabel: String { lock.lock(); defer { lock.unlock() }; return label }
     init() { State.liveListeners.add(1) }
     deinit { State.liveListeners.add(-1) }
-    func onValue(_ value: Int32) throws -> Int32 { value * 2 }
+    func onValue(_ value: Int32) throws -> Int32 {
+        lock.lock()
+        label = String(cString: __dispatch_queue_get_label(nil))
+        lock.unlock()
+        return value * 2
+    }
     func delayedFuture(_ value: Int32, millis: Int32) throws -> DJFuture<Int32> {
         return DJFuture<Int32> { promise in
             DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(Int(millis))) { promise(.success(value)) }
@@ -207,7 +216,7 @@ func taskValue<T: Sendable>(of task: Task<T, Error>) async throws -> T {
 
 func waitForPendingCalls(_ service: RuntimeAsync, _ count: Int32) async throws {
     try await withTimeout(10) {
-        while try await service.pendingCalls() < count {
+        while try await service.pendingStarted() < count {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
     }
@@ -377,7 +386,7 @@ func runAsyncSafetyCases(_ service: RuntimeAsync) async throws {
     // A second call before complete_pending replaces the promise of the first call. The first call fails, and the second works.
     if enabled("pending_overwrite") {
         // C++ counts the calls of pending(), so the order of the two calls does not depend on a sleep
-        let calls = try await service.pendingCalls()
+        let calls = try await service.pendingStarted()
         let firstCall = Task { try await service.pending() }
         try await waitForPendingCalls(service, calls + 1)
         let secondCall = Task { try await service.pending() }
@@ -469,19 +478,31 @@ func runAsyncTests() async throws {
     let point = try await legacy.echo(input)
     check(point.x == 3 && point.y == 5, "legacy record round trip")
 
-    // One C++ object has one wrapper, and the wrapper serialises the calls to the object.
+    // One C++ object has one wrapper. Calls to the object run at the same time on the queue of --swift-async-queue.
     let first = try RuntimeAsync_statics.shared()
     let second = try RuntimeAsync_statics.shared()
     check(first === second, "the same C++ object has one wrapper")
     check(try await first.same() === first, "a C++ object that returns itself has one wrapper")
     try await withThrowingTaskGroup(of: Void.self) { group in
         for i in 0..<40 {
-            group.addTask { try await (i % 2 == 0 ? first : second).busy(5) }
+            group.addTask { try await (i % 2 == 0 ? first : second).busy(20) }
         }
         try await group.waitForAll()
     }
     let maxConcurrent = try await first.maxConcurrent()
-    check(maxConcurrent == 1, "calls to one C++ object interleave: \(maxConcurrent)")
+    check(maxConcurrent > 1, "calls to one C++ object run one at a time: \(maxConcurrent)")
+    let listener = Doubler()
+    check(try await first.callListener(listener, value: 4) == 8, "callListener through the wrapper")
+    check(listener.queueLabel == "djinni.runtime.blocking", "the C++ call runs on the queue of --swift-async-queue, not \(listener.queueLabel)")
+
+    // A call to an object does not wait for a blocking call on the same object, as cancel() must not.
+    let blocking = Task { try await first.busy(3000) }
+    try await Task.sleep(nanoseconds: 200_000_000)
+    let start = DispatchTime.now().uptimeNanoseconds
+    check(try await first.add(1, b: 1) == 2, "add while the object is busy")
+    let elapsedMs = (DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+    check(elapsedMs < 1500, "a call waits for a blocking call on the same object: \(elapsedMs) ms")
+    try await blocking.value
 
     // A C++ exception before a future exists is a DjinniError.
     do {
@@ -521,7 +542,8 @@ func runAsyncTests() async throws {
     }
     try await service.completePending(1)
 
-    // A task that is cancelled before it waits throws at once.
+    // A task that is cancelled before the call throws at once and does not call C++.
+    let startedBefore = try await service.pendingStarted()
     let early = Task {
         while !Task.isCancelled { await Task.yield() }
         return try await service.pending()
@@ -534,7 +556,8 @@ func runAsyncTests() async throws {
     } catch {
         check(false, "an early cancelled task must throw CancellationError, not \(error)")
     }
-    try await service.completePending(2)
+    let startedAfter = try await service.pendingStarted()
+    check(startedAfter == startedBefore, "a task that is cancelled before the call calls C++: \(startedBefore) -> \(startedAfter)")
 
     // The future of a completed call still delivers its value after another task was cancelled.
     check(try await service.delayed(9, millis: 10) == 9, "future after cancellation")
@@ -545,6 +568,11 @@ extension CruxError: CppExceptionConvertible {
     public init(cppException error: DjinniError) {
         self.init(message: error.errorMessage, code: -1)
     }
+}
+
+// The queue of --swift-async-queue in the run of runtime.djinni.
+enum RuntimeQueues {
+    static let blocking = DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)
 }
 
 // A deadlock fails the test.

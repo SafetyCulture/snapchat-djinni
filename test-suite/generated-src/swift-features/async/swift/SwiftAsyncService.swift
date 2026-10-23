@@ -4,122 +4,69 @@
 import DjinniSupport
 import Foundation
 
-/** C++ implements this one, so it is wrapped. Its methods cover each kind of return type. */
+/**
+ * C++ implements this one, so it is wrapped. Its methods cover each kind of return type.
+ *
+ * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .userInitiated)`. Calls to one object can run at the same time.
+ * A task that is cancelled before the call does not call C++. A task that waits for a C++ future resumes once,
+ * with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.
+ */
 public final class SwiftAsyncService: @unchecked Sendable {
     let djinniProxy: SwiftAsyncServiceCppProxy
-    private let djinniQueue = DispatchQueue(label: "djinni.testsuite.swiftAsyncService")
 
     init(proxy: SwiftAsyncServiceCppProxy) { self.djinniProxy = proxy }
 
     public func ping() async throws -> Void {
-        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.ping() })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
     }
 
     public func count() async throws -> Int32 {
-        return try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.count() })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.count() }
     }
 
     public func find(_ id: String, limit: Optional<Int32>) async throws -> TestSuite.SwiftAsyncItem {
-        return try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.find(id, limit: limit) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.find(id, limit: limit) }
     }
 
     public func fetch(_ id: String) async throws -> TestSuite.SwiftAsyncItem {
-        let djinniResult: Result<TestSuite.SwiftAsyncItem, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.fetch(id) })
-            }
-        }
-        return try djinniResult.get()
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(id) }.get()
     }
 
     public func stopWatching() async throws -> Int32 {
-        let djinniResult: Result<Int32, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.stopWatching() })
-            }
-        }
-        return try djinniResult.get()
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.stopWatching() }.get()
     }
 
     public func load(_ id: String) async throws -> TestSuite.SwiftAsyncItem {
-        let djinniFuture: DjinniSupport.DJFuture<TestSuite.SwiftAsyncItem> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.load(id) })
-            }
-        }
-        return try await djinniFuture.value
+        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load(id) }
     }
 
     public func flush() async throws -> Void {
-        let djinniFuture: DjinniSupport.DJFuture<Void> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.flush() })
-            }
-        }
-        return try await djinniFuture.value
+        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.flush() }
     }
 
     public func send(_ data: Foundation.NSData, tags: Array<String>) async throws -> Void {
         let _data = DjinniSupport.UncheckedSendable(data)
-        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.send(_data.value, tags: tags) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.send(_data.value, tags: tags) }
     }
 
     public func watch(_ observer: TestSuite.SwiftAsyncObserver) async throws -> Void {
-        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.watch(observer) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.watch(observer) }
     }
 
     public func child() async throws -> TestSuite.SwiftAsyncChild {
-        return try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.child() })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.child() }
     }
 
     /** Parameters with the names of members of the wrapper. */
     public func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) async throws -> Int32 {
-        let djinniResult: Result<Int32, TestSuite.SwiftAsyncError> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future) })
-            }
-        }
-        return try djinniResult.get()
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future) }.get()
     }
 
     public func futureNames(_ future: Int32, result: Int32) async throws -> Int32 {
-        let djinniFuture: DjinniSupport.DJFuture<Int32> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.futureNames(future, result: result) })
-            }
-        }
-        return try await djinniFuture.value
+        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.futureNames(future, result: result) }
     }
 
     public func attach(_ child: TestSuite.SwiftAsyncChild, parent: Optional<TestSuite.SwiftAsyncService>) async throws -> Void {
-        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Result { try djinniProxy.attach(child, parent: parent) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.attach(child, parent: parent) }
     }
 }
