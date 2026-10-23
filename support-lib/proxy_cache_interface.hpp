@@ -125,11 +125,11 @@ public:
      * proxy class `MyInterface` which wraps `@protocol DBMyInterface` would contain a
      * `Handle<id<DBMyInterface>>`.
      *
-     * TagType is the tag that the default constructor passes to `get()`. Normally this is the
+     * TagType is the default tag that the destructor passes to `cleanup()`. Normally this is the
      * same as T (a specialized OwningImplPointer), but in cases like Java where all object types
-     * are uniformly represented as `jobject` in C++, another type may be used. A handle that was
-     * created with a Tag passes that tag to its constructor, because two glue sets of one C++
-     * type need one proxy each.
+     * are uniformly represented as `jobject` in C++, another type may be used. A handle
+     * constructed with a Tag uses that tag, and the tag must equal the tag of `get()`. Two glue
+     * sets of one C++ type need one proxy each.
      */
     template <typename T, typename TagType = T>
     class Handle {
