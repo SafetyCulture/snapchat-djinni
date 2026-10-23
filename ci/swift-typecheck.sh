@@ -5,7 +5,8 @@
 # The script generates Swift and Swift/C++ glue with the built generator. It runs
 # `swiftc -typecheck` over the generated Swift in Swift 5 mode and in Swift 6 mode with complete
 # strict concurrency checking. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
-# generated protobuf types (module S12Protos) and the generated Swift/C++ declarations
+# generated protobuf types (module S12Protos) are the real messages of the assets protos
+# (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
 # because they come from other build steps.
 #
@@ -195,7 +196,7 @@ swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
 
 # The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
-if grep -nE 'try!|fatalError|as!|[A-Za-z0-9_)\]]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
+if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
   echo "FAIL: a crash construct in support-lib/swift" >&2
   exit 1
 fi

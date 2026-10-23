@@ -356,9 +356,10 @@ Swift 6 defaults:
   `init`.
 - Every record is `Sendable`. Swift checks the conformance when every field is
   `Sendable`: primitives, `String`, `Data`, `Date`, enums, records, protobuf
-  types, `DJFuture`, and `Result` with `Sendable` arguments. The conformance is
-  `@unchecked Sendable` when a field is an interface, `DataRef`, `DataView`, or
-  an extern type without a known `Sendable` mapping. This also applies inside
+  types, interfaces (the generated protocols are `AnyObject, Sendable`),
+  `DJFuture` and `Result` with `Sendable` arguments. The conformance is
+  `@unchecked Sendable` when a field is `DataRef`, `DataView`, or an extern
+  type without a known `Sendable` mapping. This also applies inside
   `optional<>`, `list<>`, `set<>` and `map<>`.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
   Every generated proxy class and the shared classes of `DjinniSupport` are `@unchecked Sendable`.
@@ -402,8 +403,8 @@ Async wrappers (`--swift-async-wrap`):
 - A host object that implements a generated protocol must be `Sendable` (the
   protocols are `AnyObject, Sendable`). A host object that lives on the main
   actor conforms with `@MainActor` on the class and `nonisolated` on the
-  protocol methods that C++ calls from its own thread; the wrapper hops to the
-  main actor itself.
+  protocol methods that C++ calls from its own thread; such a method hops to
+  the main actor with `await MainActor.run` around its body.
 
 Error type (`--swift-error-type <name>`):
 
@@ -469,10 +470,10 @@ Extern yaml files have two new blocks. A type without them cannot be used in Swi
 
 ```yaml
 swift:
-  typename: 'S12_Assets_V1_Asset'
+  typename: 'S12ASSETSAsset'
   module: 'S12Protos'
   generic: false
-  translator: 'ProtobufMarshaller<S12_Assets_V1_Asset>'
+  translator: 'ProtobufMarshaller<S12ASSETSAsset>'
   translator.module: 'DjinniSupport'
 swiftxx:
   translator: 'djinni::swift::s12::assets::v1::Asset::Translator'
