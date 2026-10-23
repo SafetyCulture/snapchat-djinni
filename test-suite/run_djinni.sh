@@ -469,10 +469,15 @@ fi
     \
     --idl "$swift_error_relative" \
 )
-# Every +Private.swift file of the options case imports the base library module, not only one of them.
+# Every +Private.swift file of the options case must import the base library module.
 options_private=("$temp_out"/swift-features/options/swift/*+Private.swift)
-if [ "${#options_private[@]}" -eq 0 ] || [ -n "$(grep -L -x "import OptionsSupport" "${options_private[@]}")" ]; then
-    echo "A +Private.swift file of the options case does not import --swiftxx-base-lib-module (or there is none): $(grep -L -x "import OptionsSupport" "${options_private[@]}" || true)" 1>&2
+if [ "${#options_private[@]}" -eq 0 ]; then
+    options_missing="there is no +Private.swift file"
+else
+    options_missing="$(grep -L -x "import OptionsSupport" "${options_private[@]}" || true)"
+fi
+if [ -n "$options_missing" ]; then
+    echo "The options case does not import --swiftxx-base-lib-module in: $options_missing" 1>&2
     exit 1
 fi
 
