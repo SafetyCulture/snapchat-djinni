@@ -1,27 +1,6 @@
-@extern "../../support-lib/outcome.yaml"
+@import "kotlin_error_types.djinni"
 
-# Types for --kotlin-error-type without futures, so the Kotlin functions stay blocking.
-
-kotlin_error_error = record {
-  message: string;
-}
-
-kotlin_error_item = record {
-  id: string;
-  count: i32;
-}
-
-# Kotlin implements this one, so the flag does not change it.
-kotlin_error_listener = interface +j {
-  on_item(item: kotlin_error_item): bool;
-}
-
-# C++ and Kotlin implement this one. JNI calls the Kotlin methods by their signature, so they keep the raw form.
-kotlin_error_both = interface +c +j {
-  fetch(id: string): outcome<kotlin_error_item, kotlin_error_error>;
-}
-
-# C++ implements this one. Its methods cover each kind of return type.
+# C++ implements this one. Its methods cover each kind of return type, without futures, so the functions stay blocking.
 kotlin_error_service = interface +c {
   static create(): kotlin_error_service;
   static parse(text: string): outcome<kotlin_error_item, kotlin_error_error>;
@@ -36,4 +15,7 @@ kotlin_error_service = interface +c {
   names(in: i32, val: i32, it: i32): list<string>;
   watch(listener: kotlin_error_listener);
   both(both: kotlin_error_both): kotlin_error_both;
+  # The names and the types of members of Any: the functions override them.
+  to_string(): string;
+  hash_code(): i32;
 }

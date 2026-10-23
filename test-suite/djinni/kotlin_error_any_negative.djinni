@@ -1,0 +1,16 @@
+@extern "../../support-lib/outcome.yaml"
+
+# --kotlin-error-type with --kotlin-suspend-wrap: a static or a suspend function cannot override a member of Any,
+# so these methods fail the generation.
+
+kotlin_error_any_error = record {
+  message: string;
+}
+
+kotlin_error_any_static = interface +c {
+  static hash_code(): i32;
+}
+
+kotlin_error_any_suspend = interface +c {
+  to_string(): outcome<string, kotlin_error_any_error>;
+}
