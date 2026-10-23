@@ -85,7 +85,13 @@ object JavaBridgeCheck {
         }
         case e: MExtern =>
           val kotlinName = JavaBridgeGenerator.externKotlinName(e)
-          if (kotlinName != JavaBridgeGenerator.externJavaName(e) && !e.kotlin.isProtobufMessage && e.name != "future" && e.name != "outcome") {
+          if (javaMarshal.isEnumFlags(tm)) {
+            if (inContainer) {
+              Seq(s"$where: extern flags type ${e.name} inside a container is ${e.java.typename} in Java and EnumSet<$kotlinName> in Kotlin, so the bridge cannot convert it.")
+            } else {
+              Seq()
+            }
+          } else if (kotlinName != JavaBridgeGenerator.externJavaName(e) && !e.kotlin.isProtobufMessage && e.name != "future" && e.name != "outcome") {
             Seq(s"$where: extern type ${e.name} is $kotlinName in Kotlin, not ${e.java.typename}, and the yaml does not mark it as a protobuf message. " +
               "Use the same class in both legs, or set kotlin.isProtobufMessage.")
           } else {

@@ -1,0 +1,6 @@
+@extern "vendor/third-party/bridge_extern_flags_negative.yaml"
+
+# An extern flags type inside a list is one option in Java and an EnumSet in Kotlin.
+bridge_negative_extern_flags = record {
+  values: list<bridge_extern_flags>;
+}

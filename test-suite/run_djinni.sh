@@ -1420,6 +1420,25 @@ if ! grep -qF -- "record bridge_negative_flag_list, field values: a flags type i
     exit 1
 fi
 
+# An extern flags type inside a list has the same two forms.
+bridge_extern_flags_log="$temp_out/kotlin-jni-java-bridge-extern-flags.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-extern-flags/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-extern-flags/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_extern_flags.djinni" \
+    --idl-include-path "djinni/vendor") >"$bridge_extern_flags_log" 2>&1; then
+    echo "The generator accepted an extern flags type inside a list." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "record bridge_negative_extern_flags, field values: extern flags type bridge_extern_flags inside a container is com.dropbox.djinni.bridgeextern.ExternFlags in Java and EnumSet<com.dropbox.djinni.bridgeextern.ExternFlags> in Kotlin, so the bridge cannot convert it." "$bridge_extern_flags_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-extern-flags" ]; then
+    echo "Missing error message for an extern flags type inside a list, or files were written." 1>&2
+    cat "$bridge_extern_flags_log" 1>&2
+    exit 1
+fi
+
 # An extern type with two classes and no Protobuf marker has no converter.
 bridge_extern_log="$temp_out/kotlin-jni-java-bridge-extern.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
