@@ -21,7 +21,10 @@ namespace djinni {
 // NOLINTNEXTLINE
 static void NativeFutureHandler_nativeHandleResult(JNIEnv* jniEnv, jclass /*unused*/, jlong nativeFunc, jlong nativePromise, jobject jres, jthrowable jex) {
     auto func = reinterpret_cast<NativeFutureHandlerFunc>(nativeFunc);
-    func(jniEnv, nativePromise, jres, jex);
+    // An exception must not leave a native method: it would terminate the JVM
+    try {
+        func(jniEnv, nativePromise, jres, jex);
+    } JNI_TRANSLATE_EXCEPTIONS_RETURN(jniEnv, )
 }
 
 static const JNINativeMethod kNativeMethods[] = {{

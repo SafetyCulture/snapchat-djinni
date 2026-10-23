@@ -478,19 +478,36 @@ void jniSetPendingFromCurrent(JNIEnv * env, const char * ctx) noexcept {
     jniDefaultSetPendingFromCurrent(env, ctx);
 }
 
+namespace {
+
+// Sets com.snapchat.djinni.DjinniCppException as the pending exception. The class is in the support-lib Java sources.
+// When an app does not have it on the class path, a RuntimeException is set, and the error does not get lost.
+void setPendingCppException(JNIEnv * env, const char * message) noexcept {
+    jclass clazz = env->FindClass("com/snapchat/djinni/DjinniCppException");
+    if (clazz == nullptr) {
+        env->ExceptionClear(); // NoClassDefFoundError of the lookup
+        clazz = env->FindClass("java/lang/RuntimeException");
+    }
+    if (clazz != nullptr) {
+        env->ThrowNew(clazz, message);
+        env->DeleteLocalRef(clazz);
+    }
+}
+
+} // namespace
+
 void jniDefaultSetPendingFromCurrent(JNIEnv * env, const char * /*ctx*/) noexcept {
     assert(env);
     try {
         throw;
     } catch (const jni_exception & e) {
         e.set_as_pending(env);
-        return;
     } catch (const std::exception & e) {
-        env->ThrowNew(env->FindClass("java/lang/RuntimeException"), e.what());
+        setPendingCppException(env, e.what());
+    } catch (...) {
+        // An exception that is not derived from std::exception must not terminate the JVM
+        setPendingCppException(env, "unknown C++ exception");
     }
-
-    // noexcept will call terminate() for anything not caught above (i.e.
-    // exceptions which aren't std::exception subclasses).
 }
 
 template class ProxyCache<JavaProxyCacheTraits>;

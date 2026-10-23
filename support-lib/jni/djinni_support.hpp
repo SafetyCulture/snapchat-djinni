@@ -599,8 +599,8 @@ private:
  * The default implementation is defined with __attribute__((weak)) so you
  * can replace it by defining your own version.  The default implementation
  * will call jniDefaultSetPendingFromCurrent(), which will propagate a
- * jni_exception directly into Java, or throw a RuntimeException for any
- * other std::exception.
+ * jni_exception directly into Java, or throw a com.snapchat.djinni.DjinniCppException
+ * (a RuntimeException) for any other C++ exception.
  */
 void jniSetPendingFromCurrent(JNIEnv * env, const char * ctx) noexcept;
 
@@ -611,9 +611,11 @@ void jniSetPendingFromCurrent(JNIEnv * env, const char * ctx) noexcept;
  * exception in JNI based on the current C++ exception.
  *
  * This will call jniSetPendingFrom(env, jni_exception) if the current exception
- * is a jni_exception, or otherwise will set a RuntimeException from any
- * other std::exception.  Any non-std::exception will result in a call
- * to terminate().
+ * is a jni_exception, or otherwise will set a com.snapchat.djinni.DjinniCppException
+ * from any other exception.  The message of the Java exception is what() of a
+ * std::exception, or "unknown C++ exception" for any other type.  The Java class is
+ * a subclass of RuntimeException; a RuntimeException is set when the support-lib
+ * Java classes are not on the class path.
  *
  * This is called by the default implementation of jniSetPendingFromCurrent.
  */
@@ -634,6 +636,9 @@ void jniDefaultSetPendingFromCurrent(JNIEnv * env, const char * ctx) noexcept;
  */
 #define JNI_TRANSLATE_EXCEPTIONS_RETURN(env, ret) \
     catch (const std::exception &) { \
+        ::djinni::jniSetPendingFromCurrent(env, __func__); \
+        return ret; \
+    } catch (...) { \
         ::djinni::jniSetPendingFromCurrent(env, __func__); \
         return ret; \
     }
