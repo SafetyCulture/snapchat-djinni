@@ -26,6 +26,8 @@ namespace {
         Module.testsuite_Constants.I64_CONSTANT = BigInt("4");
         Module.testsuite_Constants.F32_CONSTANT = 5.0;
         Module.testsuite_Constants.F64_CONSTANT = 5.0;
+        Module.testsuite_Constants.F32_INT_CONSTANT = 1;
+        Module.testsuite_Constants.F64_INT_CONSTANT = -2;
         Module.testsuite_Constants.OPT_BOOL_CONSTANT = true;
         Module.testsuite_Constants.OPT_I8_CONSTANT = 1;
         Module.testsuite_Constants.OPT_I16_CONSTANT = 2;

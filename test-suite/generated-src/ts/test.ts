@@ -308,6 +308,9 @@ export namespace Constants {
      *   Indented third line of multi-line documentation.)
      */
     export const F64_CONSTANT = 5.0;
+    /** An integer literal for a float constant must become a float literal in Kotlin. */
+    export const F32_INT_CONSTANT = 1;
+    export const F64_INT_CONSTANT = -2;
     export const OPT_BOOL_CONSTANT = true;
     export const OPT_I8_CONSTANT = 1;
     /** opt_i16_constant has documentation. */
