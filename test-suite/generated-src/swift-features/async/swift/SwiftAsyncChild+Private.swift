@@ -19,7 +19,7 @@ final class SwiftAsyncChildCppProxy: DjinniSupport.CppProxy, @unchecked Sendable
 public enum SwiftAsyncChildMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftAsyncChild
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppWrapperToSwift(c, { SwiftAsyncChild(proxy: SwiftAsyncChildCppProxy(c)) })
+        return try cppWrapperToSwift(c, { SwiftAsyncChild(proxy: SwiftAsyncChildCppProxy(c)) })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return s.djinniProxy.inst

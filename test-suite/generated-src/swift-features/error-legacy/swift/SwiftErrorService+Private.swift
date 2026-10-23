@@ -35,7 +35,7 @@ final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
 public enum SwiftErrorServiceMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftErrorService
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
-        return cppWrapperToSwift(c, { SwiftErrorService(proxy: SwiftErrorServiceCppProxy(c)) })
+        return try cppWrapperToSwift(c, { SwiftErrorService(proxy: SwiftErrorServiceCppProxy(c)) })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return s.djinniProxy.inst
