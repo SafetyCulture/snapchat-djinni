@@ -690,6 +690,14 @@ expect_failure error-renamed "$swift_error_relative" Renamed \
 expect_failure error-enum "$swift_error_enum_relative" CruxError \
     "interface swift_error_enum_service, method f: the error type CruxError is not a record"
 
+expect_failure error-proto "djinni/swift_error_proto.djinni" CruxPerson \
+    "interface swift_error_proto_service, method fetch: the error type CruxPerson is not a record"
+if grep -qF -- "but --swift-error-type is" "$temp_out/error-proto.log"; then
+    echo "A protobuf error type gets the message for an error type with another name." 1>&2
+    cat "$temp_out/error-proto.log" 1>&2
+    exit 1
+fi
+
 # An extern record with the Swift name is accepted.
 (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
     --swift-out "$temp_out_relative/swift-features/error-extern/swift" \

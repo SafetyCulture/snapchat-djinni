@@ -89,6 +89,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   def hasErrorName(tm: MExpr, name: String): Boolean = tm.base match {
     case d: MDef => idSwift.ty(d.name) == name
     case e: MExtern => e.swift.typename == name
+    case p: MProtobuf => p.body.swift.exists(o => o.prefix + p.name == name)
     case _ => false
   }
 
