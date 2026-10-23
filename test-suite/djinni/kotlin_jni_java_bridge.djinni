@@ -76,3 +76,11 @@ kotlin_java_bridge_listener = interface +j {
   future_leaf(leaf: kotlin_java_bridge_leaf): future<kotlin_java_bridge_leaf>;
   outcome_value(value: i32): outcome<kotlin_java_bridge_leaf, kotlin_java_bridge_error>;
 }
+
+# Containers that need the nested form and the interface form of the converters.
+kotlin_java_bridge_containers = record {
+  nested_items: list<list<kotlin_java_bridge_leaf>>;
+  nested_table: map<string, map<string, kotlin_java_bridge_leaf>>;
+  listeners: list<kotlin_java_bridge_listener>;
+  maybe_listener: optional<kotlin_java_bridge_listener>;
+}

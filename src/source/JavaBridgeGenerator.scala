@@ -40,6 +40,8 @@ object JavaBridgeCheck {
 
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     val skipped = skips(idl).map(_.record).toSet
+    val javaMarshal = new JavaMarshal(spec.copy(javaPackage = spec.kotlinJniJavaBridgePackage))
+    val kotlinMarshal = new KotlinJniMarshal(spec)
     val problems = mutable.ArrayBuffer[String]()
     for (d <- idl.collect { case itd: InternTypeDecl => itd }) {
       d.body match {
@@ -50,14 +52,14 @@ object JavaBridgeCheck {
           if (d.params.nonEmpty) {
             problems += s"record ${d.ident.name}: a record with type parameters is not converted."
           }
-          r.fields.foreach(f => problems ++= typeProblems(f.ty.resolved, s"record ${d.ident.name}, field ${f.ident.name}"))
+          r.fields.foreach(f => problems ++= typeProblems(f.ty.resolved, s"record ${d.ident.name}, field ${f.ident.name}", skipped, javaMarshal, kotlinMarshal))
         case i: Interface if i.ext.java =>
           if (d.params.nonEmpty) {
             problems += s"interface ${d.ident.name}: an interface with type parameters is not converted."
           }
           i.methods.filter(m => !m.static && m.lang.java).foreach { m =>
-            m.params.foreach(p => problems ++= typeProblems(p.ty.resolved, s"interface ${d.ident.name}, method ${m.ident.name}, parameter ${p.ident.name}"))
-            m.ret.foreach(r => problems ++= typeProblems(r.resolved, s"interface ${d.ident.name}, method ${m.ident.name}, return"))
+            m.params.foreach(p => problems ++= typeProblems(p.ty.resolved, s"interface ${d.ident.name}, method ${m.ident.name}, parameter ${p.ident.name}", skipped, javaMarshal, kotlinMarshal))
+            m.ret.foreach(r => problems ++= typeProblems(r.resolved, s"interface ${d.ident.name}, method ${m.ident.name}, return", skipped, javaMarshal, kotlinMarshal))
           }
         case _ =>
       }
@@ -65,22 +67,38 @@ object JavaBridgeCheck {
     if (problems.isEmpty) None else Some(problems.mkString("\n"))
   }
 
-  private def typeProblems(tm: MExpr, where: String): Seq[String] = tm.base match {
-    case MOptional | MList | MSet | MArray => typeProblems(tm.args.head, where)
-    case MMap => typeProblems(tm.args(0), where) ++ typeProblems(tm.args(1), where)
-    case d: MDef => d.body match {
-      case i: Interface if i.ext.cpp => Seq(s"$where: a +c interface is not converted. The adapter owns it.")
-      case _ => Seq()
-    }
-    case e: MExtern =>
-      val kotlinName = JavaBridgeGenerator.externKotlinName(e)
-      if (kotlinName != JavaBridgeGenerator.externJavaName(e) && !e.kotlin.isProtobufMessage && e.name != "future" && e.name != "outcome") {
-        Seq(s"$where: extern type ${e.name} is $kotlinName in Kotlin, not ${e.java.typename}, and the yaml does not mark it as a protobuf message. " +
-          "Use the same class in both legs, or set kotlin.isProtobufMessage.")
-      } else {
-        tm.args.flatMap(a => typeProblems(a, where))
+  private def typeProblems(tm: MExpr, where: String, skipped: Set[String], javaMarshal: JavaMarshal,
+                          kotlinMarshal: KotlinJniMarshal, inContainer: Boolean = false): Seq[String] =
+    skippedRecordIn(tm, skipped) match {
+      case Some(name) => Seq(s"$where: the record $name has no converter, because it holds a +c interface.")
+      case None => tm.base match {
+        case MOptional => typeProblems(tm.args.head, where, skipped, javaMarshal, kotlinMarshal, inContainer)
+        case MList | MSet | MArray => typeProblems(tm.args.head, where, skipped, javaMarshal, kotlinMarshal, inContainer = true)
+        case MMap => typeProblems(tm.args(0), where, skipped, javaMarshal, kotlinMarshal, inContainer = true) ++ typeProblems(tm.args(1), where, skipped, javaMarshal, kotlinMarshal, inContainer = true)
+        case d: MDef => d.body match {
+          case e: Enum if e.flags && inContainer =>
+            val javaName = javaMarshal.fqTypename(d.name, e)
+            val kotlinName = kotlinMarshal.fqTypename(d.name, e)
+            Seq(s"$where: a flags type inside a container is $javaName in Java and EnumSet<$kotlinName> in Kotlin, so the bridge cannot convert it.")
+          case i: Interface if i.ext.cpp => Seq(s"$where: a +c interface is not converted. The adapter owns it.")
+          case _ => Seq()
+        }
+        case e: MExtern =>
+          val kotlinName = JavaBridgeGenerator.externKotlinName(e)
+          if (kotlinName != JavaBridgeGenerator.externJavaName(e) && !e.kotlin.isProtobufMessage && e.name != "future" && e.name != "outcome") {
+            Seq(s"$where: extern type ${e.name} is $kotlinName in Kotlin, not ${e.java.typename}, and the yaml does not mark it as a protobuf message. " +
+              "Use the same class in both legs, or set kotlin.isProtobufMessage.")
+          } else {
+            val container = e.name == "future" || e.name == "outcome"
+            tm.args.flatMap(a => typeProblems(a, where, skipped, javaMarshal, kotlinMarshal, inContainer || container))
+          }
+        case _ => Seq()
       }
-    case _ => Seq()
+    }
+
+  private def skippedRecordIn(tm: MExpr, skipped: Set[String]): Option[String] = tm.base match {
+    case d: MDef if d.body.isInstanceOf[Record] && skipped.contains(d.name) => Some(d.name)
+    case _ => tm.args.flatMap(a => skippedRecordIn(a, skipped)).headOption
   }
 
   private def hasCppInterface(tm: MExpr): Boolean = tm.base match {
@@ -129,7 +147,10 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
 
   private def bridgeKotlinType(tm: MExpr, packageName: String, kotlinExterns: Boolean): String = {
     def args(tm: MExpr): String = if (tm.args.isEmpty) "" else tm.args.map(a => f(a)).mkString("<", ", ", ">")
-    def f(tm: MExpr): String = tm.base match {
+    def f(tm: MExpr): String = if (javaMarshal.isEnumFlags(tm)) {
+      val inner = if (tm.base == MOptional) tm.args.head else tm
+      "java.util.EnumSet<" + f(inner) + ">" + (if (tm.base == MOptional) "?" else "")
+    } else tm.base match {
       case MOptional => f(tm.args.head) + "?"
       case MArray =>
         tm.args.head.base match {
@@ -151,13 +172,8 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
       case p: MParam => idJava.typeParam(p.name)
       case MVoid => "Void"
     }
-    if (javaMarshal.isEnumFlags(tm)) {
-      val inner = if (tm.base == MOptional) tm.args.head else tm
-      "java.util.EnumSet<" + f(inner) + ">" + (if (tm.base == MOptional) "?" else "")
-    } else {
-      val name = f(tm)
-      if (isInterface(tm) && !name.endsWith("?") && spec.cppNnType.isEmpty) name + "?" else name
-    }
+    val name = f(tm)
+    if (isInterface(tm) && !name.endsWith("?") && spec.cppNnType.isEmpty) name + "?" else name
   }
 
   private def writeFile(name: String, origin: String)(f: IndentWriter => Unit) {
@@ -343,7 +359,7 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
           expr
         } else {
           val (from, to) = if (toKotlin) (javaValueType(inner), kotlinValueType(inner)) else (kotlinValueType(inner), javaValueType(inner))
-          s"$expr.then(${futureClass(tm)}.FutureHandlerWithReturn<$from, $to> { djinni_future -> ${convertValue(inner, "djinni_future.get()", toKotlin)} })"
+          s"$expr.then(${futureClass(tm)}.FutureHandlerWithReturn<$from, $to> { djinni_future -> ${convertValue(inner, "djinni_future.get()", toKotlin, nullable = false)} })"
         }
       case None =>
         outcomeArgs(tm) match {
@@ -366,7 +382,7 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
           call
         } else {
           val (from, to) = if (toKotlin) (javaValueType(inner), kotlinValueType(inner)) else (kotlinValueType(inner), javaValueType(inner))
-          s"$call.then(${futureClass(tm)}.FutureHandlerWithReturn<$from, $to> { djinni_future -> ${convertValue(inner, "djinni_future.get()", toKotlin)} })"
+          s"$call.then(${futureClass(tm)}.FutureHandlerWithReturn<$from, $to> { djinni_future -> ${convertValue(inner, "djinni_future.get()", toKotlin, nullable = false)} })"
         }
       case None =>
         outcomeArgs(tm) match {
@@ -392,16 +408,17 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
     val result = if (value.base == MVoid) {
       s"$outcomeClass.fromResult<$targetValue, $targetError>(null)"
     } else {
-      s"$outcomeClass.fromResult<$targetValue, $targetError>(${convert(value, "djinni_value", toKotlin)})"
+      s"$outcomeClass.fromResult<$targetValue, $targetError>(${convert(value, "djinni_value", toKotlin, nullable = false)})"
     }
-    val failure = s"$outcomeClass.fromError<$targetValue, $targetError>(${convert(error, "djinni_error", toKotlin)})"
+    val failure = s"$outcomeClass.fromError<$targetValue, $targetError>(${convert(error, "djinni_error", toKotlin, nullable = false)})"
     s"$expr.match(" +
       s"$outcomeClass.ResultHandler<$targetOutcome, $sourceValue> { djinni_value -> $result }, " +
       s"$outcomeClass.ErrorHandler<$targetOutcome, $sourceError> { djinni_error -> $failure })"
   }
 
-  // A value of the other leg, also when it is an outcome inside a future.
-  private def convertValue(tm: MExpr, expr: String, toKotlin: Boolean): String = {
+  // A value of the other leg, also when it is an outcome inside a future. The value of a future or an outcome
+  // does not have the top-level nullability of an interface.
+  private def convertValue(tm: MExpr, expr: String, toKotlin: Boolean, nullable: Boolean): String = {
     outcomeArgs(tm) match {
       case Some((value, error)) =>
         if (needsConversion(value) || needsConversion(error)) {
@@ -409,7 +426,7 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
         } else {
           expr
         }
-      case None => convert(tm, expr, toKotlin)
+      case None => convert(tm, expr, toKotlin, nullable)
     }
   }
 
@@ -442,27 +459,32 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
     case _ => false
   }
 
-  private def convert(tm: MExpr, expr: String, toKotlin: Boolean): String = {
+  // `nullable` is true when the source expression has the top-level nullability of an interface. A value inside
+  // optional<>, list<>, set<>, map<> or array<> is not nullable. `depth` keeps the names of nested lambdas apart.
+  private def convert(tm: MExpr, expr: String, toKotlin: Boolean, nullable: Boolean = true, depth: Int = 0): String = {
     val name = if (toKotlin) "toKotlinJni" else "toJava"
     tm.base match {
       case MOptional =>
         val inner = tm.args.head
         if (needsConversion(inner)) {
-          s"$expr?.let { djinni_value -> ${convert(inner, "djinni_value", toKotlin)} }"
+          val value = s"djinni_value$depth"
+          s"$expr?.let { $value -> ${convert(inner, value, toKotlin, nullable = false, depth + 1)} }"
         } else {
           expr
         }
       case MList =>
         val inner = tm.args.head
         if (needsConversion(inner)) {
-          s"ArrayList($expr.map { djinni_item -> ${convert(inner, "djinni_item", toKotlin)} })"
+          val item = s"djinni_item$depth"
+          s"ArrayList($expr.map { $item -> ${convert(inner, item, toKotlin, nullable = false, depth + 1)} })"
         } else {
           expr
         }
       case MSet =>
         val inner = tm.args.head
         if (needsConversion(inner)) {
-          s"HashSet($expr.map { djinni_item -> ${convert(inner, "djinni_item", toKotlin)} })"
+          val item = s"djinni_item$depth"
+          s"HashSet($expr.map { $item -> ${convert(inner, item, toKotlin, nullable = false, depth + 1)} })"
         } else {
           expr
         }
@@ -470,14 +492,16 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
         val key = tm.args(0)
         val value = tm.args(1)
         if (needsConversion(key) || needsConversion(value)) {
-          s"HashMap($expr.map { djinni_entry -> ${convert(key, "djinni_entry.key", toKotlin)} to ${convert(value, "djinni_entry.value", toKotlin)} }.toMap())"
+          val entry = s"djinni_entry$depth"
+          s"HashMap($expr.map { $entry -> ${convert(key, entry + ".key", toKotlin, nullable = false, depth + 1)} to ${convert(value, entry + ".value", toKotlin, nullable = false, depth + 1)} }.toMap())"
         } else {
           expr
         }
       case MArray =>
         val inner = tm.args.head
         if (needsConversion(inner)) {
-          s"$expr.map { djinni_item -> ${convert(inner, "djinni_item", toKotlin)} }.toTypedArray()"
+          val item = s"djinni_item$depth"
+          s"$expr.map { $item -> ${convert(inner, item, toKotlin, nullable = false, depth + 1)} }.toTypedArray()"
         } else {
           expr
         }
@@ -486,11 +510,13 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
           case e: Enum if e.flags =>
             val target = if (toKotlin) kotlinMarshal.fqTypename(d.name, e) else javaMarshal.fqTypename(d.name, e)
             val method = if (toKotlin) "toKotlinJni" else "toJava"
-            s"$expr.let { djinni_flags -> java.util.EnumSet.noneOf($target::class.java).apply { djinni_flags.forEach { djinni_option -> add(djinni_option.$method()) } } }"
+            val flags = s"djinni_flags$depth"
+            val option = s"djinni_option$depth"
+            s"$expr.let { $flags -> java.util.EnumSet.noneOf($target::class.java).apply { $flags.forEach { $option -> add($option.$method()) } } }"
           case _: Record | _: Enum =>
             s"$expr.$name()"
           case _: Interface =>
-            if (spec.cppNnType.isEmpty) s"$expr?.$name()" else s"$expr.$name()"
+            if (nullable && spec.cppNnType.isEmpty) s"$expr?.$name()" else s"$expr.$name()"
           case _ =>
             expr
         }
@@ -509,6 +535,7 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
         expr
     }
   }
+
 }
 
 object JavaBridgeGenerator {

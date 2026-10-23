@@ -1,0 +1,13 @@
+# A +j method cannot take a record that holds a +c interface: that record has no converter.
+
+bridge_negative_service = interface +c {
+  value(): i32;
+}
+
+bridge_negative_skipped = record {
+  service: optional<bridge_negative_service>;
+}
+
+bridge_negative_listener = interface +j {
+  take_it(value: bridge_negative_skipped);
+}
