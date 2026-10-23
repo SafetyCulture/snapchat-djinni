@@ -64,7 +64,8 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
 
   private def valueType(tm: MExpr, pkg: Option[String]): String = {
     val name = toKotlinType(tm, pkg)
-    val withFlags = if (javaMarshal.isEnumFlags(tm)) s"EnumSet<${stripNullable(name)}>" else name
+    // An optional flags type stays nullable: EnumSet<F>?
+    val withFlags = if (javaMarshal.isEnumFlags(tm)) s"EnumSet<${stripNullable(name)}>" + (if (name.endsWith("?")) "?" else "") else name
     if (!withFlags.endsWith("?") && interfaceNullable && isInterface(tm)) withFlags + "?" else withFlags
   }
 

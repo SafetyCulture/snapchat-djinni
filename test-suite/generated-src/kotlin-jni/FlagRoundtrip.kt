@@ -14,9 +14,9 @@ abstract class FlagRoundtrip {
 
         @JvmStatic external fun roundtripEmpty(flag: EnumSet<EmptyFlags>): EnumSet<EmptyFlags>
 
-        @JvmStatic external fun roundtripAccessBoxed(flag: EnumSet<AccessFlags>): EnumSet<AccessFlags>
+        @JvmStatic external fun roundtripAccessBoxed(flag: EnumSet<AccessFlags>?): EnumSet<AccessFlags>?
 
-        @JvmStatic external fun roundtripEmptyBoxed(flag: EnumSet<EmptyFlags>): EnumSet<EmptyFlags>
+        @JvmStatic external fun roundtripEmptyBoxed(flag: EnumSet<EmptyFlags>?): EnumSet<EmptyFlags>?
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : FlagRoundtrip() {

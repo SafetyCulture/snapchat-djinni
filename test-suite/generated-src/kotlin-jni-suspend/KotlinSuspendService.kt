@@ -55,42 +55,42 @@ abstract class KotlinSuspendService {
 
         override suspend fun ping() {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(dispatcher) { native_ping(nativeRef) }
+            withContext(this.dispatcher) { native_ping(this.nativeRef) }
         }
         private external fun native_ping(_nativeRef: Long)
 
         override suspend fun count(): Int {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(dispatcher) { native_count(nativeRef) }
+            return withContext(this.dispatcher) { native_count(this.nativeRef) }
         }
         private external fun native_count(_nativeRef: Long): Int
 
         override suspend fun find(id: String, limit: Int?): KotlinSuspendItem? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(dispatcher) { native_find(nativeRef, id, limit) }
+            return withContext(this.dispatcher) { native_find(this.nativeRef, id, limit) }
         }
         private external fun native_find(_nativeRef: Long, id: String, limit: Int?): KotlinSuspendItem?
 
         override suspend fun fetch(id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError> {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(dispatcher) { native_fetch(nativeRef, id) }
+            return withContext(this.dispatcher) { native_fetch(this.nativeRef, id) }
         }
         private external fun native_fetch(_nativeRef: Long, id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError>
 
         override suspend fun load(id: String): KotlinSuspendItem {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            val future = withContext(dispatcher) { native_load(nativeRef, id) }
-            return suspendCancellableCoroutine<KotlinSuspendItem> { continuation ->
-                val target = AtomicReference(continuation)
-                continuation.invokeOnCancellation { target.set(null) }
-                future.then(Future.FutureHandler<KotlinSuspendItem> { result ->
-                    val waiting = target.getAndSet(null) ?: return@FutureHandler
-                    waiting.resumeWith(try {
-                        Result.success(result.get())
-                    } catch (e: ExecutionException) {
-                        Result.failure(e.cause ?: e)
-                    } catch (e: Throwable) {
-                        Result.failure(e)
+            val djinni_future = withContext(this.dispatcher) { native_load(this.nativeRef, id) }
+            return suspendCancellableCoroutine<KotlinSuspendItem> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<KotlinSuspendItem> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        kotlin.Result.failure(djinni_e.cause ?: djinni_e)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
                     })
                 })
             }
@@ -99,19 +99,19 @@ abstract class KotlinSuspendService {
 
         override suspend fun flush() {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            val future = withContext(dispatcher) { native_flush(nativeRef) }
-            return suspendCancellableCoroutine<Unit> { continuation ->
-                val target = AtomicReference(continuation)
-                continuation.invokeOnCancellation { target.set(null) }
-                future.then(Future.FutureHandler<Void> { result ->
-                    val waiting = target.getAndSet(null) ?: return@FutureHandler
-                    waiting.resumeWith(try {
-                        result.get()
-                        Result.success(Unit)
-                    } catch (e: ExecutionException) {
-                        Result.failure(e.cause ?: e)
-                    } catch (e: Throwable) {
-                        Result.failure(e)
+            val djinni_future = withContext(this.dispatcher) { native_flush(this.nativeRef) }
+            return suspendCancellableCoroutine<Unit> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<Void> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        djinni_result.get()
+                        kotlin.Result.success(Unit)
+                    } catch (djinni_e: ExecutionException) {
+                        kotlin.Result.failure(djinni_e.cause ?: djinni_e)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
                     })
                 })
             }
@@ -120,37 +120,37 @@ abstract class KotlinSuspendService {
 
         override suspend fun names(`in`: Int, `val`: Int): ArrayList<String> {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(dispatcher) { native_names(nativeRef, `in`, `val`) }
+            return withContext(this.dispatcher) { native_names(this.nativeRef, `in`, `val`) }
         }
         private external fun native_names(_nativeRef: Long, `in`: Int, `val`: Int): ArrayList<String>
 
         override suspend fun send(data: java.nio.ByteBuffer, tags: ArrayList<String>) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(dispatcher) { native_send(nativeRef, data, tags) }
+            withContext(this.dispatcher) { native_send(this.nativeRef, data, tags) }
         }
         private external fun native_send(_nativeRef: Long, data: java.nio.ByteBuffer, tags: ArrayList<String>)
 
         override suspend fun watch(observer: KotlinSuspendObserver?) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(dispatcher) { native_watch(nativeRef, observer) }
+            withContext(this.dispatcher) { native_watch(this.nativeRef, observer) }
         }
         private external fun native_watch(_nativeRef: Long, observer: KotlinSuspendObserver?)
 
         override suspend fun child(): KotlinSuspendChild? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(dispatcher) { native_child(nativeRef) }
+            return withContext(this.dispatcher) { native_child(this.nativeRef) }
         }
         private external fun native_child(_nativeRef: Long): KotlinSuspendChild?
 
         override suspend fun attach(child: KotlinSuspendChild?, parent: KotlinSuspendService?) {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(dispatcher) { native_attach(nativeRef, child, parent) }
+            withContext(this.dispatcher) { native_attach(this.nativeRef, child, parent) }
         }
         private external fun native_attach(_nativeRef: Long, child: KotlinSuspendChild?, parent: KotlinSuspendService?)
 
         override suspend fun both(both: KotlinSuspendBoth?): KotlinSuspendBoth? {
             assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(dispatcher) { native_both(nativeRef, both) }
+            return withContext(this.dispatcher) { native_both(this.nativeRef, both) }
         }
         private external fun native_both(_nativeRef: Long, both: KotlinSuspendBoth?): KotlinSuspendBoth?
 
