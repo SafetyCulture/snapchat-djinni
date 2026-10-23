@@ -152,11 +152,10 @@ public enum OptionalMarshaller<T: Marshaller>: Marshaller {
         }
     }
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        if (s == nil) {
+        guard let s else {
             return djinni.swift.makeVoidValue()
-        } else {
-            return try T.toCpp(s!)
         }
+        return try T.toCpp(s)
     }
 }
 
