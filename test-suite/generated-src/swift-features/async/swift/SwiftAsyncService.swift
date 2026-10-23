@@ -7,7 +7,7 @@ import Foundation
 /**
  * C++ implements this one, so it is wrapped. Its methods cover each kind of return type.
  *
- * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .userInitiated)`. Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupport.djinniCallQueue()`). Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws CancellationError and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.
  */
@@ -17,61 +17,61 @@ public final class SwiftAsyncService: @unchecked Sendable {
     init(proxy: SwiftAsyncServiceCppProxy) { self.djinniProxy = proxy }
 
     @concurrent public func ping() async throws -> Void {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
     }
 
     @concurrent public func count() async throws -> Int32 {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.count() }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.count() }
     }
 
     @concurrent public func find(_ id: String, limit: Optional<Int32>) async throws -> TestSuite.SwiftAsyncItem {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.find(id, limit: limit) }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.find(id, limit: limit) }
     }
 
     @concurrent public func fetch(_ id: String) async throws -> TestSuite.SwiftAsyncItem {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(id) }.get()
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(id) }.get()
     }
 
     @concurrent public func stopWatching() async throws -> Int32 {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.stopWatching() }.get()
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.stopWatching() }.get()
     }
 
     @concurrent public func load(_ id: String) async throws -> TestSuite.SwiftAsyncItem {
-        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load(id) }
+        return try await DjinniSupport.djinniCallFuture { [djinniProxy = self.djinniProxy] in try djinniProxy.load(id) }
     }
 
     @concurrent public func flush() async throws -> Void {
-        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.flush() }
+        return try await DjinniSupport.djinniCallFuture { [djinniProxy = self.djinniProxy] in try djinniProxy.flush() }
     }
 
     /** The value of the future is not Sendable. */
     @concurrent public func loadData() async throws -> Foundation.NSData {
-        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.loadData() }
+        return try await DjinniSupport.djinniCallFuture { [djinniProxy = self.djinniProxy] in try djinniProxy.loadData() }
     }
 
     @concurrent public func send(_ data: Foundation.NSData, tags: Array<String>) async throws -> Void {
         let _data = DjinniSupport.UncheckedSendable(data)
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.send(_data.value, tags: tags) }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.send(_data.value, tags: tags) }
     }
 
     @concurrent public func watch(_ observer: TestSuite.SwiftAsyncObserver) async throws -> Void {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.watch(observer) }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.watch(observer) }
     }
 
     @concurrent public func child() async throws -> TestSuite.SwiftAsyncChild {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.child() }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.child() }
     }
 
     /** Parameters with the names of members of the wrapper. */
     @concurrent public func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) async throws -> Int32 {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future) }.get()
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.names(proxy, queue: queue, continuation: continuation, result: result, future: future) }.get()
     }
 
     @concurrent public func futureNames(_ future: Int32, result: Int32) async throws -> Int32 {
-        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.futureNames(future, result: result) }
+        return try await DjinniSupport.djinniCallFuture { [djinniProxy = self.djinniProxy] in try djinniProxy.futureNames(future, result: result) }
     }
 
     @concurrent public func attach(_ child: TestSuite.SwiftAsyncChild, parent: Optional<TestSuite.SwiftAsyncService>) async throws -> Void {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.attach(child, parent: parent) }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.attach(child, parent: parent) }
     }
 }

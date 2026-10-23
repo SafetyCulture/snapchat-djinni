@@ -6,6 +6,8 @@ import DjinniSupportCxx
 import Foundation
 import TestSuiteCxx
 
+private let djinniAsyncQueue: Dispatch.DispatchQueue = DispatchQueue.global(qos: .utility)
+
 final class SwiftErrorServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendable {
     init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } 
     func fetch(_ id: String) throws -> Swift.Result<TestSuite.SwiftErrorItem, TestSuite.CruxError> {
@@ -82,12 +84,22 @@ public class SwiftErrorService_statics: @unchecked Sendable {
         }
     }
     @concurrent public static func loadStatic(_ id: String) async throws(TestSuite.CruxError) -> TestSuite.SwiftErrorItem {
-        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, DispatchQueue.global(qos: .utility)) {
+        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) {
             var _params = djinni.swift.ParameterList()
             _params.addValue(try StringMarshaller.toCpp(id))
             var ret = djinni_generated_swift.SwiftErrorService_loadStatic(&_params)
             try handleCppErrors(&ret)
             return try DjinniSupport.FutureMarshaller<SwiftErrorItemMarshaller>.fromCpp(ret)
+        }
+    }
+    @concurrent public static func upload(_ params: Foundation.NSData) async throws(TestSuite.CruxError) -> Int32 {
+        let _params = DjinniSupport.UncheckedSendable(params)
+        return try await DjinniSupport.djinniCallFutureTyped(TestSuite.CruxError.self, TestSuite.djinniAsyncQueue) {
+            var _params_ = djinni.swift.ParameterList()
+            _params_.addValue(try DjinniSupport.DataRefMarshaller.toCpp(_params.value))
+            var ret = djinni_generated_swift.SwiftErrorService_upload(&_params_)
+            try handleCppErrors(&ret)
+            return try DjinniSupport.FutureMarshaller<I32Marshaller>.fromCpp(ret)
         }
     }
 }
