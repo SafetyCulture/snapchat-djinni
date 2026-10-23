@@ -99,11 +99,15 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   }
 
   // True when the type holds a DataRef (shared, mutable memory) or a DataView (memory that C++ owns), also in a
-  // record or in a type argument. No value of such a type is Sendable.
-  def holdsBuffer(tm: MExpr): Boolean = tm.args.exists(holdsBuffer) || (tm.base match {
+  // record or in a type argument. No value of such a type is Sendable. A record can hold itself through a list, so the
+  // records that the search has entered are not entered again.
+  def holdsBuffer(tm: MExpr): Boolean = holdsBuffer(tm, Set())
+
+  private def holdsBuffer(tm: MExpr, entered: Set[String]): Boolean = tm.args.exists(holdsBuffer(_, entered)) || (tm.base match {
     case e: MExtern => e.name == "DataRef" || e.name == "DataView"
+    case d: MDef if entered.contains(d.name) => false
     case d: MDef => d.body match {
-      case r: Record => r.fields.exists(f => holdsBuffer(f.ty.resolved))
+      case r: Record => r.fields.exists(f => holdsBuffer(f.ty.resolved, entered + d.name))
       case _ => false
     }
     case _ => false
