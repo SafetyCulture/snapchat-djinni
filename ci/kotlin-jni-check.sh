@@ -18,7 +18,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
-mitti_root="${MITTI_MOBILE_ROOT:-$HOME/Desktop/safetyculture/mitti-mobile}"
+mitti_root="${MITTI_MOBILE_ROOT:-}"
 domain_dir="$mitti_root/crux/djinni/domain"
 extern_src="$mitti_root/crux/deps/APISchema/_generated/crux/cpp"
 
@@ -42,6 +42,7 @@ fi
 echo "== coroutines: $coroutines"
 check_crux="${KOTLIN_JNI_CHECK_CRUX:-1}"
 if [ "$check_crux" != 0 ]; then
+  [ -n "$mitti_root" ] || { echo "set MITTI_MOBILE_ROOT to a mitti-mobile checkout, or KOTLIN_JNI_CHECK_CRUX=0" >&2; exit 2; }
   for d in "$domain_dir" "$extern_src"; do
     [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
   done

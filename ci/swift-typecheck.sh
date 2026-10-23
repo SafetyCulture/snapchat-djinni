@@ -21,7 +21,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
-mitti_root="${MITTI_MOBILE_ROOT:-$HOME/Desktop/safetyculture/mitti-mobile}"
+mitti_root="${MITTI_MOBILE_ROOT:?set MITTI_MOBILE_ROOT to a mitti-mobile checkout}"
 domain_dir="$mitti_root/crux/djinni/domain"
 extern_src="$mitti_root/crux/deps/APISchema/_generated/crux/cpp"
 idl_files="${IDL_FILES:-common.djinni,media.djinni,assets.djinni}"
