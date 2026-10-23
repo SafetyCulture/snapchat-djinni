@@ -102,11 +102,11 @@ public:
         return static_cast<kj::KjColor>((static_cast<int>(color) + 1) % 3);
     }
 
-    std::optional<kj::KjColor> invert_opt(const std::optional<kj::KjColor>& color) override {
+    std::optional<kj::KjColor> invert_opt(std::optional<kj::KjColor> color) override {
         return color ? std::optional<kj::KjColor>(invert(*color)) : std::nullopt;
     }
 
-    std::optional<kj::KjFlags> flags_opt(const std::optional<kj::KjFlags>& flags) override { return flags; }
+    std::optional<kj::KjFlags> flags_opt(std::optional<kj::KjFlags> flags) override { return flags; }
 
     std::shared_ptr<kj::KjService> echo_service(const std::shared_ptr<kj::KjService>& service) override { return service; }
 

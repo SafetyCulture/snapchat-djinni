@@ -85,8 +85,8 @@ func runTests() throws {
     check(try service.listenerMaybe(Doubler(), flag: false) == -2, "listenerMaybe(false) is a nil success")
     check(try service.listenerMaybe(Doubler(), flag: true) == 42, "listenerMaybe(true) carries the value")
 
-    // A date keeps one millisecond across the boundary
-    let epochMs = Date(timeIntervalSince1970: 1_700_000_000.001)
+    // A date keeps one millisecond across the boundary; 2 ms tells rounding from truncation
+    let epochMs = Date(timeIntervalSince1970: 0.002)
     check(try service.dateRoundtrip(epochMs) == epochMs, "date round trip keeps 1 ms")
 
     // A date outside the millisecond range throws instead of trapping

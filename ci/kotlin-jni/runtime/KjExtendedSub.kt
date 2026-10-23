@@ -1,4 +1,6 @@
-// Hand-written subclasses of the +j records, to prove that both _base classes are open.
+package rt.kj
 
-class KjExtendedSub(value: Int, name: String) : KjExtended_base(value, name)
-class KjEmptyExtendedSub : KjEmptyExtended_base()
+// Hand-written subclasses of the +j records, to prove that both base classes are open.
+
+class KjExtendedSub(value: Int, name: String) : KjExtendedBase(value, name)
+class KjEmptyExtendedSub : KjEmptyExtendedBase()

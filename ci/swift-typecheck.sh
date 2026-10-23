@@ -190,6 +190,13 @@ swift_pass() { # <swiftc flags>
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
 
+# The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
+if grep -nE 'try!|fatalError|as!|[A-Za-z0-9_)\]]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
+  echo "FAIL: a crash construct in support-lib/swift" >&2
+  exit 1
+fi
+echo "NO CRASH CONSTRUCTS OK"
+
 echo "== C++ glue ($(ls "$out"/swiftxx/*.cc | wc -l | tr -d ' ') files): ${CXX:-clang++} -std=c++20 -fsyntax-only"
 python3 "$repo_root/ci/swift_stubs.py" cxx-stubs "$work/fx/extern" "$work/cxxstubs"
 ls "$out"/swiftxx/*.cc | xargs -P 4 -I{} "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
