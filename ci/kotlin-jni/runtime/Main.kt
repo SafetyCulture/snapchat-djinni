@@ -119,7 +119,12 @@ fun main(args: Array<String>) {
 
     // Float fields compare as in Java and C++ (IEEE), not by total order.
     check(KjFloats(0.0f, 0.0, null) == KjFloats(-0.0f, -0.0, null), "-0.0 equals 0.0")
-    check(KjFloats(0.0f, 0.0, null).hashCode() == KjFloats(-0.0f, -0.0, null).hashCode(), "equal floats have equal hash codes")
+    // One negative zero in each pair: with two, the hash codes can be equal by chance.
+    val f32Zeros = Pair(KjFloats(-0.0f, 1.0, null), KjFloats(0.0f, 1.0, null))
+    val f64Zeros = Pair(KjFloats(1.0f, -0.0, null), KjFloats(1.0f, 0.0, null))
+    for ((negative, positive) in listOf(f32Zeros, f64Zeros)) {
+        check(negative == positive && negative.hashCode() == positive.hashCode(), "equal records have one hash code: $negative, $positive")
+    }
     val nanFloats = KjFloats(Float.NaN, Double.NaN, null)
     check(nanFloats != nanFloats.copy(), "NaN is not equal to NaN")
     check(KjFloats(1.0f, 1.0, Double.NaN) == KjFloats(1.0f, 1.0, Double.NaN), "an optional float compares by equals, as in Java")
