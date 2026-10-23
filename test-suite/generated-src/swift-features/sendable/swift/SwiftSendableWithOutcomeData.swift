@@ -4,7 +4,7 @@
 import Foundation
 
 public struct SwiftSendableWithOutcomeData: @unchecked Sendable {
-    public let result: Result<Foundation.NSData, TestSuite.SwiftSendableError>
+    public let djinniResult: Result<Foundation.NSData, TestSuite.SwiftSendableError>
 
     public init(result: Result<Foundation.NSData, TestSuite.SwiftSendableError>)
     {

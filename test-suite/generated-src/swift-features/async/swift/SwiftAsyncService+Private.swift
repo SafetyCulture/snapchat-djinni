@@ -119,7 +119,7 @@ public enum SwiftAsyncServiceMarshaller: DjinniSupport.Marshaller {
         return cppWrapperToSwift(c, { SwiftAsyncService(proxy: SwiftAsyncServiceCppProxy(c)) })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return s.proxy.inst
+        return s.djinniProxy.inst
     }
 }
 public class SwiftAsyncService_statics: @unchecked Sendable {

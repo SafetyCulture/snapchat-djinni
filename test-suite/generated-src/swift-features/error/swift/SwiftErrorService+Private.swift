@@ -38,7 +38,7 @@ public enum SwiftErrorServiceMarshaller: DjinniSupport.Marshaller {
         return cppWrapperToSwift(c, { SwiftErrorService(proxy: SwiftErrorServiceCppProxy(c)) })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return s.proxy.inst
+        return s.djinniProxy.inst
     }
 }
 public class SwiftErrorService_statics: @unchecked Sendable {

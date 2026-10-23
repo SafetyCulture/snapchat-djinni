@@ -22,6 +22,6 @@ public enum SwiftAsyncChildMarshaller: DjinniSupport.Marshaller {
         return cppWrapperToSwift(c, { SwiftAsyncChild(proxy: SwiftAsyncChildCppProxy(c)) })
     }
     public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
-        return s.proxy.inst
+        return s.djinniProxy.inst
     }
 }

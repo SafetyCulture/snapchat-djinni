@@ -256,14 +256,15 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     val name = marshal.typename(ident, i)
     writeDoc(w, doc)
     w.w(s"public final class $name: @unchecked Sendable").braced {
-      w.wl(s"let proxy: ${name}CppProxy")
-      w.wl(s"""private let queue = DispatchQueue(label: "${spec.swiftAsyncWrap.get}.${SwiftIdent.plain(ident)}")""")
+      // Prefixed names: an IDL method named proxy or queue must not collide with the storage
+      w.wl(s"let djinniProxy: ${name}CppProxy")
+      w.wl(s"""private let djinniQueue = DispatchQueue(label: "${spec.swiftAsyncWrap.get}.${SwiftIdent.plain(ident)}")""")
       w.wl
-      w.wl(s"init(proxy: ${name}CppProxy) { self.proxy = proxy }")
+      w.wl(s"init(proxy: ${name}CppProxy) { self.djinniProxy = proxy }")
       for (m <- i.methods.filter(!_.static)) {
         w.wl
         writeMethodDoc(w, m, idSwift.local)
-        val call = s"_proxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
+        val call = s"djinniProxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
         val ret = m.ret.map(_.resolved)
         // With --swift-error-type, a C++ exception of an outcome method becomes a value of the error type.
         val typedOutcome = spec.swiftErrorType.isDefined && ret.exists(marshal.isOutcome)
@@ -280,44 +281,44 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
           }
           if (typedOutcome) {
-            w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { _continuation in").nested {
-              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(returning: DjinniSupport.cppOutcome { try $call })")
+            w.wl(s"let djinniResult: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { djinniContinuation in").nested {
+              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
+                w.wl(s"djinniContinuation.resume(returning: DjinniSupport.cppOutcome { try $call })")
               }
               w.wl("}")
             }
             w.wl("}")
-            w.wl("return try result.get()")
+            w.wl("return try djinniResult.get()")
           } else if (ret.exists(marshal.isOutcome)) {
-            w.wl(s"let result: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { _continuation in").nested {
-              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(with: Result { try $call })")
+            w.wl(s"let djinniResult: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { djinniContinuation in").nested {
+              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
+                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
             w.wl("}")
-            w.wl("return try result.get()")
+            w.wl("return try djinniResult.get()")
           } else if (ret.exists(marshal.isFuture)) {
-            w.wl(s"let future: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { _continuation in").nested {
-              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(with: Result { try $call })")
+            w.wl(s"let djinniFuture: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { djinniContinuation in").nested {
+              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
+                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
             w.wl("}")
-            w.wl("return try await future.value")
+            w.wl("return try await djinniFuture.value")
           } else if (m.ret.isEmpty) {
-            w.wl("try await withCheckedThrowingContinuation { (_continuation: CheckedContinuation<Void, any Swift.Error>) in").nested {
-              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(with: Result { try $call })")
+            w.wl("try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in").nested {
+              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
+                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
             w.wl("}")
           } else {
-            w.wl("return try await withCheckedThrowingContinuation { _continuation in").nested {
-              w.wl("self.queue.async { [_proxy = self.proxy] in").nested {
-                w.wl(s"_continuation.resume(with: Result { try $call })")
+            w.wl("return try await withCheckedThrowingContinuation { djinniContinuation in").nested {
+              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
+                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
               }
               w.wl("}")
             }
@@ -447,7 +448,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"return cppWrapperToSwift(c, { ${marshal.typename(ident, i)}(proxy: ${marshal.typename(ident, i)}CppProxy(c)) })")
           }
           w.w("public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue").braced {
-            w.wl("return s.proxy.inst")
+            w.wl("return s.djinniProxy.inst")
           }
         }
       } else {
