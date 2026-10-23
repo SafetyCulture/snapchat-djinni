@@ -10,7 +10,7 @@ public enum SwiftSendableWithDataMapMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithDataMap
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let byId = try MapMarshaller<StringMarshaller, DjinniSupport.DataRefMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
+            let byId = try MapMarshaller<StringMarshaller, DjinniSupport.DataRefMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(byId: byId)
         }
     }

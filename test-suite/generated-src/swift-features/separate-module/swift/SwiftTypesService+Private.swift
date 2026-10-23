@@ -50,11 +50,11 @@ final class SwiftTypesServiceCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftTy
 }
 let swiftTypesServiceMethods: Vtbl<SwiftTypesService> = [
     { inst, params, ret in
-        let _value = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _value = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 0))
         djinni.swift.setReturnValue(ret, try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftErrorMarshaller>.toCpp(inst.compute(_value)))
     },
     { inst, params, ret in
-        let _id = try StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _id = try StringMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
         djinni.swift.setReturnValue(ret, try DjinniSupport.FutureMarshaller<SwiftPayloadMarshaller>.toCpp(inst.load(_id)))
     },
     { inst, params, ret in
@@ -64,7 +64,7 @@ let swiftTypesServiceMethods: Vtbl<SwiftTypesService> = [
         djinni.swift.setReturnValue(ret, try SwiftPayloadMarshaller.toCpp(inst.getPayload()))
     },
     { inst, params, ret in
-        let _view = try DjinniSupport.DataViewMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _view = try DjinniSupport.DataViewMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
         djinni.swift.setReturnValue(ret, try BinaryMarshaller.toCpp(inst.sendView(_view)))
     },
 ]
@@ -75,7 +75,7 @@ public enum SwiftTypesServiceMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { SwiftTypesServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftTypesServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftTypesServiceMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated.SwiftTypesServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftTypesServiceMethods), dispatcherProtocalCall)) })
     }
 }
 public class SwiftTypesService_statics: @unchecked Sendable {

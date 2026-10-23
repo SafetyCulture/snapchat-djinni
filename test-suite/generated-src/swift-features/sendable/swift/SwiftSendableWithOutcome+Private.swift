@@ -10,7 +10,7 @@ public enum SwiftSendableWithOutcomeMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithOutcome
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let result = try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftSendableErrorMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
+            let result = try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftSendableErrorMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(result: result)
         }
     }

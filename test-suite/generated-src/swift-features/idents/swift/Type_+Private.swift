@@ -10,12 +10,12 @@ public enum Type_Marshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.Type_
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let type = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let `in` = try BoolMarshaller.fromCpp(djinni.swift.getMember(p, 1))
-            let `protocol` = try OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 2))
-            let self_ = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 3))
-            let `inout` = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 4))
-            let kind = try SwiftKindMarshaller.fromCpp(djinni.swift.getMember(p, 5))
+            let type = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let `in` = try BoolMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
+            let `protocol` = try OptionalMarshaller<StringMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 2))
+            let self_ = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 3))
+            let `inout` = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 4))
+            let kind = try SwiftKindMarshaller.fromCpp(DjinniSupport.compositeMember(p, 5))
             return SwiftType(type: type, in: `in`, protocol: `protocol`, self_: self_, `inout`: `inout`, kind: kind)
         }
     }

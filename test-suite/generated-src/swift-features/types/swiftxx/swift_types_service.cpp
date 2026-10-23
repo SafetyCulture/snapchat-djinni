@@ -78,8 +78,16 @@ catch (const std::exception& e) {
 catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
-djinni::swift::AnyValue SwiftTypesServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
+djinni::swift::AnyValue SwiftTypesServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftTypesServiceSwiftProxy>(instance, dispatcher)};
+}
+catch (const std::exception& e) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::expected<int32_t, ::testsuite::SwiftError> SwiftTypesServiceSwiftProxy::compute(int32_t value) {
     djinni::swift::ParameterList params;
