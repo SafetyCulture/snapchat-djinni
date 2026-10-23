@@ -15,6 +15,19 @@ kj_color = enum {
   blue;
 }
 
+kj_flags = flags {
+  flag_a;
+  flag_b;
+}
+
+kj_empty_extended = record +j {
+}
+
+kj_extended = record +j {
+  value: i32;
+  name: string;
+}
+
 kj_blob = record {
   data: binary;
   nums: array<i32>;
@@ -68,4 +81,7 @@ kj_service = interface +c {
   echo_service(service: kj_service): kj_service;
   call_both(both: kj_both): i32;
   make_both(): kj_both;
+  # optional<enum> and optional<flags> round trips, both null and set
+  invert_opt(color: optional<kj_color>): optional<kj_color>;
+  flags_opt(flags: optional<kj_flags>): optional<kj_flags>;
 }

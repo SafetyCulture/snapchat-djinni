@@ -1,6 +1,7 @@
 package rt.kj
 
 import com.dropbox.djinni.testextern.ExternKotlinMessage
+import java.util.EnumSet
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -62,6 +63,12 @@ fun main(args: Array<String>) {
     } catch (e: RuntimeException) {
         check(e.message?.contains("boom") == true, "exception message: ${e.message}")
     }
+
+    // optional<enum> and optional<flags> round trips, null and set
+    check(service.invertOpt(null) == null, "invertOpt(null) stays null")
+    check(service.invertOpt(KjColor.RED) == KjColor.GREEN, "invertOpt(RED) is GREEN")
+    check(service.flagsOpt(null) == null, "flagsOpt(null) stays null")
+    check(service.flagsOpt(EnumSet.of(KjFlags.FLAG_A, KjFlags.FLAG_B)) == EnumSet.of(KjFlags.FLAG_A, KjFlags.FLAG_B), "flagsOpt keeps the set")
 
     // Many threads call one object.
     val pool = Executors.newFixedThreadPool(8)
