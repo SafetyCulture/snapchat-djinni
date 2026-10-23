@@ -15,6 +15,25 @@ data class RecordWithDerivings(
     val mD: Date,
     val mS: String
 ) : Comparable<RecordWithDerivings> {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is RecordWithDerivings) return false
+        return this.mEight == other.mEight && this.mSixteen == other.mSixteen && this.mThirtytwo == other.mThirtytwo && this.mSixtyfour == other.mSixtyfour && this.mFthirtytwo == other.mFthirtytwo && this.mFsixtyfour == other.mFsixtyfour && this.mD == other.mD && this.mS == other.mS
+    }
+
+    override fun hashCode(): Int {
+        var hashCode = 17
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mEight)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mSixteen)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mThirtytwo)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mSixtyfour)
+        hashCode = hashCode * 31 + (mFthirtytwo + 0.0f).hashCode()
+        hashCode = hashCode * 31 + (mFsixtyfour + 0.0).hashCode()
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mD)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mS)
+        return hashCode
+    }
+
     override fun compareTo(other: RecordWithDerivings): Int {
         var tempResult: Int
         tempResult = this.mEight.compareTo(other.mEight)
@@ -33,11 +52,11 @@ data class RecordWithDerivings(
         if (tempResult != 0) {
             return tempResult
         }
-        tempResult = this.mFthirtytwo.compareTo(other.mFthirtytwo)
+        tempResult = if (this.mFthirtytwo < other.mFthirtytwo) -1 else if (this.mFthirtytwo > other.mFthirtytwo) 1 else 0
         if (tempResult != 0) {
             return tempResult
         }
-        tempResult = this.mFsixtyfour.compareTo(other.mFsixtyfour)
+        tempResult = if (this.mFsixtyfour < other.mFsixtyfour) -1 else if (this.mFsixtyfour > other.mFsixtyfour) 1 else 0
         if (tempResult != 0) {
             return tempResult
         }

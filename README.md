@@ -731,6 +731,8 @@ The first program checks these items:
 - calls from Kotlin to C++ and from C++ to a Kotlin object
 - records, enums, outcomes, futures and C++ exceptions, including a promise that C++
   drops and an exception that does not derive from `std::exception`
+- `equals`, `hashCode` and `compareTo` of records with float fields, by IEEE 754
+  as in Java and C++: `-0.0` equals `0.0`, and `NaN` equals nothing
 - the proxy of a C++ object that goes back to C++
 - an extern type with the Kotlin keys that goes between its Kotlin class and
   C++, alone, in a list and as an optional field

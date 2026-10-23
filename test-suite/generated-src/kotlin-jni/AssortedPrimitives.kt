@@ -22,4 +22,29 @@ data class AssortedPrimitives(
     val mOSixtyfour: Long?,
     val mOFthirtytwo: Float?,
     val mOFsixtyfour: Double?
-) : Parcelable
+) : Parcelable {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is AssortedPrimitives) return false
+        return this.mB == other.mB && this.mEight == other.mEight && this.mSixteen == other.mSixteen && this.mThirtytwo == other.mThirtytwo && this.mSixtyfour == other.mSixtyfour && this.mFthirtytwo == other.mFthirtytwo && this.mFsixtyfour == other.mFsixtyfour && this.mOB == other.mOB && this.mOEight == other.mOEight && this.mOSixteen == other.mOSixteen && this.mOThirtytwo == other.mOThirtytwo && this.mOSixtyfour == other.mOSixtyfour && java.util.Objects.equals(this.mOFthirtytwo, other.mOFthirtytwo) && java.util.Objects.equals(this.mOFsixtyfour, other.mOFsixtyfour)
+    }
+
+    override fun hashCode(): Int {
+        var hashCode = 17
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mB)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mEight)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mSixteen)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mThirtytwo)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mSixtyfour)
+        hashCode = hashCode * 31 + (mFthirtytwo + 0.0f).hashCode()
+        hashCode = hashCode * 31 + (mFsixtyfour + 0.0).hashCode()
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOB)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOEight)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOSixteen)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOThirtytwo)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOSixtyfour)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOFthirtytwo)
+        hashCode = hashCode * 31 + java.util.Objects.hashCode(mOFsixtyfour)
+        return hashCode
+    }
+}

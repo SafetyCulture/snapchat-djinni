@@ -375,10 +375,13 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         w.w(")")
       }
       w.w(inherits)
-      // A data class compares arrays by reference. Java compares the content.
+      // A data class compares arrays by reference and floats by total order. Java compares the content, and floats by IEEE 754.
       def isArray(f: Field) = f.ty.resolved.base == MBinary || f.ty.resolved.base == MArray
-      val hasArrays = !extended && r.fields.exists(isArray)
-      val hasBody = r.consts.nonEmpty || extended || r.fields.isEmpty || hasArrays || r.derivingTypes.contains(DerivingType.Ord)
+      def isFloat(f: Field) = Set("Float", "Double").contains(marshal.fieldType(f.ty))
+      // Kotlin == compares Float? and Double? by IEEE 754 too. Java compares a boxed float with equals.
+      def isOptionalFloat(f: Field) = Set("Float?", "Double?").contains(marshal.fieldType(f.ty))
+      val customEquals = !extended && r.fields.exists(f => isArray(f) || isFloat(f))
+      val hasBody = r.consts.nonEmpty || extended || r.fields.isEmpty || customEquals || r.derivingTypes.contains(DerivingType.Ord)
       def writeBody() {
         val skipFirst = SkipFirst()
         if (r.consts.nonEmpty) {
@@ -395,7 +398,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl("return " + body)
           }
         }
-        if (hasArrays) {
+        if (customEquals) {
           skipFirst { w.wl }
           val star = if (params.isEmpty) "" else "<*>"
           w.w("override fun equals(other: Any?): Boolean").braced {
@@ -403,7 +406,9 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"if (other !is $self$star) return false")
             val tests = r.fields.map { f =>
               val name = kt(idJava.field(f.ident))
-              if (isArray(f)) s"this.$name.contentEquals(other.$name)" else s"this.$name == other.$name"
+              if (isArray(f)) s"this.$name.contentEquals(other.$name)"
+              else if (isOptionalFloat(f)) s"java.util.Objects.equals(this.$name, other.$name)"
+              else s"this.$name == other.$name"
             }
             w.wl("return " + tests.mkString(" && "))
           }
@@ -412,7 +417,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl("var hashCode = 17")
             for (f <- r.fields) {
               val name = kt(idJava.field(f.ident))
-              val hash = if (isArray(f)) s"$name.contentHashCode()" else s"java.util.Objects.hashCode($name)"
+              val hash =
+                if (isArray(f)) s"$name.contentHashCode()"
+                // -0.0 + 0.0 is 0.0, so -0.0 and 0.0, which are equal, have one hash code
+                else if (isFloat(f)) s"($name + ${if (marshal.fieldType(f.ty) == "Float") "0.0f" else "0.0"}).hashCode()"
+                else s"java.util.Objects.hashCode($name)"
               w.wl(s"hashCode = hashCode * 31 + $hash")
             }
             w.wl("return hashCode")
@@ -424,7 +433,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl("var tempResult: Int")
             for (f <- r.fields) {
               val name = kt(idJava.field(f.ident))
-              w.wl(s"tempResult = this.$name.compareTo(other.$name)")
+              if (isFloat(f)) {
+                w.wl(s"tempResult = if (this.$name < other.$name) -1 else if (this.$name > other.$name) 1 else 0")
+              } else {
+                w.wl(s"tempResult = this.$name.compareTo(other.$name)")
+              }
               w.w("if (tempResult != 0)").braced {
                 w.wl("return tempResult")
               }
