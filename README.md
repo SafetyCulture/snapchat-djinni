@@ -526,8 +526,9 @@ module. The classes are tested with kotlinx-coroutines 1.10.
   result that comes later is dropped. The coroutine is released at once, before
   the C++ future completes. **The C++ future is not cancelled.** The Java
   `Future` and the C++ `Future` have no cancel path.
-- A cancelled coroutine does not call C++, because `withContext` checks for a
-  cancel when it starts.
+- A cancelled coroutine does not call C++ when the cancel happens before the
+  `withContext` block starts. A cancel that comes later cannot stop the native
+  call.
 - A method that returns `outcome<T, E>` is not unwrapped. It returns
   `com.snapchat.djinni.Outcome<T, E>`.
 - A C++ exception is thrown as the exception that `jniSetPendingFromCurrent`
