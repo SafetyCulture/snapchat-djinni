@@ -2,10 +2,11 @@
 # Typechecks the generated Swift for the Crux assets IDL against support-lib/swift and
 # syntax-checks the generated Swift/C++ glue.
 #
-# The script generates Swift and Swift/C++ glue with the built generator. It runs
-# `swiftc -typecheck` over the generated Swift in Swift 5 mode, in Swift 6 mode with complete
-# strict concurrency checking, and in Swift 6 mode with NonisolatedNonsendingByDefault (the mode of
-# Approachable Concurrency in the app modules). Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
+# The script generates Swift and Swift/C++ glue with the built generator. It compiles the generated Swift to SIL
+# (`swiftc -emit-sil`) in Swift 5 mode, in Swift 6 mode with complete strict concurrency checking, and in Swift 6 mode
+# with NonisolatedNonsendingByDefault (the mode of Approachable Concurrency in the app modules). `-typecheck` is not
+# enough: the region-based isolation checks of Swift 6 ("sending ... risks causing data races") run on SIL, after the
+# type checker. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
 # generated protobuf types (module S12Protos) are the real messages of the assets protos
 # (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
@@ -172,7 +173,11 @@ extension CruxError: CppExceptionConvertible {
 }
 EOF
 
-# One pass compiles DjinniSupport and typechecks the generated Swift with the given swiftc flags.
+# One pass compiles DjinniSupport and compiles the generated Swift to SIL with the given swiftc flags, so the
+# diagnostics of the type checker and of the SIL passes (region-based isolation in Swift 6) both run.
+swift_check() { # <swiftc arguments>
+  swiftc -emit-sil -wmo -parse-as-library -o /dev/null "$@"
+}
 swift_pass() { # <swiftc flags>
   local flags=$1 build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
@@ -202,11 +207,11 @@ swift_pass() { # <swiftc flags>
   esac
   echo "== [$flags] Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
+  swift_check -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
   echo "SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] Crux with --swift-async-wrap (generated Swift, $(ls "$out_async"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
+  swift_check -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
   echo "SWIFT ASYNC TYPECHECK OK [$flags]"
   # The S12Protos module of the whole Crux IDL has more messages, so it has its own directory.
   mkdir -p "$build/error"
@@ -216,26 +221,40 @@ swift_pass() { # <swiftc flags>
   local errcxx=("${cxx[@]/#$build/$build/error}")
   echo "== [$flags] Crux IDL with --swift-error-type and --swift-async-wrap (generated Swift, $(ls "$out_error"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
+  swift_check -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
   echo "SWIFT ERROR TYPE TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
   files+=("$error_conformance" "$repo_root/ci/swift-typecheck/AsyncCallers.swift")
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
+  # The data-race checks of Swift 6 run on SIL. A file that shares a value that is not Sendable must fail, or the
+  # passes above do not prove what they say.
+  case "$flags" in
+    *swift-version\ 6*)
+      echo "== [$flags] negative case: two tasks share the NSData of a wrapper method"
+      # shellcheck disable=SC2086
+      if negative="$(swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}" "$repo_root/ci/swift-negative/share_wrapper_result.swift" 2>&1)"; then
+        echo "FAIL: two tasks share a value that is not Sendable, and the SIL check accepts it" >&2
+        exit 1
+      fi
+      printf '%s\n' "$negative" | grep -q "risks causing data races" || { echo "FAIL: the data-race negative case failed for another reason:" >&2; printf '%s\n' "$negative" >&2; exit 1; }
+      echo "NEGATIVE DATA-RACE CASE REJECTED [$flags]"
+      ;;
+  esac
   echo "== [$flags] TestSuite options (--swiftxx-namespace, --swiftxx-include-prefix, --swiftxx-base-lib-*)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$optmods" "$cases/options"/swift/*.swift
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$optmods" "$cases/options"/swift/*.swift
   echo "TEST-SUITE OPTIONS SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite error-legacy (--swift-error-type, --swift-legacy-records, --swift-async-wrap)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
   echo "TEST-SUITE ERROR-LEGACY SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite nested-ns (--swiftxx-namespace djinni_options::nested)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/nested-mods" "$cases/nested-ns"/swift/*.swift
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/nested-mods" "$cases/nested-ns"/swift/*.swift
   echo "TEST-SUITE NESTED-NS SWIFT TYPECHECK OK [$flags]"
   # Without --swift-private-in-same-module the public files and the private files are two modules.
   echo "== [$flags] TestSuite separate-module"
@@ -248,7 +267,7 @@ swift_pass() { # <swiftc flags>
   swiftc -emit-module -emit-module-path "$sm/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
     $flags "${cxx[@]}" -I "$work/separate-mods" "${public[@]}"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/separate-mods" -I "$sm" "${private[@]}"
+  swift_check -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/separate-mods" -I "$sm" "${private[@]}"
   echo "TEST-SUITE SEPARATE-MODULE SWIFT TYPECHECK OK [$flags]"
 }
 swift_pass "-swift-version 5"
