@@ -119,6 +119,10 @@ private class KotlinListenerImpl : KotlinListener() {
     override fun listeners(items: ArrayList<KotlinListener>): ArrayList<KotlinListener> = items
 
     override fun maybeListener(value: KotlinListener?): KotlinListener? = value
+
+    override fun takeFuture(value: Future<KotlinLeaf>): Future<String> = ready(value.get().mName)
+
+    override fun takeOutcome(value: Outcome<KotlinLeaf, KotlinError>): String = value.resultOr(null)?.mName ?: "error"
 }
 
 private class JavaListenerImpl : JavaListener() {
@@ -147,6 +151,10 @@ private class JavaListenerImpl : JavaListener() {
     override fun listeners(items: ArrayList<JavaListener>): ArrayList<JavaListener> = items
 
     override fun maybeListener(value: JavaListener?): JavaListener? = value
+
+    override fun takeFuture(value: Future<JavaLeaf>): Future<String> = ready(value.get().name)
+
+    override fun takeOutcome(value: Outcome<JavaLeaf, JavaError>): String = value.resultOr(null)?.name ?: "error"
 }
 
 // The wrapper cache holds the source only weakly.
@@ -256,6 +264,8 @@ fun main() {
     check(javaListener.listeners(ArrayList(listOf(javaListener)))[0] === javaListener, "interface list")
     check(javaListener.maybeListener(null) == null, "interface optional null")
     check(javaListener.maybeListener(javaListener) === javaListener, "interface optional")
+    check(javaListener.takeFuture(ready(JavaLeaf(50, "fifty"))).get() == "fifty", "future argument")
+    check(javaListener.takeOutcome(Outcome.fromResult(JavaLeaf(51, "fifty-one"))) == "fifty-one", "outcome argument")
 
     // The cache releases a source that nothing else holds.
     val weakListener = weakListenerAfterConversion()
@@ -279,6 +289,8 @@ fun main() {
     check(kotlinListener.outcomeValue(0).errorOrNull()?.mCode == 9, "reverse outcome")
     check(kotlinListener.chain(kotlinListener, 1) == 5, "reverse interface argument")
     check(kotlinListener.self() === kotlinListener, "reverse interface return")
+    check(kotlinListener.takeFuture(ready(KotlinLeaf(52, "fifty-two"))).get() == "fifty-two", "reverse future argument")
+    check(kotlinListener.takeOutcome(Outcome.fromResult(KotlinLeaf(53, "fifty-three"))) == "fifty-three", "reverse outcome argument")
 
     // A +c +j interface: each leg wraps the implementation of the other leg.
     val kotlinBoth = KotlinBothImpl()
