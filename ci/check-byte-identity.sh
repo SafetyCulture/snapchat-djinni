@@ -50,7 +50,7 @@ if [ -n "${HEAD_JAR:-}" ]; then cp "$HEAD_JAR" "$work/head.jar"; else build_jar 
 if [ -n "${BASE_JAR:-}" ]; then
   cp "$BASE_JAR" "$work/base.jar"
 else
-  git -C "$repo_root" worktree add --detach "$base_tree" "$base_ref" >&2
+  git -C "$repo_root" worktree add --detach "$base_tree" -- "$base_ref" >&2
   build_jar "$base_tree" "$work/base.jar"
 fi
 
@@ -109,7 +109,7 @@ xargs -P "$jobs" -L 1 bash -c '
 status=0
 # main.djinni imports every other file, as in crux/tools/generate_code.sh. Fail if a file is missing.
 for f in "$domain_dir"/*.djinni; do
-  grep -qx "$f" "$work/head-out/exact/domain/main/.in-files" || {
+  grep -qxF "$f" "$work/head-out/exact/domain/main/.in-files" || {
     echo "not covered by main.djinni: $f" >&2; status=1; }
 done
 echo "domain idl files: $(ls "$domain_dir"/*.djinni | wc -l | tr -d ' ') (all in the import closure of main.djinni unless listed above)"
