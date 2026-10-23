@@ -24,10 +24,15 @@ STUB = """    public static let protoMessageName = "stub"
 """
 
 
-def s12protos(extern_dir: str, out: str) -> None:
+def s12protos(extern_dir: str, out: str, real_dir: str) -> None:
     names = set()
     for path in glob.glob(os.path.join(extern_dir, "**", "*.yaml"), recursive=True):
-        names.update(re.findall(r"^  typename: '(S12_[^']+)'", open(path).read(), re.M))
+        names.update(re.findall(r"^  typename: '(S12[A-Za-z_][^']*)'", open(path).read(), re.M))
+    # The committed .pb.swift files define their own types; a stub must not redeclare them
+    real = set()
+    for path in glob.glob(os.path.join(real_dir, "*.pb.swift")):
+        real.update(re.findall(r"^(?:public )?(?:nonisolated )?(?:struct|enum) (S12[A-Za-z_]\w*)", open(path).read(), re.M))
+    names -= real
     tree = {}
     for name in names:
         node = tree

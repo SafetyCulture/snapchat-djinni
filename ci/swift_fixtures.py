@@ -27,7 +27,12 @@ def add_blocks(doc: str) -> str:
     h = re.search(r"^  header: '\"([^\"]+)\.pb\.h\"'", m.group(0), re.M) if m else None
     if not t or not h or "\nswift:" in doc:
         return doc
-    prefix, typename, ns, msg = swift_names(t.group(1))
+    prefix, synthesized, ns, msg = swift_names(t.group(1))
+    # The Swift name of a message is its Objective-C name (the Crux prefix); fall back to the
+    # synthesised name for a yaml without an objc block
+    o = re.search(r"^objc:\n(?:  .*\n)+", doc, re.M)
+    ot = re.search(r"^  typename: '([^']+)'", o.group(0), re.M) if o else None
+    typename = ot.group(1) if ot else synthesized
     block = (
         "swift:\n"
         f"  typename: '{typename}'\n"

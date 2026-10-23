@@ -76,7 +76,7 @@ out_async="$work/out-async"
 # Stub modules
 mods="$work/mods"
 mkdir -p "$mods"
-python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12ProtosStubs.swift"
+python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12ProtosStubs.swift" "$repo_root/ci/fixtures/s12"
 # The real s12 Swift messages of the assets protos come with the checkout; the other yamls keep stubs
 cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
