@@ -53,7 +53,10 @@ elif [ $# -eq 1 ]; then
         echo "Unexpected arguemnt: \"$command\"." 1>&2
         exit 1
     fi
-    for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out"; do
+    for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out" \
+        "$base_dir/generated-src/swift-features" "$base_dir/generated-src/kotlin-jni" \
+        "$base_dir/generated-src/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-package" \
+        "$base_dir/generated-src/kotlin-jni-extern"; do
         if [ -e "$dir" ]; then
             echo "Deleting \"$dir\"..."
             rm -r "$dir"
@@ -1166,8 +1169,9 @@ rm -f "$namespace_log"
     --jni-use-on-load-initializer false \
     --idl "djinni/kotlin_suspend.djinni" \
 )
-if grep -L "^package com.dropbox.djinni.test.kt$" "$temp_out"/kotlin-jni-package/*.kt | grep -q .; then
-    echo "A Kotlin file has a package other than --kotlin-jni-package." 1>&2
+kotlin_package_files=("$temp_out"/kotlin-jni-package/*.kt)
+if [ "${#kotlin_package_files[@]}" -eq 0 ] || grep -L "^package com.dropbox.djinni.test.kt$" "${kotlin_package_files[@]}" | grep -q .; then
+    echo "There is no Kotlin file, or a Kotlin file has a package other than --kotlin-jni-package." 1>&2
     exit 1
 fi
 
@@ -1371,7 +1375,11 @@ mirror() {
     local src="$1" ; shift
     local dest="$1" ; shift
     mkdir -p "$dest"
-    rsync -r --delete --checksum --itemize-changes "$src"/ "$dest" | sed "s/^/[$prefix]/"
+    # A pipe into sed would hide the exit status of rsync, so the output goes through a file
+    local log="$temp_out/mirror-$prefix.log"
+    rsync -r --delete --checksum --itemize-changes "$src"/ "$dest" >"$log"
+    sed "s/^/[$prefix]/" "$log"
+    rm -f "$log"
 }
 
 echo "Copying generated code to final directories..."
