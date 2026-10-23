@@ -10,8 +10,28 @@ import djinni.meta._
 object SwiftChecks {
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     val interns = idl.collect { case d: InternTypeDecl => d }
-    val swift = if (spec.swiftOutFolder.isDefined) reservedNameProblems(interns, spec) else Seq()
+    val swift = if (spec.swiftOutFolder.isDefined) codableProblems(interns) ++ reservedNameProblems(interns, spec) else Seq()
     if (swift.isEmpty) None else Some(swift.mkString("\n"))
+  }
+
+  private def subExprs(tm: MExpr): Seq[MExpr] = tm +: tm.args.flatMap(subExprs)
+
+  // The generator adds Codable to enums, flags and records with deriving(codable). Swift cannot synthesize it for a
+  // field of these types.
+  private def codableProblems(interns: Seq[InternTypeDecl]): Seq[String] = {
+    def notCodable(e: MExpr): Option[String] = e.base match {
+      case d: MDef if d.defType == DInterface => Some(s"the interface ${d.name} is not Codable")
+      case p: MProtobuf => Some(s"the protobuf message ${p.name} is not Codable")
+      case x: MExtern if x.defType == DInterface || Set("outcome", "future", "DataRef", "DataView").contains(x.name) =>
+        Some(s"the type ${x.name} is not Codable")
+      case _ => None
+    }
+    for {
+      td <- interns
+      r <- Seq(td.body).collect { case r: Record if r.derivingTypes.contains(DerivingType.Codable) => r }
+      f <- r.fields
+      why <- subExprs(f.ty.resolved).flatMap(e => notCodable(e)).headOption
+    } yield s"record ${td.ident.name}, field ${f.ident.name}: deriving(codable) needs a Codable type, but $why."
   }
 
   // The wrapper of --swift-async-wrap names its locals and members djinniXxx. An IDL name that Swift writes the same

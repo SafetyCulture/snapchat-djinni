@@ -243,7 +243,7 @@ private def resolveRecord(scope: Scope, r: Record) {
           throw new Error(f.ident.loc, "Interface reference cannot live in a record").toException
         case DRecord =>
           val record = df.body.asInstanceOf[Record]
-          if (!r.derivingTypes.subsetOf(record.derivingTypes))
+          if (!(r.derivingTypes - DerivingType.Error).subsetOf(record.derivingTypes))
             throw new Error(f.ident.loc, s"Some deriving required is not implemented in record ${f.ident.name}").toException
         case DEnum =>
       }
@@ -252,7 +252,7 @@ private def resolveRecord(scope: Scope, r: Record) {
           throw new Error(f.ident.loc, "Interface reference cannot live in a record").toException
         case DRecord =>
           val record = e.body.asInstanceOf[Record]
-          if (!r.derivingTypes.subsetOf(record.derivingTypes))
+          if (!(r.derivingTypes - DerivingType.Error).subsetOf(record.derivingTypes))
             throw new Error(f.ident.loc, s"Some deriving required is not implemented in record ${f.ident.name}").toException
         case DEnum =>
       }

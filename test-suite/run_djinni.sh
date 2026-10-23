@@ -309,6 +309,7 @@ swift_error_extern_relative="djinni/swift_error_extern.djinni"
 swift_options_relative="djinni/swift_options.djinni"
 swift_result_name_relative="djinni/swift_result_name.djinni"
 swift_naming_relative="djinni/swift_naming.djinni"
+swift_deriving_relative="djinni/swift_deriving.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -496,7 +497,16 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/naming/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_naming_relative" \
+    --idl "$swift_naming_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/deriving/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/deriving/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    \
+    --idl "$swift_deriving_relative" \
 )
 # Every +Private.swift file of the options case must import the base library module.
 options_private=("$temp_out"/swift-features/options/swift/*+Private.swift)
@@ -892,6 +902,31 @@ fi
     cat "$reserved_log" 1>&2
     exit 1
 }
+
+# Swift cannot synthesize Codable for an interface or a protobuf message field.
+codable_log="$temp_out/swift-codable-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-codable-negative/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_codable_negative.djinni") >"$codable_log" 2>&1; then
+    echo "The generator accepted deriving(codable) over fields that are not Codable." 1>&2
+    exit 1
+fi
+for expected in \
+    "record swift_codable_bad, field service: deriving(codable) needs a Codable type, but the interface swift_codable_service is not Codable." \
+    "record swift_codable_bad, field services: deriving(codable) needs a Codable type, but the interface swift_codable_service is not Codable." \
+    "record swift_codable_bad, field person: deriving(codable) needs a Codable type, but the protobuf message Person is not Codable."; do
+    if ! grep -qF -- "$expected" "$codable_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$codable_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qF "swift_codable_good" "$codable_log" || [ -e "$base_dir/$temp_out_relative/swift-codable-negative" ]; then
+    echo "The generator reported a Codable record, or wrote files for a rejected IDL." 1>&2
+    exit 1
+fi
 
 # The Swift glue and the Objective-C++ glue define the same helper symbols when they share a namespace.
 # The default namespaces differ. Equal namespaces fail the run before any file is written.

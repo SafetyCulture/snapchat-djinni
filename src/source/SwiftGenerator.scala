@@ -93,7 +93,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     writeSwiftFile(ident, origin, List[String](), w => {
       val t = marshal.typename(ident, e)
       if (e.flags) {
-        w.w(s"public struct $t: OptionSet, Sendable").braced {
+        w.w(s"public struct $t: OptionSet, Hashable, Codable, Sendable").braced {
           w.wl("public let rawValue: Int32")
           w.wl("public init(rawValue: Int32) { self.rawValue = rawValue }")
           writeFlagNone(w, e, idSwift.enum, t)
@@ -101,7 +101,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           writeFlagAll(w, e, idSwift.enum, t)
         }
       } else {
-        w.w(s"public enum ${marshal.typename(ident, e)}: Int32, Sendable").braced {
+        w.w(s"public enum ${marshal.typename(ident, e)}: Int32, Codable, Sendable").braced {
           writeEnumOptions(w, e, idSwift.enum, "=", "case ", "")
         }
       }
