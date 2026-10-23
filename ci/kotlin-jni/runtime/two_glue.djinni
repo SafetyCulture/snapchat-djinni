@@ -25,6 +25,9 @@ two_glue_service = interface +c {
   static cached_a(): i32;
   static cached_b(): i32;
 
+  # The number of Java-proxy cache entries of the listener.
+  static listener_proxies(): i32;
+
   self(): two_glue_service;
   value(): i32;
   echo(item: two_glue_record): two_glue_record;
