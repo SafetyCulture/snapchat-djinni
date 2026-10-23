@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Writes the stub inputs the Swift typecheck needs.
 
-The SwiftProtobuf messages come from the committed fixtures in ci/fixtures/s12.
+s12protos <extern dir> <out.swift>
+    One SwiftProtobuf message stub for every `swift: typename` in the extern yaml files.
 cxx-stubs <extern dir> <out dir>
     Headers that stand in for the protobuf C++ headers and the generated message translators.
 cxx-header <out.hpp> <swiftxx dir>...
@@ -11,6 +12,40 @@ import glob
 import os
 import re
 import sys
+
+STUB = """    public static let protoMessageName = "stub"
+    public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+    public init() {}
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {}
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {}
+    public static func == (lhs: Self, rhs: Self) -> Bool { true }
+    public func isEqualTo(message: any SwiftProtobuf.Message) -> Bool { true }
+"""
+
+
+def s12protos(extern_dir: str, out: str) -> None:
+    names = set()
+    for path in glob.glob(os.path.join(extern_dir, "**", "*.yaml"), recursive=True):
+        names.update(re.findall(r"^  typename: '(S12_[^']+)'", open(path).read(), re.M))
+    tree = {}
+    for name in names:
+        node = tree
+        for part in name.split("."):
+            node = node.setdefault(part, {})
+
+    def emit(node, indent):
+        lines = []
+        for name in sorted(node):
+            pad = "    " * indent
+            lines.append(f"{pad}public struct {name}: SwiftProtobuf.Message, @unchecked Sendable {{")
+            lines += [pad + l if l else l for l in STUB.splitlines()]
+            lines += emit(node[name], indent + 1)
+            lines.append(f"{pad}}}")
+        return lines
+
+    with open(out, "w") as f:
+        f.write("import SwiftProtobuf\n\n" + "\n".join(emit(tree, 0)) + "\n")
 
 
 def cxx_header(out: str, *swiftxx_dirs: str) -> None:
@@ -75,4 +110,4 @@ def cxx_stubs(extern_dir: str, out_dir: str) -> None:
 
 
 if __name__ == "__main__":
-    {"cxx-header": cxx_header, "cxx-stubs": cxx_stubs}[sys.argv[1]](*sys.argv[2:])
+    {"s12protos": s12protos, "cxx-header": cxx_header, "cxx-stubs": cxx_stubs}[sys.argv[1]](*sys.argv[2:])

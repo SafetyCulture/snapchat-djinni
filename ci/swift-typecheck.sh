@@ -76,8 +76,7 @@ out_async="$work/out-async"
 # Stub modules
 mods="$work/mods"
 mkdir -p "$mods"
-# The real s12 Swift messages replace the synthesised stubs
-cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
+python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12Protos.swift"
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
 
 # Test-suite cases: the checked-in expected outputs of test-suite/run_djinni.sh.
@@ -144,7 +143,7 @@ swift_pass() { # <swiftc flags>
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build" -I "$spb_mod")
   swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-name S12Protos \
-    -parse-as-library -swift-version 5 -I "$spb_mod" "$work"/*.pb.swift
+    -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12Protos.swift"
   echo "== [$flags] DjinniSupport (support-lib/swift)"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \

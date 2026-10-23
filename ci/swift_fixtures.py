@@ -73,10 +73,6 @@ def main() -> None:
         src = os.path.join(extern_src, rel)
         dst = os.path.join(extern_dir, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
-        # The assets yaml is the committed real sample; the others get the synthesised blocks
-        if os.path.basename(rel) == "asset.djinni.yaml":
-            shutil.copy(os.path.join(djinni_root, "ci", "fixtures", "s12", "asset.djinni.yaml"), dst)
-            continue
         docs = open(src).read().split("\n---\n")
         with open(dst, "w") as f:
             f.write("\n---\n".join(add_blocks(d) for d in docs))
