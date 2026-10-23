@@ -28,12 +28,13 @@ else
 fi
 
 # SwiftProtobuf is a dependency of DjinniSupport. It is built once per compiler.
-spb_mod="$cache/spb-1.28.2-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
+spb_mod="$cache/spb-1.38.1-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/libSwiftProtobuf.a" ]; then
   mkdir -p "$cache" "$spb_mod"
-  [ -d "$cache/swift-protobuf" ] || git clone --quiet --depth 1 --branch 1.28.2 https://github.com/apple/swift-protobuf "$cache/swift-protobuf"
+  # The sources of one tag stay in their own directory; a tag bump never reuses stale sources
+  [ -d "$cache/swift-protobuf-1.38.1" ] || git clone --quiet --depth 1 --branch 1.38.1 https://github.com/apple/swift-protobuf "$cache/swift-protobuf-1.38.1"
   swiftc -emit-library -static -emit-module -emit-module-path "$spb_mod/SwiftProtobuf.swiftmodule" -o "$spb_mod/libSwiftProtobuf.a" \
-    -module-name SwiftProtobuf -parse-as-library -swift-version 5 -wmo -Onone "$cache"/swift-protobuf/Sources/SwiftProtobuf/*.swift
+    -module-name SwiftProtobuf -parse-as-library -swift-version 5 -package-name SwiftProtobuf -wmo -Onone "$cache"/swift-protobuf-1.38.1/Sources/SwiftProtobuf/*.swift
 fi
 
 out="$work/out"
