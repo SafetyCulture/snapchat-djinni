@@ -763,7 +763,8 @@ java -jar djinni.jar \
   listener and a call that removes it use the same object. The map removes an
   entry when the source object is collected and the next conversion drains the
   queue. A source that is collected before that leaves one entry until then.
-- A `+c` interface is not converted; the adapter owns it. A record with a field
+- A `+c` interface without `+j` is not converted; the adapter owns it. A `+c +j`
+  interface has wrappers in both directions, like a `+j` interface. A record with a field
   of a `+c` interface, also inside `optional<>`, `list<>`, `set<>` or `map<>`,
   gets no converter. The same holds for a record that contains such a record.
   The generator prints one line for each skipped record:

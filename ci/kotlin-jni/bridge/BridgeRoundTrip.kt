@@ -123,6 +123,8 @@ private class KotlinListenerImpl : KotlinListener() {
     override fun takeFuture(value: Future<KotlinLeaf>): Future<String> = ready(value.get().mName)
 
     override fun takeOutcome(value: Outcome<KotlinLeaf, KotlinError>): String = value.resultOr(null)?.mName ?: "error"
+
+    override fun both(value: KotlinBoth?): KotlinBoth? = value
 }
 
 private class JavaListenerImpl : JavaListener() {
@@ -155,6 +157,8 @@ private class JavaListenerImpl : JavaListener() {
     override fun takeFuture(value: Future<JavaLeaf>): Future<String> = ready(value.get().name)
 
     override fun takeOutcome(value: Outcome<JavaLeaf, JavaError>): String = value.resultOr(null)?.name ?: "error"
+
+    override fun both(value: JavaBoth?): JavaBoth? = value
 }
 
 // The wrapper cache holds the source only weakly.
@@ -266,6 +270,10 @@ fun main() {
     check(javaListener.maybeListener(javaListener) === javaListener, "interface optional")
     check(javaListener.takeFuture(ready(JavaLeaf(50, "fifty"))).get() == "fifty", "future argument")
     check(javaListener.takeOutcome(Outcome.fromResult(JavaLeaf(51, "fifty-one"))) == "fifty-one", "outcome argument")
+    val kotlinBothForArg = KotlinBothImpl()
+    val returnedJavaBoth = javaListener.both(kotlinBothForArg.toJava())
+    check(returnedJavaBoth?.ping(JavaLeaf(54, "fifty-four"))?.name == "fifty-four", "+c +j argument")
+    check(returnedJavaBoth?.toKotlinJni() === kotlinBothForArg, "+c +j argument round trip")
 
     // The cache releases a source that nothing else holds.
     val weakListener = weakListenerAfterConversion()
@@ -291,6 +299,10 @@ fun main() {
     check(kotlinListener.self() === kotlinListener, "reverse interface return")
     check(kotlinListener.takeFuture(ready(KotlinLeaf(52, "fifty-two"))).get() == "fifty-two", "reverse future argument")
     check(kotlinListener.takeOutcome(Outcome.fromResult(KotlinLeaf(53, "fifty-three"))) == "fifty-three", "reverse outcome argument")
+    val javaBothForArg = JavaBothImpl()
+    val returnedKotlinBoth = kotlinListener.both(javaBothForArg.toKotlinJni())
+    check(returnedKotlinBoth?.ping(KotlinLeaf(55, "fifty-five"))?.mName == "fifty-five", "reverse +c +j argument")
+    check(returnedKotlinBoth?.toJava() === javaBothForArg, "reverse +c +j argument round trip")
 
     // A +c +j interface: each leg wraps the implementation of the other leg.
     val kotlinBoth = KotlinBothImpl()

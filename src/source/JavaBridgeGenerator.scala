@@ -80,7 +80,7 @@ object JavaBridgeCheck {
             val javaName = javaMarshal.fqTypename(d.name, e)
             val kotlinName = kotlinMarshal.fqTypename(d.name, e)
             Seq(s"$where: a flags type inside a container is $javaName in Java and EnumSet<$kotlinName> in Kotlin, so the bridge cannot convert it.")
-          case i: Interface if i.ext.cpp => Seq(s"$where: a +c interface is not converted. The adapter owns it.")
+          case i: Interface if i.ext.cpp && !i.ext.java => Seq(s"$where: a +c interface without +j is not converted. The adapter owns it.")
           case _ => Seq()
         }
         case e: MExtern =>
