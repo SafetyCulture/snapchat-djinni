@@ -1,0 +1,11 @@
+@extern "vendor/third-party/kotlin_extern.yaml"
+
+# The Kotlin class of an extern type with Kotlin keys is a message class with no order.
+kotlin_extern_ord_bad_record = record {
+  keyed: extern_kotlin_message;
+} deriving(eq, ord)
+
+# An extern type without Kotlin keys keeps the Java class, and the generator does not judge it.
+kotlin_extern_ord_plain_record = record {
+  plain: extern_plain_message;
+} deriving(eq)

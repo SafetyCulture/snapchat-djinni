@@ -850,6 +850,27 @@ if ! grep -qF -- "Set all four Kotlin keys or none." "$partial_log"; then
     exit 1
 fi
 
+# A record cannot derive ord over the Kotlin class of an extern type with Kotlin keys: a message has no order.
+ord_log="$temp_out/kotlin-jni-extern-ord.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-ord/kotlin" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_extern_ord_negative.djinni" \
+    --idl-include-path "djinni/vendor") >"$ord_log" 2>&1; then
+    echo "The generator accepted deriving(ord) over the Kotlin class of an extern type." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "record kotlin_extern_ord_bad_record, field keyed: deriving(ord) needs a Comparable class, but the Kotlin class com.dropbox.djinni.testextern.ExternKotlinMessage of an extern type has no order." "$ord_log" || \
+   grep -qF -- "kotlin_extern_ord_plain_record" "$ord_log"; then
+    echo "Missing or wrong error message for deriving(ord) over the Kotlin class of an extern type." 1>&2
+    cat "$ord_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-ord" ]; then
+    echo "The generator wrote files for deriving(ord) over the Kotlin class of an extern type." 1>&2
+    exit 1
+fi
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
