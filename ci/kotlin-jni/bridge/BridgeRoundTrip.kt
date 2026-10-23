@@ -9,6 +9,7 @@ import com.dropbox.djinni.bridgejava.KotlinJavaBridgeEverything as JavaEverythin
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeFlags as JavaFlags
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeLeaf as JavaLeaf
 import com.dropbox.djinni.bridgejava.KotlinJavaBridgeListener as JavaListener
+import com.dropbox.djinni.bridgejava.KotlinJavaBridgeListenerFields as JavaListenerFields
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeBoth as KotlinBoth
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeColor as KotlinColor
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeContainers as KotlinContainers
@@ -17,6 +18,7 @@ import com.dropbox.djinni.bridgekt.KotlinJavaBridgeEverything as KotlinEverythin
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeFlags as KotlinFlags
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeLeaf as KotlinLeaf
 import com.dropbox.djinni.bridgekt.KotlinJavaBridgeListener as KotlinListener
+import com.dropbox.djinni.bridgekt.KotlinJavaBridgeListenerFields as KotlinListenerFields
 import com.dropbox.djinni.bridgekt.javabridge.toJava
 import com.dropbox.djinni.bridgekt.javabridge.toKotlinJni
 import com.dropbox.djinni.testextern.ExternJavaMessage
@@ -274,6 +276,27 @@ fun main() {
     val returnedJavaBoth = javaListener.both(kotlinBothForArg.toJava())
     check(returnedJavaBoth?.ping(JavaLeaf(54, "fifty-four"))?.name == "fifty-four", "+c +j argument")
     check(returnedJavaBoth?.toKotlinJni() === kotlinBothForArg, "+c +j argument round trip")
+
+    // Records with a list and an optional of an interface: the wrappers keep identity through the round trip.
+    val fieldsListener = KotlinListenerImpl()
+    val kotlinFields = KotlinListenerFields(ArrayList(listOf(fieldsListener)), fieldsListener)
+    val javaFields = kotlinFields.toJava()
+    check(javaFields.listeners.size == 1 && javaFields.listeners[0].toKotlinJni() === fieldsListener,
+        "listener list Kotlin -> Java")
+    check(javaFields.maybeListener?.toKotlinJni() === fieldsListener, "listener optional Kotlin -> Java")
+    val kotlinFieldsBack = javaFields.toKotlinJni()
+    check(kotlinFieldsBack.mListeners.size == 1 && kotlinFieldsBack.mListeners[0] === fieldsListener,
+        "listener list round trip")
+    check(kotlinFieldsBack.mMaybeListener === fieldsListener, "listener optional round trip")
+
+    val javaFieldsListener = JavaListenerImpl()
+    val javaFieldsRecord = JavaListenerFields(ArrayList(listOf(javaFieldsListener)), javaFieldsListener)
+    val kotlinFieldsOfJava = javaFieldsRecord.toKotlinJni()
+    check(kotlinFieldsOfJava.mListeners[0].toJava() === javaFieldsListener, "listener list Java -> Kotlin")
+    check(kotlinFieldsOfJava.mMaybeListener?.toJava() === javaFieldsListener, "listener optional Java -> Kotlin")
+    val javaFieldsBack = kotlinFieldsOfJava.toJava()
+    check(javaFieldsBack.listeners[0] === javaFieldsListener, "listener list Java round trip")
+    check(javaFieldsBack.maybeListener === javaFieldsListener, "listener optional Java round trip")
 
     // The cache releases a source that nothing else holds.
     val weakListener = weakListenerAfterConversion()
