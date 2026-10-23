@@ -3,9 +3,12 @@
 #include "two_glue_record.hpp"
 #include "two_glue_service.hpp"
 
+#include "djinni_support.hpp"
+
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <string>
 
 namespace {
 
@@ -38,6 +41,17 @@ public:
     }
 };
 
+int32_t countServiceEntries(const char *glue) {
+    int32_t count = 0;
+    for (const auto &entry : djinni::JniCppProxyCache::stats()) {
+        const std::string name(entry.first);
+        if (name.find(glue) != std::string::npos && name.find("NativeTwoGlueService") != std::string::npos) {
+            count += static_cast<int32_t>(entry.second);
+        }
+    }
+    return count;
+}
+
 } // namespace
 
 namespace tg {
@@ -55,5 +69,9 @@ std::shared_ptr<TwoGlueService> TwoGlueService::get() {
 }
 
 int32_t TwoGlueService::released() { return releasedServices.load(); }
+
+int32_t TwoGlueService::cached_a() { return countServiceEntries("glue_a"); }
+
+int32_t TwoGlueService::cached_b() { return countServiceEntries("glue_b"); }
 
 } // namespace tg
