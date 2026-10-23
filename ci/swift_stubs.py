@@ -33,6 +33,8 @@ def s12protos(extern_dir: str, out: str, real_dir: str) -> None:
     for path in glob.glob(os.path.join(real_dir, "*.pb.swift")):
         real.update(re.findall(r"^(?:public )?(?:nonisolated )?(?:struct|enum) (S12[A-Za-z_]\w*)", open(path).read(), re.M))
     names -= real
+    # A dotted name whose root type is real is defined inside it
+    names = {n for n in names if n.split(".")[0] not in real}
     tree = {}
     for name in names:
         node = tree
