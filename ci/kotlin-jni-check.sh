@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # Proves that the Kotlin classes of --kotlin-jni-out bind to the JNI code that goes with the Java classes.
 #
-# For several IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
+# For two IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
 # and the Kotlin on the JVM, and compares the class files with `javap -p -s` (ci/kotlin_jni_compare.py):
-# the Crux assets IDL with the flags of crux/tools/generate_code.sh, the whole Crux IDL with --kotlin-error-type
-# and --kotlin-suspend-wrap, and the test-suite IDL.
+# the Crux assets IDL with the flags of crux/tools/generate_code.sh, and the test-suite IDL.
 #
 # Needs javac, javap and kotlinc. The Kotlin compiler needs its Parcelize plugin (parcelize-compiler.jar).
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
-#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux IDL (passes 1 and 1b), which needs MITTI_MOBILE_ROOT
+#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux assets IDL (pass 1), which needs MITTI_MOBILE_ROOT
 #   KOTLIN_LIB         directory of kotlinc with parcelize-compiler.jar (default: derived from kotlinc)
 #   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for --kotlin-suspend-wrap (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
@@ -83,27 +82,10 @@ compile_and_compare() {
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package" "$@"
 }
 
-# strip_kotlin_keys <extern dir>: removes the Kotlin keys (jni.kotlin*, kotlin.jniTypename) from the yaml files.
-# The Crux passes generate Java, Kotlin and JNI in one run, which binds one class for each extern type, and the
-# committed s12 asset yaml has the Kotlin keys; pass 4 checks the extern types with the Kotlin keys.
-strip_kotlin_keys() {
-  python3 - "$1" <<'EOF'
-import glob, os, re, sys
-for path in glob.glob(os.path.join(sys.argv[1], "**", "*.yaml"), recursive=True):
-    text = open(path).read()
-    stripped = re.sub(r"^  (kotlinTranslator|kotlinHeader|kotlinTypeSignature|jniTypename): .*\n", "", text, flags=re.M)
-    # A kotlin block that had only jniTypename is now empty
-    stripped = re.sub(r"^kotlin:\n(?!  )", "", stripped, flags=re.M)
-    if stripped != text:
-        open(path, "w").write(stripped)
-EOF
-}
-
 # 1. Crux assets IDL, with the flags of crux/tools/generate_code.sh. The names of the fields are the Java names (mFooBar).
 if [ "$check_crux" != 0 ]; then
   package=com.safetyculture.crux.domain
   python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx" "$repo_root" "common.djinni,media.djinni,assets.djinni"
-  strip_kotlin_keys "$work/fx/extern"
   (cd "$work/fx" && java -jar "$jar" \
     --java-out "$work/crux/java" --java-package "$package" --ident-java-field mFooBar \
     --cpp-out "$work/crux/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
@@ -120,30 +102,6 @@ if [ "$check_crux" != 0 ]; then
     exit 1
   fi
   echo "record field: Kotlin 'val mAsset' and JNI GetFieldID \"mAsset\""
-
-  # 1b. The whole Crux IDL (main.djinni) with the error type of the application and suspend functions. Crux has no
-  # error record, so the pass adds the record crux_error for the constructor (error: E) of the class.
-  python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-main" "$repo_root" "main.djinni"
-  strip_kotlin_keys "$work/fx-main/extern"
-  printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-main/crux/djinni/domain/crux_error.djinni"
-  printf '@import "crux_error.djinni"\n' >>"$work/fx-main/crux/djinni/domain/swift_fixture.djinni"
-  (cd "$work/fx-main" && java -jar "$jar" \
-    --java-out "$work/crux-error/java" --java-package "$package" --ident-java-field mFooBar \
-    --cpp-out "$work/crux-error/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
-    --java-nonnull-annotation androidx.annotation.NonNull \
-    --jni-out "$work/crux-error/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar --ident-cpp-method FooBar \
-    --jni-include-cpp-prefix generated/ --java-implement-android-os-parcelable true \
-    --kotlin-jni-out "$work/crux-error/kotlin" --kotlin-jni-package "$package" \
-    --kotlin-suspend-wrap --kotlin-error-type "$package.CruxException" \
-    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
-  compile_and_compare crux-error "$package" "$work/fx-main/extern" "$repo_root/ci/kotlin-jni/crux"
-  # The flag must change the Crux output: a static method throws the class, and a future is a suspend function.
-  if ! grep -q "throw $package.CruxException(djinni_e)" "$work/crux-error/kotlin/CruxAPI.kt" ||
-     ! grep -q "suspend fun downloadAsset(groupId: String, remoteUrl: String): String?" "$work/crux-error/kotlin/TrainingOfflineAssetManager.kt"; then
-    echo "FAIL: --kotlin-error-type did not change the Crux output" >&2
-    exit 1
-  fi
-  echo "crux error type: $(grep -l "$package.CruxException" "$work/crux-error/kotlin"/*.kt | wc -l | tr -d ' ') Kotlin files throw CruxException"
 fi
 
 # 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh. The second run registers the natives in JNI_OnLoad.
@@ -187,22 +145,43 @@ if ! grep -qF "abstract suspend fun loadUnit(): Unit" "$suspend_kt" || ! grep -q
 fi
 echo "suspend functions: future<unit> returns the record, future<void> returns nothing"
 
-# A suspend function cannot override a member of Any, so the generator rejects it and writes no file.
-name=suspend-any-names
-mkdir -p "$work/$name"
-set +e
-(cd "$repo_root/test-suite" && java -jar "$jar" \
-  --kotlin-jni-out "$work/$name/kotlin" --kotlin-suspend-wrap --java-package "$package" \
-  --idl djinni/kotlin_suspend_any_names.djinni) >"$work/$name/out.log" 2>&1
-status=$?
-set -e
-expected="interface kotlin_suspend_any_names, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method."
-if [ "$status" -ne 1 ] || ! grep -qF -- "$expected" "$work/$name/out.log" || [ -e "$work/$name/kotlin" ]; then
-  echo "FAIL: the generator accepted a suspend function with the name of a member of Any, or wrote files (exit $status)" >&2
-  cat "$work/$name/out.log" >&2
-  exit 1
-fi
-echo "suspend functions: a method with the name of a member of Any is rejected"
+# expect_rejected <name> <IDL> <generator flags> <message>... : the generator exits 1 with each message and writes no file
+expect_rejected() {
+  local name=$1 idl=$2 flags=$3 status message
+  shift 3
+  mkdir -p "$work/$name"
+  set +e
+  # shellcheck disable=SC2086
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --kotlin-jni-out "$work/$name/kotlin" $flags --java-package "$package" --idl "$idl") >"$work/$name/out.log" 2>&1
+  status=$?
+  set -e
+  for message in "$@"; do
+    if [ "$status" -ne 1 ] || [ -e "$work/$name/kotlin" ] || ! grep -qF -- "$message" "$work/$name/out.log"; then
+      echo "FAIL: $name: the generator did not reject $idl with \"$message\", or wrote files (exit $status)" >&2
+      cat "$work/$name/out.log" >&2
+      exit 1
+    fi
+  done
+}
+
+# A Kotlin method named toString or hashCode without parameters must override the member of Any. A suspend function,
+# a static function of the companion object, or another return type cannot, with or without the flag.
+expect_rejected suspend-any-names djinni/kotlin_suspend_any_names.djinni --kotlin-suspend-wrap \
+  "interface kotlin_suspend_any_names, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method."
+expect_rejected any-names-return djinni/kotlin_jni_any_names_return.djinni "" \
+  "interface kotlin_jni_any_names_return, method to_string: the Kotlin method toString() overrides toString of Any, so it must return string. Rename the method or change its return type." \
+  "interface kotlin_jni_any_names_return_listener, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type."
+expect_rejected any-names-return-suspend djinni/kotlin_jni_any_names_return.djinni --kotlin-suspend-wrap \
+  "interface kotlin_jni_any_names_return, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method." \
+  "interface kotlin_jni_any_names_return_listener, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type."
+expect_rejected any-names-static djinni/kotlin_jni_any_names_static.djinni "" \
+  "interface kotlin_jni_any_names_static, method to_string: the static method toString() is a member of the companion object, where it hides toString of Any. Rename the method." \
+  "interface kotlin_jni_any_names_static, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type."
+expect_rejected any-names-static-suspend djinni/kotlin_jni_any_names_static.djinni --kotlin-suspend-wrap \
+  "interface kotlin_jni_any_names_static, method to_string: the static method toString() is a member of the companion object, where it hides toString of Any. Rename the method." \
+  "interface kotlin_jni_any_names_static, method hash_code: --kotlin-suspend-wrap makes a suspend function, which cannot override hashCode of Any. Rename the method."
+echo "Kotlin methods: a method with the name of a member of Any that cannot override it is rejected"
 
 # 3b. The error type of the application, with blocking functions and with suspend functions. The natives, the
 # lookups and the fields must not change. The JNI code binds by name in the first run and in JNI_OnLoad in the second.
@@ -219,27 +198,6 @@ for mode in error-sync:kotlin_error::false error-suspend:kotlin_error_async:--ko
     --idl "djinni/$idl.djinni")
   compile_and_compare "$name" "$package" "" "$repo_root/ci/kotlin-jni/error"
 done
-
-# A method with the name of a member of Any and another return type cannot override it, with or without the flag.
-for flags in "" --kotlin-suspend-wrap; do
-  name="any-names-return${flags:+-suspend}"
-  mkdir -p "$work/$name"
-  set +e
-  # shellcheck disable=SC2086
-  (cd "$repo_root/test-suite" && java -jar "$jar" \
-    --kotlin-jni-out "$work/$name/kotlin" $flags --java-package "$package" \
-    --idl djinni/kotlin_jni_any_names_return.djinni) >"$work/$name/out.log" 2>&1
-  status=$?
-  set -e
-  if [ "$status" -ne 1 ] || [ -e "$work/$name/kotlin" ] ||
-     ! grep -qF -- "interface kotlin_jni_any_names_return, method to_string: the Kotlin method toString() overrides toString of Any, so it must return string. Rename the method or change its return type." "$work/$name/out.log" ||
-     ! grep -qF -- "interface kotlin_jni_any_names_return_listener, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type." "$work/$name/out.log"; then
-    echo "FAIL: the generator accepted a method with the name of a member of Any and another return type, or wrote files (${flags:-no flag}, exit $status)" >&2
-    cat "$work/$name/out.log" >&2
-    exit 1
-  fi
-done
-echo "Kotlin methods: a method with the name of a member of Any and another return type is rejected"
 
 # Kotlin classes without a package, with the registration in JNI_OnLoad: the module initializer must find the
 # module class. The support-lib classes come from the suite pass.

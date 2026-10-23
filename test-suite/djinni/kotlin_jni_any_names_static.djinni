@@ -1,0 +1,8 @@
+@extern "../../support-lib/future.yaml"
+
+# A static method is a member of the companion object, which is an Any too. With --kotlin-suspend-wrap, a method that
+# returns future<i32> is a suspend function that returns Int.
+kotlin_jni_any_names_static = interface +c {
+  static to_string(): string;
+  hash_code(): future<i32>;
+}
