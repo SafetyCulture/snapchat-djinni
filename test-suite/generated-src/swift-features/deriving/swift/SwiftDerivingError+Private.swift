@@ -10,15 +10,15 @@ public enum SwiftDerivingErrorMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftDerivingError
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let message = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let detail = try SwiftDerivingDetailMarshaller.fromCpp(djinni.swift.getMember(p, 1))
+            let message = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let detail = try SwiftDerivingDetailMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
             return SwiftType(message: message, detail: detail)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.message))
-        djinni.swift.addMember(&ret, try SwiftDerivingDetailMarshaller.toCpp(s.detail))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.message))
+        try DjinniSupport.addMember(&ret, SwiftDerivingDetailMarshaller.toCpp(s.detail))
         return ret
     }
 }

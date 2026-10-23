@@ -10,29 +10,29 @@ public enum SwiftDerivingCodableMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftDerivingCodable
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let kind = try SwiftDerivingKindMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let flags = try SwiftDerivingFlagsMarshaller.fromCpp(djinni.swift.getMember(p, 1))
-            let optionalKind = try OptionalMarshaller<SwiftDerivingKindMarshaller>.fromCpp(djinni.swift.getMember(p, 2))
-            let kinds = try ListMarshaller<SwiftDerivingKindMarshaller>.fromCpp(djinni.swift.getMember(p, 3))
-            let when = try DateMarshaller.fromCpp(djinni.swift.getMember(p, 4))
-            let bytes = try BinaryMarshaller.fromCpp(djinni.swift.getMember(p, 5))
-            let name = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 6))
-            let count = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 7))
-            let ratio = try F64Marshaller.fromCpp(djinni.swift.getMember(p, 8))
+            let kind = try SwiftDerivingKindMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let flags = try SwiftDerivingFlagsMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
+            let optionalKind = try OptionalMarshaller<SwiftDerivingKindMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 2))
+            let kinds = try ListMarshaller<SwiftDerivingKindMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 3))
+            let when = try DateMarshaller.fromCpp(DjinniSupport.compositeMember(p, 4))
+            let bytes = try BinaryMarshaller.fromCpp(DjinniSupport.compositeMember(p, 5))
+            let name = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 6))
+            let count = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 7))
+            let ratio = try F64Marshaller.fromCpp(DjinniSupport.compositeMember(p, 8))
             return SwiftType(kind: kind, flags: flags, optionalKind: optionalKind, kinds: kinds, when: when, bytes: bytes, name: name, count: count, ratio: ratio)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try SwiftDerivingKindMarshaller.toCpp(s.kind))
-        djinni.swift.addMember(&ret, try SwiftDerivingFlagsMarshaller.toCpp(s.flags))
-        djinni.swift.addMember(&ret, try OptionalMarshaller<SwiftDerivingKindMarshaller>.toCpp(s.optionalKind))
-        djinni.swift.addMember(&ret, try ListMarshaller<SwiftDerivingKindMarshaller>.toCpp(s.kinds))
-        djinni.swift.addMember(&ret, try DateMarshaller.toCpp(s.when))
-        djinni.swift.addMember(&ret, try BinaryMarshaller.toCpp(s.bytes))
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.name))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.count))
-        djinni.swift.addMember(&ret, try F64Marshaller.toCpp(s.ratio))
+        try DjinniSupport.addMember(&ret, SwiftDerivingKindMarshaller.toCpp(s.kind))
+        try DjinniSupport.addMember(&ret, SwiftDerivingFlagsMarshaller.toCpp(s.flags))
+        try DjinniSupport.addMember(&ret, OptionalMarshaller<SwiftDerivingKindMarshaller>.toCpp(s.optionalKind))
+        try DjinniSupport.addMember(&ret, ListMarshaller<SwiftDerivingKindMarshaller>.toCpp(s.kinds))
+        try DjinniSupport.addMember(&ret, DateMarshaller.toCpp(s.when))
+        try DjinniSupport.addMember(&ret, BinaryMarshaller.toCpp(s.bytes))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.name))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.count))
+        try DjinniSupport.addMember(&ret, F64Marshaller.toCpp(s.ratio))
         return ret
     }
 }

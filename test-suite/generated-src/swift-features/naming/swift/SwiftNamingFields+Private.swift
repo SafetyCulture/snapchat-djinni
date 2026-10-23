@@ -10,25 +10,25 @@ public enum SwiftNamingFieldsMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftNamingFields
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let p_ = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let djinni_ = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 1))
-            let c = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 2))
-            let ret = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 3))
-            let s = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 4))
-            let inst = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 5))
-            let params = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 6))
+            let p_ = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let djinni_ = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
+            let c = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 2))
+            let ret = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 3))
+            let s = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 4))
+            let inst = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 5))
+            let params = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 6))
             return SwiftType(p: p_, djinni: djinni_, c: c, ret: ret, s: s, inst: inst, params: params)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.p))
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.djinni))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.c))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.ret))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.s))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.inst))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.params))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.p))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.djinni))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.c))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.ret))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.s))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.inst))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.params))
         return ret
     }
 }

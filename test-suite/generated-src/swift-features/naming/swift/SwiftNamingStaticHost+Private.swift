@@ -9,7 +9,7 @@ import TestSuiteCxx
 /** Swift hosts this one and C++ implements the statics. The statics and the constants are also for Swift. */
 let swiftNamingStaticHostMethods: Vtbl<SwiftNamingStaticHost> = [
     { inst, params, ret in
-        let _value = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _value = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 0))
         try inst.onValue(_value)
     },
 ]
@@ -20,7 +20,7 @@ public enum SwiftNamingStaticHostMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftNamingStaticHost has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftNamingStaticHostSwiftProxy.make(ctxPtr(s as SwiftType, swiftNamingStaticHostMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated_swift.SwiftNamingStaticHostSwiftProxy.make(ctxPtr(s as SwiftType, swiftNamingStaticHostMethods), dispatcherProtocalCall)) })
     }
 }
 public class SwiftNamingStaticHost_statics: @unchecked Sendable {

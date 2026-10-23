@@ -10,15 +10,15 @@ public enum SwiftDerivingOuterMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftDerivingOuter
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let inner = try SwiftDerivingCodableMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let inners = try MapMarshaller<StringMarshaller, SwiftDerivingCodableMarshaller>.fromCpp(djinni.swift.getMember(p, 1))
+            let inner = try SwiftDerivingCodableMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let inners = try MapMarshaller<StringMarshaller, SwiftDerivingCodableMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 1))
             return SwiftType(inner: inner, inners: inners)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try SwiftDerivingCodableMarshaller.toCpp(s.inner))
-        djinni.swift.addMember(&ret, try MapMarshaller<StringMarshaller, SwiftDerivingCodableMarshaller>.toCpp(s.inners))
+        try DjinniSupport.addMember(&ret, SwiftDerivingCodableMarshaller.toCpp(s.inner))
+        try DjinniSupport.addMember(&ret, MapMarshaller<StringMarshaller, SwiftDerivingCodableMarshaller>.toCpp(s.inners))
         return ret
     }
 }

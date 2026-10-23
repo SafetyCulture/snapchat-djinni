@@ -10,15 +10,15 @@ public enum SwiftDerivingKeysMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftDerivingKeys
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let keys = try SetMarshaller<SwiftDerivingKeyMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
-            let byKey = try MapMarshaller<SwiftDerivingKeyMarshaller, I32Marshaller>.fromCpp(djinni.swift.getMember(p, 1))
+            let keys = try SetMarshaller<SwiftDerivingKeyMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let byKey = try MapMarshaller<SwiftDerivingKeyMarshaller, I32Marshaller>.fromCpp(DjinniSupport.compositeMember(p, 1))
             return SwiftType(keys: keys, byKey: byKey)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try SetMarshaller<SwiftDerivingKeyMarshaller>.toCpp(s.keys))
-        djinni.swift.addMember(&ret, try MapMarshaller<SwiftDerivingKeyMarshaller, I32Marshaller>.toCpp(s.byKey))
+        try DjinniSupport.addMember(&ret, SetMarshaller<SwiftDerivingKeyMarshaller>.toCpp(s.keys))
+        try DjinniSupport.addMember(&ret, MapMarshaller<SwiftDerivingKeyMarshaller, I32Marshaller>.toCpp(s.byKey))
         return ret
     }
 }

@@ -10,13 +10,13 @@ public enum SwiftDerivingDetailMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftDerivingDetail
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let code = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let code = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(code: code)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.code))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.code))
         return ret
     }
 }

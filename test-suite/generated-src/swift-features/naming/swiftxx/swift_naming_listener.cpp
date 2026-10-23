@@ -6,8 +6,16 @@
 
 namespace djinni_generated_swift {
 
-djinni::swift::AnyValue SwiftNamingListenerSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
+djinni::swift::AnyValue SwiftNamingListenerSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftNamingListenerSwiftProxy>(instance, dispatcher)};
+}
+catch (const std::exception& e) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 void SwiftNamingListenerSwiftProxy::on_event(int32_t params, int32_t ret, int32_t inst, int32_t p, int32_t djinni) {
     djinni::swift::ParameterList params_;

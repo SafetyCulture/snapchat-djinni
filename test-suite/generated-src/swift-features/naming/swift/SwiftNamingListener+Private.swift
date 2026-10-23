@@ -9,16 +9,16 @@ import TestSuiteCxx
 /** Swift implements this one. The C++ proxy has a local parameter list. */
 let swiftNamingListenerMethods: Vtbl<SwiftNamingListener> = [
     { inst, params, ret in
-        let _params = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
-        let _ret = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 1))
-        let _inst = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 2))
-        let _p = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 3))
-        let _djinni = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 4))
+        let _params = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 0))
+        let _ret = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 1))
+        let _inst = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 2))
+        let _p = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 3))
+        let _djinni = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 4))
         try inst.onEvent(_params, ret: _ret, inst: _inst, p: _p, djinni: _djinni)
     },
     { inst, params, ret in
-        let _fields = try SwiftNamingFieldsMarshaller.fromCpp(djinni.swift.getMember(params, 0))
-        let _params = try SwiftNamingFieldsMarshaller.fromCpp(djinni.swift.getMember(params, 1))
+        let _fields = try SwiftNamingFieldsMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
+        let _params = try SwiftNamingFieldsMarshaller.fromCpp(DjinniSupport.parameter(params, 1))
         djinni.swift.setReturnValue(ret, try SwiftNamingFieldsMarshaller.toCpp(inst.onFields(_fields, params: _params)))
     },
 ]
@@ -29,6 +29,6 @@ public enum SwiftNamingListenerMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { throw DjinniError("SwiftNamingListener has no C++ implementation: add +c to the interface") })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated_swift.SwiftNamingListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftNamingListenerMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated_swift.SwiftNamingListenerSwiftProxy.make(ctxPtr(s as SwiftType, swiftNamingListenerMethods), dispatcherProtocalCall)) })
     }
 }

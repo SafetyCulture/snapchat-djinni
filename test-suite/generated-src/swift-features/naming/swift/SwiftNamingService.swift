@@ -4,52 +4,35 @@
 import DjinniSupport
 import Foundation
 
-/** Parameters with the names of the locals of the proxies and the glue. */
+/**
+ * Parameters with the names of the locals of the proxies and the glue.
+ *
+ * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .userInitiated)`. Calls to one object can run at the same time.
+ * A task that is cancelled before the call does not call C++. A task that waits for a C++ future resumes once,
+ * with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.
+ */
 public final class SwiftNamingService: @unchecked Sendable {
     let djinniProxy: SwiftNamingServiceCppProxy
-    private let djinniQueue = DispatchQueue(label: "djinni.testsuite.swiftNamingService")
 
     init(proxy: SwiftNamingServiceCppProxy) { self.djinniProxy = proxy }
 
     public func params(_ params: Int32, ret: Int32, inst: Int32, p: Int32, djinni djinni_: Int32) async throws -> Int32 {
-        return try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Swift.Result { try djinniProxy.params(params, ret: ret, inst: inst, p: p, djinni: djinni_) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.params(params, ret: ret, inst: inst, p: p, djinni: djinni_) }
     }
 
     public func fields(_ fields: TestSuite.SwiftNamingFields) async throws -> TestSuite.SwiftNamingFields {
-        return try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Swift.Result { try djinniProxy.fields(fields) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fields(fields) }
     }
 
     public func outcome(_ ret: Int32, params: Int32) async throws -> Int32 {
-        let djinniResult: Swift.Result<Int32, TestSuite.SwiftNamingError> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Swift.Result { try djinniProxy.outcome(ret, params: params) })
-            }
-        }
-        return try djinniResult.get()
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.outcome(ret, params: params) }.get()
     }
 
     public func load(_ ret: Int32, inst: Int32) async throws -> Int32 {
-        let djinniFuture: DjinniSupport.DJFuture<Int32> = try await withCheckedThrowingContinuation { djinniContinuation in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Swift.Result { try djinniProxy.load(ret, inst: inst) })
-            }
-        }
-        return try await djinniFuture.value
+        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load(ret, inst: inst) }
     }
 
     public func nothing(_ inst: Int32) async throws -> Void {
-        try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in
-            self.djinniQueue.async { [djinniProxy = self.djinniProxy] in
-                djinniContinuation.resume(with: Swift.Result { try djinniProxy.nothing(inst) })
-            }
-        }
+        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.nothing(inst) }
     }
 }
