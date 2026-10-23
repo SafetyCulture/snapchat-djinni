@@ -1,0 +1,44 @@
+@extern "../../support-lib/dataref.yaml"
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+kotlin_suspend_error = record {
+  message: string;
+}
+
+kotlin_suspend_item = record {
+  id: string;
+  count: i32;
+}
+
+# Kotlin implements this one, so it has no suspend functions.
+kotlin_suspend_observer = interface +j +o {
+  on_item(item: kotlin_suspend_item);
+}
+
+# C++ and Kotlin implement this one, so it has no suspend functions.
+kotlin_suspend_both = interface +c +j {
+  value(): i32;
+}
+
+kotlin_suspend_child = interface +c {
+  name(): string;
+}
+
+# C++ implements this one. Its methods cover each kind of return type.
+kotlin_suspend_service = interface +c {
+  static create(): kotlin_suspend_service;
+  ping();
+  count(): i32;
+  find(id: string, limit: optional<i32>): optional<kotlin_suspend_item>;
+  fetch(id: string): outcome<kotlin_suspend_item, kotlin_suspend_error>;
+  load(id: string): future<kotlin_suspend_item>;
+  flush(): future<void>;
+  # Parameters with the names of Kotlin keywords.
+  names(in: i32, val: i32): list<string>;
+  send(data: DataRef, tags: list<string>);
+  watch(observer: kotlin_suspend_observer);
+  child(): kotlin_suspend_child;
+  attach(child: kotlin_suspend_child, parent: optional<kotlin_suspend_service>);
+  both(both: kotlin_suspend_both): kotlin_suspend_both;
+}

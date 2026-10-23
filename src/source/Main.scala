@@ -126,6 +126,7 @@ object Main {
     var swiftErrorType: Option[String] = None
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
+    var kotlinSuspendWrap: Boolean = false
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -299,6 +300,8 @@ object Main {
         .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
         .text("The package of the Kotlin JNI classes (default: the value of --java-package). It must equal --java-package when the JNI code binds the classes.")
+      opt[Unit]("kotlin-suspend-wrap").foreach(_ => kotlinSuspendWrap = true)
+        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. Each C++ object runs one call at a time.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -406,6 +409,11 @@ object Main {
 
     if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
       System.err.println("Error: --swift-async-wrap needs --swift-private-in-same-module.")
+      System.exit(1); return
+    }
+
+    if (kotlinSuspendWrap && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-suspend-wrap needs --kotlin-jni-out.")
       System.exit(1); return
     }
 
@@ -534,6 +542,7 @@ object Main {
       swiftErrorType,
       kotlinJniOutFolder,
       kotlinJniPackage,
+      kotlinSuspendWrap,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

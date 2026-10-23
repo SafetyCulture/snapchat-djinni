@@ -45,7 +45,13 @@ kj_service = interface +c {
   divide(a: i32, b: i32): outcome<i32, kj_error>;
   call_listener(listener: kj_listener, value: i32): i32;
   delayed(value: i32, millis: i32): future<i32>;
+  pending(): future<i32>;
+  failing_future(): future<i32>;
+  done(): future<void>;
+  complete_pending(value: i32);
   fail(): i32;
+  busy(millis: i32);
+  max_concurrent(): i32;
   invert(color: kj_color): kj_color;
   echo_service(service: kj_service): kj_service;
   call_both(both: kj_both): i32;

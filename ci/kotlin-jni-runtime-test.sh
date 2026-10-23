@@ -3,13 +3,16 @@
 #
 # The test calls C++ from the generated Kotlin classes, and C++ calls a Kotlin object back. It checks
 # records, outcomes, futures, C++ exceptions and many threads. A watchdog fails the run when it deadlocks.
-# The script skips with exit code 77 and a message when something is missing: javac, java, kotlinc, clang++
-# (CXX), jni.h in JAVA_HOME, kotlin-stdlib.jar, or a supported system (macOS, Linux). With CI or
+# The script runs two programs: one against the classes without --kotlin-suspend-wrap, and one against the
+# suspend functions that the flag makes. The script skips with exit code 77 and a message when something is
+# missing: javac, java, kotlinc, clang++ (CXX), jni.h in JAVA_HOME, kotlin-stdlib.jar, kotlinx-coroutines,
+# or a supported system (macOS, Linux). With CI or
 # KOTLIN_JNI_RUNTIME_REQUIRED set, a missing part is an error (exit code 2).
 #
 # Environment:
 #   JAVA_HOME          the JDK (default: derived from javac)
 #   KOTLIN_LIB         directory of kotlinc with kotlin-stdlib.jar (default: derived from kotlinc)
+#   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for the suspend mode (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
 #   KEEP_OUT           set to 1 to keep the work directory
@@ -64,13 +67,17 @@ else
 fi
 
 out="$work/out"
-# shellcheck disable=SC2086
-(cd "$src" && java -jar "$jar" \
-  --cpp-out "$out/cpp" --cpp-namespace kj \
-  --jni-out "$out/jni" --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
-  --java-package rt.kj --ident-java-field mFooBar \
-  --kotlin-jni-out "$out/kotlin" \
-  --idl runtime.djinni)
+generate() { # <kotlin out> [generator flags]
+  local kotlin_out=$1
+  shift
+  (cd "$src" && java -jar "$jar" \
+    --cpp-out "$out/cpp" --cpp-namespace kj \
+    --jni-out "$out/jni" --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+    --java-package rt.kj --ident-java-field mFooBar \
+    --kotlin-jni-out "$kotlin_out" "$@" \
+    --idl runtime.djinni)
+}
+generate "$out/kotlin"
 
 # The JNI library: the support library, the generated JNI code and the C++ implementation.
 echo "== clang++ ($(ls "$out"/jni/*.cpp | wc -l | tr -d ' ') generated JNI files)"
@@ -83,12 +90,32 @@ done
 lib="$work/libkj.$lib_ext"
 "${CXX:-clang++}" -shared -o "$lib" "$work"/objs/*.o
 
-# The JVM side: the Java support library, the generated Kotlin and the test program.
-echo "== javac and kotlinc"
-mkdir -p "$work/java-classes" "$work/kotlin-classes"
+echo "== javac"
+mkdir -p "$work/java-classes"
 # shellcheck disable=SC2046
 javac -Werror -Xlint:all -d "$work/java-classes" $(find "$repo_root/support-lib/java" -name '*.java')
-classpath="$work/java-classes:$kotlin_lib/kotlin-stdlib.jar"
-kotlinc -Werror -d "$work/kotlin-classes" -cp "$classpath" "$out/kotlin" "$src/Main.kt"
-echo "== run"
-java -Xcheck:jni -cp "$work/kotlin-classes:$classpath" rt.kj.MainKt "$lib"
+
+# run_mode <name> <kotlin dir> <main file> <class path of the libraries> : compile the Kotlin and run it
+run_mode() {
+  local name=$1 kotlin_dir=$2 main=$3 libs=$4
+  mkdir -p "$work/classes-$name"
+  echo "== kotlinc and run: $name"
+  kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main"
+  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib"
+}
+stdlib="$kotlin_lib/kotlin-stdlib.jar"
+run_mode sync "$out/kotlin" Main.kt "$stdlib"
+
+# The suspend functions need kotlinx-coroutines.
+coroutines="${KOTLINX_COROUTINES_JAR:-}"
+if [ -z "$coroutines" ]; then
+  # Missing cache directories make find exit 1, which pipefail would turn into a script exit
+  caches=(); for d in "$HOME/.gradle" "$HOME/.m2"; do [ -d "$d" ] && caches+=("$d"); done
+  if [ "${#caches[@]}" -gt 0 ]; then
+    coroutines="$(find "${caches[@]}" -name 'kotlinx-coroutines-core-jvm-*.jar' ! -name '*sources*' ! -name '*javadoc*' 2>/dev/null | awk -F/ '{print $NF "\t" $0}' | sort -V | tail -1 | cut -f2)"
+  fi
+fi
+[ -n "$coroutines" ] && [ -f "$coroutines" ] || skip "kotlinx-coroutines-core-jvm.jar is not found (set KOTLINX_COROUTINES_JAR)"
+echo "== coroutines: $coroutines"
+generate "$out/kotlin-suspend" --kotlin-suspend-wrap
+run_mode suspend "$out/kotlin-suspend" MainSuspend.kt "$stdlib:$coroutines"

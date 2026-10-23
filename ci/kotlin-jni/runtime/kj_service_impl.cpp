@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <thread>
 
@@ -48,7 +49,45 @@ public:
         return future;
     }
 
+    djinni::Future<int32_t> pending() override {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _pending = std::make_unique<djinni::Promise<int32_t>>();
+        return _pending->getFuture();
+    }
+
+    djinni::Future<int32_t> failing_future() override {
+        return djinni::Promise<int32_t>::reject(std::make_exception_ptr(std::runtime_error("failed future")));
+    }
+
+    djinni::Future<void> done() override {
+        djinni::Promise<void> promise;
+        auto future = promise.getFuture();
+        promise.setValue();
+        return future;
+    }
+
+    void complete_pending(int32_t value) override {
+        std::unique_ptr<djinni::Promise<int32_t>> promise;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            promise = std::move(_pending);
+        }
+        if (promise) {
+            promise->setValue(value);
+        }
+    }
+
     int32_t fail() override { throw std::runtime_error("boom"); }
+
+    void busy(int32_t millis) override {
+        const int32_t active = ++_active;
+        int32_t seen = _maxActive.load();
+        while (active > seen && !_maxActive.compare_exchange_weak(seen, active)) {}
+        std::this_thread::sleep_for(std::chrono::milliseconds(millis));
+        --_active;
+    }
+
+    int32_t max_concurrent() override { return _maxActive.load(); }
 
     kj::KjColor invert(kj::KjColor color) override {
         return static_cast<kj::KjColor>((static_cast<int>(color) + 1) % 3);
@@ -59,6 +98,12 @@ public:
     int32_t call_both(const std::shared_ptr<kj::KjBoth>& both) override { return both->value(); }
 
     std::shared_ptr<kj::KjBoth> make_both() override;
+
+private:
+    std::atomic<int32_t> _active{0};
+    std::atomic<int32_t> _maxActive{0};
+    std::mutex _mutex;
+    std::unique_ptr<djinni::Promise<int32_t>> _pending;
 };
 
 class KjBothImpl : public kj::KjBoth {

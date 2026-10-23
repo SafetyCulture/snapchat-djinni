@@ -62,6 +62,22 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   private def paramList(m: Interface.Method): String =
     m.params.map(p => kt(idJava.local(p.ident)) + ": " + marshal.paramType(p.ty)).mkString(", ")
 
+  // The type that a suspend function returns. A future<T> returns T.
+  private def suspendReturnClause(ret: Option[TypeRef]): String = ret match {
+    case Some(ty) => marshal.futureValueType(ty) match {
+      case Some("Unit") => ""
+      case Some(value) => ": " + value
+      case None => returnClause(ret)
+    }
+    case None => ""
+  }
+
+  // The type argument of the Java future that the native method returns.
+  private def futureArg(ty: TypeRef): String = {
+    val inner = marshal.returnType(Some(ty))
+    inner.substring(inner.indexOf('<') + 1, inner.lastIndexOf('>'))
+  }
+
   private def returnClause(ret: Option[TypeRef]): String = ret.fold("")(ty => ": " + marshal.returnType(Some(ty)))
 
   private def writeConsts(w: IndentWriter, consts: Seq[Const], inInterface: Boolean = false) {
@@ -162,6 +178,17 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       refs.imports.add("java.util.concurrent.atomic.AtomicBoolean")
       refs.imports.add("com.snapchat.djinni.NativeObjectManager")
     }
+    // JNI calls only the natives of an interface that C++ implements. It calls the methods of one that Kotlin implements.
+    val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
+    val suspendInstance = suspendWrap && i.methods.exists(m => !m.static)
+    val suspendFuture = suspendWrap && i.methods.exists(m => !m.static && m.ret.exists(r => marshal.futureValueType(r).isDefined))
+    if (suspendInstance) {
+      refs.imports ++= Seq("kotlinx.coroutines.Dispatchers", "kotlinx.coroutines.withContext")
+    }
+    if (suspendFuture) {
+      refs.imports ++= Seq("com.snapchat.djinni.Future", "java.util.concurrent.ExecutionException",
+        "java.util.concurrent.atomic.AtomicReference", "kotlinx.coroutines.suspendCancellableCoroutine")
+    }
 
     val self = marshal.typename(ident, i)
     val typeParamList = typeParams(params)
@@ -179,7 +206,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           skipFirst { w.wl }
           writeMethodDoc(w, m, idJava.local)
           writeThrows(w)
-          w.wl(s"${modifier}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
+          if (suspendWrap) {
+            w.wl(s"abstract suspend fun ${kt(idJava.method(m.ident))}(${paramList(m)})${suspendReturnClause(m.ret)}")
+          } else {
+            w.wl(s"${modifier}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
+          }
         }
 
         if (i.consts.nonEmpty || statics.nonEmpty) {
@@ -203,6 +234,9 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           annotationHeader.foreach(w.wl)
           w.w(s"class CppProxy$typeParamList private constructor(private val nativeRef: Long) : $self$typeParamList()").braced {
             w.wl("private val destroyed = AtomicBoolean(false)")
+            if (suspendInstance) {
+              w.wl("private val dispatcher = Dispatchers.IO.limitedParallelism(1)")
+            }
             w.wl
             w.w("init").braced {
               w.wl("if (nativeRef == 0L) throw RuntimeException(\"nativeRef is zero\")")
@@ -214,9 +248,46 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
               val returnStmt = m.ret.fold("")(_ => "return ")
               w.wl
               writeThrows(w)
-              w.w(s"override fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}").braced {
-                w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                w.wl(s"${returnStmt}native_$meth(nativeRef${preComma(args)})")
+              if (suspendWrap) {
+                w.w(s"override suspend fun ${kt(meth)}(${paramList(m)})${suspendReturnClause(m.ret)}").braced {
+                  w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
+                  val call = s"native_$meth(nativeRef${preComma(args)})"
+                  m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
+                    case Some((ret, value)) =>
+                      w.wl(s"val future = withContext(dispatcher) { $call }")
+                      w.wl(s"return suspendCancellableCoroutine<$value> { continuation ->").nested {
+                        w.wl("val target = AtomicReference(continuation)")
+                        w.wl("continuation.invokeOnCancellation { target.set(null) }")
+                        w.wl(s"future.then(Future.FutureHandler<${futureArg(ret)}> { result ->").nested {
+                          w.wl("val waiting = target.getAndSet(null) ?: return@FutureHandler")
+                          w.wl("waiting.resumeWith(try {").nested {
+                            if (value == "Unit") {
+                              w.wl("result.get()")
+                              w.wl("Result.success(Unit)")
+                            } else {
+                              w.wl("Result.success(result.get())")
+                            }
+                          }
+                          w.wl("} catch (e: ExecutionException) {").nested {
+                            w.wl("Result.failure(e.cause ?: e)")
+                          }
+                          w.wl("} catch (e: Throwable) {").nested {
+                            w.wl("Result.failure(e)")
+                          }
+                          w.wl("})")
+                        }
+                        w.wl("})")
+                      }
+                      w.wl("}")
+                    case None =>
+                      w.wl(s"${returnStmt}withContext(dispatcher) { $call }")
+                  }
+                }
+              } else {
+                w.w(s"override fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}").braced {
+                  w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
+                  w.wl(s"${returnStmt}native_$meth(nativeRef${preComma(args)})")
+                }
               }
               val nativeParams = "_nativeRef: Long" + preComma(paramList(m))
               w.wl(s"private external fun native_$meth($nativeParams)${returnClause(m.ret)}")
