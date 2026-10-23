@@ -336,7 +336,10 @@ mkdir -p "$work/$name"
   --kotlin-jni-out "$work/$name/kotlin" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
   --kotlin-jni-java-bridge-out "$work/$name/bridge" \
   --kotlin-jni-java-bridge-package com.dropbox.djinni.bridgejava \
-  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor) >"$work/$name/run.log" 2>&1
+  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor) >"$work/$name/run.log" 2>&1 || {
+  cat "$work/$name/run.log" >&2
+  exit 1
+}
 grep '^bridge: skipped ' "$work/$name/run.log" >"$work/$name/skips.log" || true
 if ! grep -qxF "bridge: skipped kotlin_java_bridge_skipped: field service is a +c interface" "$work/$name/skips.log" || \
    ! grep -qxF "bridge: skipped kotlin_java_bridge_holder: field skipped holds kotlin_java_bridge_skipped, which is skipped" "$work/$name/skips.log"; then
@@ -369,7 +372,10 @@ mkdir -p "$work/$name"
   --kotlin-jni-out "$work/$name/kotlin-bridge" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
   --kotlin-suspend-wrap --kotlin-jni-java-bridge-out "$work/$name/bridge" \
   --kotlin-jni-java-bridge-package com.dropbox.djinni.bridgejava \
-  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor)
+  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor) >"$work/$name/run-bridge.log" 2>&1 || {
+  cat "$work/$name/run-bridge.log" >&2
+  exit 1
+}
 echo "== $name: bridge flags do not change the Kotlin JNI output"
 diff -r "$work/$name/kotlin" "$work/$name/kotlin-bridge"
 mkdir -p "$work/$name/kotlin-classes"
