@@ -1,4 +1,5 @@
 #include "runtime_listener.hpp"
+#include "runtime_error.hpp"
 #include "runtime_service.hpp"
 
 #include <memory>
@@ -29,6 +30,14 @@ public:
             return std::optional<int32_t>(42);
         }
         return djinni::expected<std::optional<int32_t>, rt::RuntimeError>(std::optional<int32_t>());
+    }
+    // The Swift host answers with a nil success; C++ must read it as a success, not an error
+    int32_t listener_maybe(const std::shared_ptr<rt::RuntimeListener>& listener, bool flag) override {
+        auto result = listener->on_maybe(flag);
+        if (!result) {
+            return -1;
+        }
+        return result->value_or(-2);
     }
     std::chrono::system_clock::time_point date_roundtrip(const std::chrono::system_clock::time_point& d) override { return d; }
     rt::RuntimeColor unknown_color() override { return static_cast<rt::RuntimeColor>(99); }
