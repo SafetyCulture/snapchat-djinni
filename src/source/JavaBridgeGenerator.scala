@@ -239,13 +239,19 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
     val javaInterface = isJavaInterface(i)
     val kotlinInterface = isKotlinInterface(i)
     writeFile(idJava.ty(ident.name) + "JavaBridge", origin) { w =>
+      val javaBridge = idJava.ty(ident.name) + "JavaBridge"
+      val kotlinBridge = idJava.ty(ident.name) + "KotlinBridge"
       writeBridgeClass(w, ident, i, javaName, kotlinName, javaInterface, toJavaSide = true)
       w.wl
       writeBridgeClass(w, ident, i, kotlinName, javaName, kotlinInterface, toJavaSide = false)
       w.wl
-      w.wl(s"fun $javaName.toKotlinJni(): $kotlinName = ${idJava.ty(ident.name)}KotlinBridge(this)")
+      writeBridgeCache(w, javaBridge, kotlinName)
       w.wl
-      w.wl(s"fun $kotlinName.toJava(): $javaName = ${idJava.ty(ident.name)}JavaBridge(this)")
+      writeBridgeCache(w, kotlinBridge, javaName)
+      w.wl
+      w.wl(s"fun $javaName.toKotlinJni(): $kotlinName = if (this is $javaBridge) this.djinniBridgeImpl() else ${kotlinBridge}Cache.get(this)")
+      w.wl
+      w.wl(s"fun $kotlinName.toJava(): $javaName = if (this is $kotlinBridge) this.djinniBridgeImpl() else ${javaBridge}Cache.get(this)")
     }
   }
 
@@ -265,6 +271,43 @@ class JavaBridgeGenerator(spec: Spec) extends Generator(spec) {
           w.wl
         }
         writeBridgeMethod(w, m, toJavaSide)
+      }
+      w.wl
+      w.wl(s"internal fun djinniBridgeImpl(): $implName = this.impl")
+    }
+    w.wl("}")
+  }
+
+  // A weak identity map: one wrapper for each source object, and the map releases the wrapper with the source.
+  private def writeBridgeCache(w: IndentWriter, simple: String, implName: String) {
+    w.wl(s"private object ${simple}Cache {").nested {
+      w.wl(s"private val entries = HashMap<Key, java.lang.ref.WeakReference<$simple>>()")
+      w.wl("private val queue = java.lang.ref.ReferenceQueue<Any>()")
+      w.wl
+      w.wl("@Synchronized")
+      w.wl(s"fun get(impl: $implName): $simple {").nested {
+        w.wl("while (true) {").nested {
+          w.wl("val reference = queue.poll() ?: break")
+          w.wl("if (reference is Key) entries.remove(reference)")
+        }
+        w.wl("}")
+        w.wl("val probe = Key(impl, null)")
+        w.wl("entries[probe]?.get()?.let { return it }")
+        w.wl(s"val wrapper = $simple(impl)")
+        w.wl("entries[Key(impl, queue)] = java.lang.ref.WeakReference(wrapper)")
+        w.wl("return wrapper")
+      }
+      w.wl("}")
+      w.wl
+      w.wl("private class Key(impl: Any, queue: java.lang.ref.ReferenceQueue<Any>?) :").nested {
+        w.wl("java.lang.ref.WeakReference<Any>(impl, queue) {").nested {
+          w.wl("private val hash = System.identityHashCode(impl)")
+          w.wl
+          w.wl("override fun hashCode(): Int = this.hash")
+          w.wl
+          w.wl("override fun equals(other: Any?): Boolean = other is Key && this.get() === other.get()")
+        }
+        w.wl("}")
       }
     }
     w.wl("}")
