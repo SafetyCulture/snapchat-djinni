@@ -125,6 +125,8 @@ package object generatorTools {
                    swiftLegacyRecords: Boolean,
                    swiftAsyncWrap: Option[String],
                    swiftErrorType: Option[String],
+                   kotlinJniOutFolder: Option[File],
+                   kotlinJniPackage: Option[String],
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
@@ -311,6 +313,12 @@ package object generatorTools {
           createFolder("Java", spec.javaOutFolder.get)
         }
         new JavaGenerator(spec).generate(idl)
+      }
+      if (spec.kotlinJniOutFolder.isDefined) {
+        if (!spec.skipGeneration) {
+          createFolder("Kotlin JNI", spec.kotlinJniOutFolder.get)
+        }
+        new KotlinJniGenerator(spec).generate(idl)
       }
       if (spec.jniOutFolder.isDefined) {
         if (!spec.skipGeneration) {

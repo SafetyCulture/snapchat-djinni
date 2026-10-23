@@ -124,6 +124,8 @@ object Main {
     var swiftLegacyRecords: Boolean = false
     var swiftAsyncWrap: Option[String] = None
     var swiftErrorType: Option[String] = None
+    var kotlinJniOutFolder: Option[File] = None
+    var kotlinJniPackage: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -293,6 +295,10 @@ object Main {
         .text("Wrap the interfaces that C++ implements in a Swift class with async methods. Each wrapper has a serial queue labelled <label-prefix>.<interface>. Needs --swift-private-in-same-module.")
       opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
         .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E. The record conforms to Error.")
+      opt[File]("kotlin-jni-out").valueName("<out-folder>").foreach(x => kotlinJniOutFolder = Some(x))
+        .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
+      opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
+        .text("The package of the Kotlin JNI classes (default: the value of --java-package). It must equal --java-package when the JNI code binds the classes.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -526,6 +532,8 @@ object Main {
       swiftLegacyRecords,
       swiftAsyncWrap,
       swiftErrorType,
+      kotlinJniOutFolder,
+      kotlinJniPackage,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

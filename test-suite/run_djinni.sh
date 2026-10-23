@@ -522,6 +522,22 @@ expect_failure error-enum "$swift_error_enum_relative" CruxError \
     exit 1
 }
 
+# Kotlin classes for the JNI code. The Kotlin JNI check compiles them with the Java classes of the same IDL.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni" \
+    --java-package $java_package \
+    --java-nullable-annotation "javax.annotation.CheckForNull" \
+    --java-nonnull-annotation "javax.annotation.Nonnull" \
+    --java-use-final-for-record false \
+    --java-implement-android-os-parcelable true \
+    --java-gen-interface true \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_jni.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {
@@ -541,6 +557,7 @@ mirror "kotlin" "$temp_out/kotlin" "$kotlin_out"
 mirror "wasm" "$temp_out/wasm" "$wasm_out"
 mirror "ts" "$temp_out/ts" "$ts_out"
 mirror "swift-features" "$temp_out/swift-features" "$base_dir/generated-src/swift-features"
+mirror "kotlin-jni" "$temp_out/kotlin-jni" "$base_dir/generated-src/kotlin-jni"
 
 date > "$gen_stamp"
 

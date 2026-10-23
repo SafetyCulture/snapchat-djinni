@@ -463,6 +463,60 @@ Three scripts check the Swift support. They read the Crux IDL from
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 
+## Kotlin classes for JNI
+
+`--kotlin-jni-out <dir>` writes Kotlin classes instead of the Java classes. The
+JNI code that `--jni-out` writes binds to them without a change. This is
+different from `--kotlin-out`, which writes Kotlin Multiplatform code.
+
+- `--kotlin-jni-package <package>` sets the package. The default is the value
+  of `--java-package`. It must equal `--java-package` when the JNI code binds the
+  classes, because the JNI code has the names of the Java classes.
+- The classes have the names of the Java classes, with the nested class
+  `CppProxy`. The JVM signatures of the native methods, the constructors and the
+  fields are the same as in Java. The JNI code uses only these.
+- An interface is an `abstract class` (an `interface` when `--java-gen-interface`
+  applies). A native method is `external fun`. A static method is
+  `@JvmStatic external fun` in a `companion object`. Kotlin compiles it to a
+  static native method in the class, so the JNI function name is the one of
+  Java.
+- A record is a `data class` with `val` properties. A record without fields is a
+  `class`. A record with `+j` is an `open class`. A record with a `binary` or an
+  `array<>` field compares the content of the arrays, as Java does with
+  `deriving(eq)`.
+- **The name of a property is the name of the Java field.** The JNI code reads
+  the fields by the name that `--ident-java-field` makes. With
+  `--ident-java-field mFooBar`, the property is `mFooBar`, and Kotlin and Java
+  callers use `getMFooBar()`. To get `fooBar` in Kotlin, use
+  `--ident-java-field fooBar` for Java, JNI and Kotlin together.
+- `--java-implement-android-os-parcelable` becomes `@Parcelize` and `Parcelable`.
+  The class has no `Parcel` constructor. The consumer module needs the
+  `kotlin-parcelize` plugin.
+- A type that is optional is nullable. An interface is nullable, as in Java,
+  because the JNI code passes null for it. It is non-null only when
+  `--cpp-nn-type` is set. All other types are non-null. `--java-cpp-exception`
+  becomes `@Throws`.
+- `--java-out` is not changed. You can use both flags.
+
+`ci/kotlin-jni-check.sh` generates Java, JNI and Kotlin for the Crux assets IDL
+and for the test-suite IDL. It compiles both on the JVM, with `javac` and
+`kotlinc` and its Parcelize plugin. Then `ci/kotlin_jni_compare.py` compares
+the classes with `javap -p -s`. The script checks the classes, the native
+methods, the JNI function names, every class, field and method that the JNI
+code looks up (also the lookups of `support-lib/jni`), the `JNINativeMethod`
+tables with `--jni-use-on-load-initializer`, and the instance fields of the
+records.
+
+`ci/kotlin-jni-runtime-test.sh` runs the classes. It builds the generated JNI C++
+and a C++ implementation into a library, and runs Kotlin against it on the JVM
+with `-Xcheck:jni`. The test calls C++ from Kotlin, calls a Kotlin object from
+C++, and checks records, enums, outcomes, futures, C++ exceptions, the proxy of a
+C++ object that goes back to C++, an interface that C++ and Kotlin implement, the
+release of collected proxies, and many threads. The script skips with exit code
+77 and a message when `javac`, `java`, `kotlinc`, `clang++`, `jni.h` or
+`kotlin-stdlib.jar` is missing, or the system is not macOS or Linux. With `CI` or
+`KOTLIN_JNI_RUNTIME_REQUIRED` set, a missing part is an error.
+
 ## Async interface support
 
 With the new yaml type `future<>` we can now write Djinni interfaces that return
