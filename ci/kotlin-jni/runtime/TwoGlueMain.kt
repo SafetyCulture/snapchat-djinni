@@ -52,6 +52,8 @@ private fun exercise(a: rt.two.a.TwoGlueService?, b: rt.two.b.TwoGlueService?) {
     check(b.invert(rt.two.b.TwoGlueColor.BLUE) == rt.two.b.TwoGlueColor.RED, "B enum")
 
     check(rt.two.a.TwoGlueService.released() == 0, "released before the collector")
+    check(rt.two.a.TwoGlueService.cachedA() == 1 && rt.two.b.TwoGlueService.cachedB() == 1,
+        "one cache entry for each leg")
 }
 
 fun main(args: Array<String>) {
@@ -64,12 +66,16 @@ fun main(args: Array<String>) {
     b = null
 
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20)
-    while (rt.two.a.TwoGlueService.released() < 1 && System.nanoTime() < deadline) {
+    while ((rt.two.a.TwoGlueService.released() < 1 ||
+            rt.two.a.TwoGlueService.cachedA() > 0 ||
+            rt.two.b.TwoGlueService.cachedB() > 0) && System.nanoTime() < deadline) {
         System.gc()
         Thread.sleep(100)
     }
     check(rt.two.a.TwoGlueService.released() == 1,
         "the C++ object is released once, not ${rt.two.a.TwoGlueService.released()}")
+    check(rt.two.a.TwoGlueService.cachedA() == 0 && rt.two.b.TwoGlueService.cachedB() == 0,
+        "no cache entry left after the release: ${rt.two.a.TwoGlueService.cachedA()} and ${rt.two.b.TwoGlueService.cachedB()}")
 
     println("TWO GLUE SETS OK")
     System.exit(0)

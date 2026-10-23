@@ -21,6 +21,10 @@ two_glue_service = interface +c {
   # The number of C++ objects that the collector released.
   static released(): i32;
 
+  # The number of proxy cache entries of each leg.
+  static cached_a(): i32;
+  static cached_b(): i32;
+
   self(): two_glue_service;
   value(): i32;
   echo(item: two_glue_record): two_glue_record;
