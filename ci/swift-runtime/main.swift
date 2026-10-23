@@ -16,6 +16,7 @@ final class Doubler: RuntimeListener {
     init() { State.liveListeners.add(1) }
     deinit { State.liveListeners.add(-1) }
     func onValue(_ value: Int32) throws -> Int32 { value * 2 }
+    func makeData() throws -> NSData { Data((0..<256).map { UInt8($0) }) as NSData }
 }
 
 func check(_ condition: Bool, _ message: String) {
@@ -48,6 +49,20 @@ func runTests() throws {
     try service.keepListener(keptAgain)
     check(try service.callListener(keptAgain, value: 4) == 8, "callListener with the kept listener")
     check(try service.callKeptListener(6) == 12, "callKeptListener with the same listener")
+
+    // A DataRef argument keeps its retain count: C++ takes the reference that Swift gives and releases it.
+    for payload in [NSData(data: Data(repeating: 7, count: 4096)), NSMutableData(data: Data(repeating: 7, count: 4096))] {
+        let before = CFGetRetainCount(payload)
+        for _ in 0..<10 {
+            check(try service.dataSize(payload) == 4096, "dataSize")
+        }
+        check(CFGetRetainCount(payload) == before, "retain count of a DataRef argument: \(before) before, \(CFGetRetainCount(payload)) after")
+    }
+
+    // A Swift host returns a DataRef. C++ reads it while it is alive.
+    for _ in 0..<10 {
+        check(try service.listenerDataSum(Doubler()) == 32640, "listenerDataSum")
+    }
 
     // Many threads create, pass and release host objects.
     DispatchQueue.concurrentPerform(iterations: 2000) { i in
