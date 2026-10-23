@@ -657,8 +657,10 @@ Check the library of the two sets:
 
 ```
 nm -D --defined-only libcrux.so | awk '/ Java_/{print $3}' | sort | uniq -d   # prints nothing
-nm -C libcrux.so | grep 'glue_a::Native\|glue_b::Native'                     # one class symbol for each set
+nm -C libcrux.so | grep 'djinni_generated::Native\|djinni_generated_kt::Native'  # one class symbol for each set
 ```
+
+On macOS, use `nm -gU` in place of `nm -D --defined-only`.
 
 `ci/kotlin-jni-runtime-test.sh` builds one library from two glue sets of
 `ci/kotlin-jni/runtime/two_glue.djinni` and checks the two proxies, the cache,
@@ -736,7 +738,10 @@ java -jar djinni.jar \
   of the other run, whose Java classes the converters use. Each flag needs the
   other. The generator exits 1 and names the missing flag.
 - The converters are in the package `<kotlin-jni-package>.javabridge`. Both runs
-  must use the same `--ident-java-field`.
+  must use the same `--ident-java-type`, `--ident-java-method`,
+  `--ident-java-enum` and `--java-gen-interface`. The bridge calls the Java
+  getters, which follow `--ident-java-method`. `--ident-java-field` names the
+  Kotlin properties.
 - The files hold extension functions: `fun <java>.R.toKotlinJni(): <kotlin>.R`
   and `fun <kotlin>.R.toJava(): <java>.R`. The converters read the Java fields
   through their getters, and they pass the fields to the constructor in order.
@@ -752,13 +757,25 @@ java -jar djinni.jar \
   arguments and its return. A `future<>` or an `outcome<>` passes through when no
   inner conversion is needed. Otherwise the bridge converts with `Future.then`
   and `Outcome.match`.
+- The bridge keeps one wrapper for each object in a weak identity map. A wrapper
+  returns its original object when it crosses back, so a call that adds a
+  listener and a call that removes it use the same object.
 - A `+c` interface is not converted; the adapter owns it. A record with a field
   of a `+c` interface, also inside `optional<>`, `list<>`, `set<>` or `map<>`,
   gets no converter. The same holds for a record that contains such a record.
   The generator prints one line for each skipped record:
-  `bridge: skipped <record>: field <f> is a +c interface`.
-- The generator does not support `--kotlin-suspend-wrap` with the bridge. It
-  exits 1.
+  `bridge: skipped <record>: field <f> is a +c interface`. When a record holds a
+  skipped record, the line says `bridge: skipped <record>: field <f> holds
+  <other>, which is skipped`.
+- The generator exits 1 and names the field when the two legs have no common
+  form: a `+j` method that takes a record without a converter; a flags type
+  inside a container, which is one option in Java and an `EnumSet` in Kotlin; an
+  extern type with two classes and no Protobuf marker.
+- The generator exits 1 for a `+j` record, an interface with type parameters, and
+  a bridge package that equals the Kotlin JNI package. The resolver rejects a
+  record with type parameters before the bridge runs.
+- `--kotlin-suspend-wrap` is supported. The bridge flags do not change the
+  Kotlin JNI output, also with that flag.
 - Without the two flags the output does not change. The bridge is a new folder
   only.
 
@@ -1068,8 +1085,11 @@ message without a `swift` block with `--swift-out` or `--swiftxx-out`, equal
 over the Kotlin class of an extern type with Kotlin keys, and an extern type whose
 `jni.kotlinTypeSignature` and `kotlin.jniTypename` name two classes. It checks
 the bridge flags: `--kotlin-jni-java-bridge-out` without `--kotlin-jni-out` or
-without `--kotlin-jni-java-bridge-package`, and `--kotlin-jni-java-bridge-package`
-without `--kotlin-jni-java-bridge-out`. It checks
+without `--kotlin-jni-java-bridge-package`, `--kotlin-jni-java-bridge-package`
+without `--kotlin-jni-java-bridge-out`, a bridge package that equals the Kotlin
+JNI package, an extern type with two classes and no Protobuf marker, a flags type
+inside a container, a `+j` record, an interface with type parameters, and a `+j`
+method that takes a record without a converter. It checks
 that every `+Private.swift` file of the options case imports
 `--swiftxx-base-lib-module`, and that the warning for an interface with `+o` and
 without `+sw` appears once.
