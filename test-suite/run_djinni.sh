@@ -1257,6 +1257,14 @@ if ! grep -qF -- "val bytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotl
     echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2
     exit 1
 fi
+array_jni="$temp_out"/kotlin-jni-extern-array/jni
+if ! grep -qF -- 'jniGetFieldID(clazz.get(), "bytes", "[B")' "$array_jni"/kotlin_extern_arrays.hpp || \
+   ! grep -qF -- 'jniGetFieldID(clazz.get(), "keyed", "[Lcom/dropbox/djinni/testextern/ExternByteMessage;")' "$array_jni"/kotlin_extern_arrays.hpp || \
+   ! grep -qF -- '::djinni::Array<::djinni::I8, ' "$array_jni"/kotlin_extern_arrays.cpp || \
+   ! grep -qF -- '::djinni::Array<djinni::kotlin::kotlin_extern::ByteMessage::Translator, ' "$array_jni"/kotlin_extern_arrays.cpp; then
+    echo "The JNI code of the array<extern> case does not use a primitive array and the Kotlin translator." 1>&2
+    exit 1
+fi
 
 # With --jni-out, --kotlin-jni-package must equal --java-package.
 (cd "$base_dir" && \
