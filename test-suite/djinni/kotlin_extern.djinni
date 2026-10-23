@@ -23,7 +23,3 @@ kotlin_extern_parcel_record = record {
   keyed_optional: optional<extern_kotlin_message>;
   keyed_map: map<string, extern_kotlin_message>;
 } deriving(eq, parcelable)
-
-kotlin_extern_ord_record = record {
-  keyed: extern_kotlin_message;
-} deriving(eq, ord, parcelable)

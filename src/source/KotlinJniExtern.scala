@@ -14,7 +14,7 @@ object KotlinJniExtern {
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     // The Kotlin classes alone do not need the JNI keys.
     val jniProblems = if (spec.jniOutFolder.isDefined) keyProblems(idl, spec) else Seq()
-    val all = jniProblems ++ parcelerProblems(idl, spec)
+    val all = jniProblems ++ ordProblems(idl) ++ parcelerProblems(idl, spec)
     if (all.isEmpty) None else Some(all.mkString("\n"))
   }
 
@@ -40,6 +40,15 @@ object KotlinJniExtern {
         "Run the generator twice: --java-out with --jni-out, and --kotlin-jni-out with --jni-out.")
     } else Seq()
     incomplete ++ both
+  }
+
+  // The Kotlin class of an extern type with Kotlin keys is a message class. Its messages have no order, so the
+  // compareTo of a record cannot call compareTo on it. Java lite messages are not Comparable either.
+  private def ordProblems(idl: Seq[TypeDecl]): Seq[String] = idl.collect {
+    case InternTypeDecl(ident, _, r: Record, _, _) if r.derivingTypes.contains(DerivingType.Ord) => (ident, r)
+  }.flatMap { case (ident, r) =>
+    r.fields.flatMap(f => keyedExterns(f.ty.resolved).map(cls =>
+      s"record ${ident.name}, field ${f.ident.name}: deriving(ord) needs a Comparable class, but the Kotlin class $cls of an extern type has no order. Remove ord from the record."))
   }
 
   // Two Kotlin classes with the same simple name get the same Parceler name, and an IDL type can
