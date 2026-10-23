@@ -22,8 +22,9 @@ def main() -> None:
         parts = name.split(".")
         pkg = [p for p in parts if p[:1].islower()]
         classes = [p for p in parts if p[:1].isupper()]
-        if not classes:
-            continue
+        # The split by case needs a package of lower case parts and a class that starts with a capital letter
+        if not classes or not pkg or name != ".".join(pkg + classes):
+            sys.exit(f"kotlin_jni_stubs.py: cannot split {name!r} into a lower case package and capitalised classes")
         node = tree.setdefault(".".join(pkg), {})
         for c in classes:
             node = node.setdefault(c, {})
