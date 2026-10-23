@@ -1,4 +1,5 @@
 #include "runtime_async.hpp"
+#include "runtime_color.hpp"
 #include "runtime_error.hpp"
 #include "runtime_listener.hpp"
 
@@ -66,6 +67,10 @@ public:
         // replaced the promise of the call before
         _pendingStarted.fetch_add(1);
         return future;
+    }
+
+    djinni::Future<rt::RuntimeColor> bad_color_future() override {
+        return djinni::Promise<rt::RuntimeColor>::resolve(static_cast<rt::RuntimeColor>(99));
     }
 
     djinni::Future<int32_t> dropped() override {

@@ -414,6 +414,18 @@ func runAsyncSafetyCases(_ service: RuntimeAsync) async throws {
     }
 
     // A promise that is called twice keeps its first result and does not stop the process
+    // The value of a C++ future that Swift cannot convert fails the future with a DjinniError that names the type
+    if enabled("future_value") {
+        do {
+            _ = try await withTimeout(10) { try await service.badColorFuture() }
+            check(false, "an unknown enum value in a future must fail the future")
+        } catch let error as DjinniError {
+            check(error.errorMessage.contains("RuntimeColor"), "future value error names the type: \(error.errorMessage)")
+        } catch is TimeoutError {
+            check(false, "the future of a value that cannot be converted never completes")
+        }
+    }
+
     if enabled("double_fulfil") {
         let twice = DJFuture<Int32> { promise in
             promise(.success(1))
@@ -578,8 +590,9 @@ enum RuntimeQueues {
     static let blocking = DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)
 }
 
-// A deadlock fails the test.
-DispatchQueue.global().asyncAfter(deadline: .now() + 180) {
+// A deadlock fails the test. The watchdog has its own thread, so it does not need a free worker of libdispatch.
+Thread.detachNewThread {
+    Thread.sleep(forTimeInterval: 180)
     print("FAIL: watchdog timeout, the runtime may be deadlocked")
     exit(3)
 }

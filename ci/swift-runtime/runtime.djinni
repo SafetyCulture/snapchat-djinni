@@ -75,6 +75,8 @@ runtime_async = interface +c {
   max_concurrent(): i32;
   # A future whose promise C++ drops without a value
   dropped(): future<i32>;
+  # A future that C++ fulfils with an enum value that Swift does not know; the conversion of the value must fail the future
+  bad_color_future(): future<runtime_color>;
   # C++ chains a handler that throws an exception outside std::exception to the future of a Swift host
   describe_future_failure(listener: runtime_listener): string;
   # These methods throw a C++ exception.
