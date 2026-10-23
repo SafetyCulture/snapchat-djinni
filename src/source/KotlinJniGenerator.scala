@@ -225,7 +225,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     if (spec.jniUseOnLoad) {
       w.w("init").braced {
         w.w("try").braced {
-          w.wl(s"Class.forName(${q(marshal.packageName.getOrElse("") + "." + moduleClass)})")
+          w.wl(s"Class.forName(${q(marshal.packageName.fold(moduleClass)(_ + "." + moduleClass))})")
         }
         w.w("catch (e: ClassNotFoundException)").braced {
           w.wl(s"throw IllegalStateException(${q("Failed to initialize djinni module")}, e)")

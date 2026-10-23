@@ -220,6 +220,15 @@ for mode in error-sync:kotlin_error::false error-suspend:kotlin_error_async:--ko
   compile_and_compare "$name" "$package" "" "$repo_root/ci/kotlin-jni/error"
 done
 
+# Kotlin classes without a package, with the registration in JNI_OnLoad: the module initializer must find the
+# module class. The support-lib classes come from the suite pass.
+name=module
+mkdir -p "$work/$name/classes"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --jni-use-on-load-initializer true --idl djinni/kotlin_jni_module.djinni)
+kotlinc -Werror -d "$work/$name/classes" -cp "$work/suite/java-classes" "$work/$name/kotlin" "$repo_root/ci/kotlin-jni/module/ModuleProbe.kt"
+java -cp "$work/$name/classes:$work/suite/java-classes:$kotlin_lib/kotlin-stdlib.jar" ModuleProbeKt
+
 # 4. Extern records with the Kotlin keys. The JNI code binds one class for each extern type, so Java and Kotlin
 # are generated apart. The Java classes are the reference: the Kotlin class of the extern type replaces its
 # Java class in their descriptors. The header of the translator is a copy of the form that the Crux plugin writes.
