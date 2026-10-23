@@ -105,7 +105,11 @@ run_mode() {
   echo "== kotlinc and run: $name"
   kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main" \
     "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt"
-  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib"
+  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib" 2>&1 | tee "$work/java-$name.log"
+  if grep -q "WARNING in native method" "$work/java-$name.log"; then
+    echo "FAIL: -Xcheck:jni reported a warning in $name" >&2
+    exit 1
+  fi
 }
 stdlib="$kotlin_lib/kotlin-stdlib.jar"
 run_mode sync "$out/kotlin" Main.kt "$stdlib"
