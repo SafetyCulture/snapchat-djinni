@@ -634,7 +634,7 @@ a second run:
 ```
 java -jar djinni.jar \
   --kotlin-jni-out out/kotlin --java-package com.example.cruxkt.domain \
-  --jni-out out/jni --jni-namespace djinni_generated_kt \
+  --jni-out out/jni/kt --jni-namespace djinni_generated_kt \
   --jni-include-prefix kt/ --idl main.djinni
 ```
 
@@ -646,7 +646,8 @@ java -jar djinni.jar \
   library exports one set of `Java_*` symbols for each run, and no symbol is
   defined twice.
 - `--jni-include-prefix kt/` writes the includes of the second JNI headers for a
-  `kt` folder. Compile the second JNI code with the include folder above `kt/`.
+  `kt` folder. The JNI output folder is `out/jni/kt`, so compile the second JNI
+  code with `out/jni` as the include folder.
 
 The C++ proxy cache keys each entry by the glue class, not by the C++ type. Two
 glue sets of one C++ type thus get one Java proxy each. A handle records the tag
