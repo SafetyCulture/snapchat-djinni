@@ -17,6 +17,12 @@ public:
         std::memcpy(data, bytes_.data(), static_cast<size_t>(size));
         return true;
     }
+    // The translator of the Kotlin class uses the string form and the type name in its errors.
+    bool SerializeToString(std::string* out) const {
+        out->assign(bytes_);
+        return true;
+    }
+    std::string GetTypeName() const { return "kotlin_extern.KotlinMessage"; }
     bool operator==(const KotlinMessage& other) const { return bytes_ == other.bytes_; }
 
 private:
