@@ -1,0 +1,29 @@
+# One IDL for two glue sets of the same C++ types. The static method returns one shared C++ object.
+
+two_glue_color = enum {
+  red;
+  green;
+  blue;
+}
+
+two_glue_record = record {
+  value: i32;
+  name: string;
+}
+
+two_glue_listener = interface +j {
+  on_value(value: i32): i32;
+}
+
+two_glue_service = interface +c {
+  static get(): two_glue_service;
+
+  # The number of C++ objects that the collector released.
+  static released(): i32;
+
+  self(): two_glue_service;
+  value(): i32;
+  echo(item: two_glue_record): two_glue_record;
+  invert(color: two_glue_color): two_glue_color;
+  call_listener(listener: two_glue_listener, value: i32): i32;
+}
