@@ -147,7 +147,7 @@ def main() -> None:
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")
 
     exported, lookups = jni_lookups(jni_dir)
-    # Empty lookups would pass checks 4-6 vacuously if the C++ layout changed
+    # With no parsed lookups, checks 4-6 check nothing
     if not lookups:
         failures.append("no JNI field or method lookups found in the generated C++")
     registrations, table_problems = native_tables(jni_dir)
