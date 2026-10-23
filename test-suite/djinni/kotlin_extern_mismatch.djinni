@@ -1,0 +1,5 @@
+@extern "vendor/third-party/kotlin_extern_mismatch.yaml"
+
+record_with_mismatched_extern = record {
+    text: extern_kotlin_mismatch;
+}

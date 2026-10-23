@@ -6,7 +6,7 @@
 #include "../cpp/swift_host_listener.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftHostListener = djinni::swift::Interface<::testsuite::SwiftHostListener>;
 
@@ -18,4 +18,4 @@ public:
     std::string on_text(const std::string & text, bool internal, int32_t inout) override;
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

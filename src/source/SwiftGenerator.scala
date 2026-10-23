@@ -93,7 +93,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     writeSwiftFile(ident, origin, List[String](), w => {
       val t = marshal.typename(ident, e)
       if (e.flags) {
-        w.w(s"public struct $t: OptionSet, Sendable").braced {
+        w.w(s"public struct $t: OptionSet, Hashable, Codable, Sendable").braced {
           w.wl("public let rawValue: Int32")
           w.wl("public init(rawValue: Int32) { self.rawValue = rawValue }")
           writeFlagNone(w, e, idSwift.enum, t)
@@ -101,7 +101,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           writeFlagAll(w, e, idSwift.enum, t)
         }
       } else {
-        w.w(s"public enum ${marshal.typename(ident, e)}: Int32, Sendable").braced {
+        w.w(s"public enum ${marshal.typename(ident, e)}: Int32, Codable, Sendable").braced {
           writeEnumOptions(w, e, idSwift.enum, "=", "case ", "")
         }
       }
@@ -146,7 +146,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       case l: Long => w.w(l.toString)
       case d: Double => w.w(d.toString)
       case b: Boolean => w.w(if (b) "true" else "false")
-      case s: String => w.w(s)
+      // The generator checks the string before it writes a file, so a problem here cannot happen
+      case s: String => w.w(SwiftLiteral.convert(s).fold(message => throw GenerateException(message), literal => literal))
       case e: EnumValue =>  w.w(s"${marshal.typename(ty)}.${idSwift.enum(e)}")
       case v: ConstRef => w.w(idSwift.const(v))
       case z: Map[_, _] => { // Value is record
@@ -189,7 +190,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   override def generateRecord(origin: String, ident: Ident, doc: Doc, params: Seq[TypeParam], r: Record) {
     val refs = new SwiftRefs(ident.name)
     r.fields.foreach(f => refs.find(f.ty))
-    val sendable = if (r.fields.forall(f => marshal.isSendable(f.ty.resolved))) "Sendable" else "@unchecked Sendable"
+    // A DataRef or a DataView makes the record not Sendable at all: there is no honest @unchecked claim for it.
+    val sendable =
+      if (r.fields.exists(f => marshal.holdsBuffer(f.ty.resolved))) ""
+      else if (r.fields.forall(f => marshal.isSendable(f.ty.resolved))) "Sendable"
+      else "@unchecked Sendable"
     val deriving = if (spec.swiftErrorType.contains(marshal.typename(ident, r))) r.derivingTypes + DerivingType.Error else r.derivingTypes
     val fieldKeyword = if (spec.swiftLegacyRecords) "var" else "let"
     writeSwiftFile(ident, origin, refs.swiftImports, w => {
@@ -213,12 +218,15 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"public enum ${marshal.typename(ident, r)}Marshaller: DjinniSupport.Marshaller").braced {
         w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, r)}")
         w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType").braced {
+          // A field named p or djinni would hide the closure parameter or the C++ namespace in the closure
+          val fields = r.fields.map(f => idSwift.field(f.ident))
+          val locals = fields.map(name => if (SwiftIdent.reservedLocals.contains(name)) SwiftIdent.fresh(name, fields.toSet ++ SwiftIdent.reservedLocals) else name)
           w.wl("return try withUnsafePointer(to: c) { p in").nested {
-            for ((f, i) <- r.fields.view.zipWithIndex) {
-              val swiftExp = s"djinni.swift.getMember(p, $i)"
-              w.wl(s"let ${idSwift.field(f.ident)} = try ${marshal.fromCpp(f.ty, swiftExp)}")
+            for (((f, local), i) <- r.fields.zip(locals).zipWithIndex) {
+              val swiftExp = s"DjinniSupport.compositeMember(p, $i)"
+              w.wl(s"let $local = try ${marshal.fromCpp(f.ty, swiftExp)}")
             }
-            val members = r.fields.map(f => s"${SwiftIdent.label(idSwift.field(f.ident))}: ${idSwift.field(f.ident)}").mkString(", ")
+            val members = r.fields.zip(locals).map { case (f, local) => s"${SwiftIdent.label(idSwift.field(f.ident))}: $local" }.mkString(", ")
             w.wl(s"return SwiftType(${members})")
           }
           w.wl("}")
@@ -228,7 +236,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl("var ret = djinni.swift.makeCompositeValue()")
             for (f <- r.fields) {
               val swiftExpr = s"s.${idSwift.field(f.ident)}"
-              w.wl(s"djinni.swift.addMember(&ret, try ${marshal.toCpp(f.ty,swiftExpr )})")
+              w.wl(s"try DjinniSupport.addMember(&ret, ${marshal.toCpp(f.ty,swiftExpr )})")
             }
             w.wl("return ret")
           } else {
@@ -238,28 +246,115 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       }
     })
   }
+  // The name of a parameter inside the method. A parameter named djinni would hide the C++ namespace that the body
+  // uses, so it has another name inside the method and keeps its label.
+  private def internalName(m: Interface.Method, p: Field): String = {
+    val name = idSwift.local(p.ident)
+    if (name == "djinni") SwiftIdent.fresh(name, m.params.map(q => idSwift.local(q.ident)).toSet) else name
+  }
+
   private def paramList(m: Interface.Method): String = {
     // skip label for the first parameter
     val first = if (m.params.nonEmpty) "_ " else ""
-    first + m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", ")
+    first + m.params.zipWithIndex.map { case (p, index) =>
+      val label = idSwift.local(p.ident)
+      val internal = internalName(m, p)
+      val declared = if (index > 0 && internal != label) s"$label $internal" else internal
+      s"$declared: ${marshal.fqParamType(p.ty)}"
+    }.mkString(", ")
   }
 
   // The arguments of a call to the proxy, from a closure that runs on another queue.
   private def proxyArguments(m: Interface.Method): String = {
     m.params.view.zipWithIndex.map { case (p, index) =>
       val label = if (index == 0) "" else s"${SwiftIdent.label(idSwift.local(p.ident))}: "
-      val value = if (marshal.isSendableArgument(p.ty.resolved)) idSwift.local(p.ident) else s"_${SwiftIdent.plain(p.ident)}.value"
-      label + value
+      label + sendableValue(m, p)
     }.mkString(", ")
   }
 
+  // A parameter inside a closure that runs on another queue: a value that is not Sendable crosses in a box.
+  private def sendableValue(m: Interface.Method, p: Field): String =
+    if (marshal.isSendableArgument(p.ty.resolved)) internalName(m, p) else s"_${SwiftIdent.plain(p.ident)}.value"
+
+  private def writeSendableBoxes(w: IndentWriter, m: Interface.Method) {
+    for (p <- m.params if !marshal.isSendableArgument(p.ty.resolved)) {
+      w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${internalName(m, p)})")
+    }
+  }
+
+  // The body of a method that calls C++: the arguments go into a parameter list, the glue function runs, and a C++
+  // error throws. The locals take other names when an IDL parameter has the same name, and a parameter named inst
+  // does not hide the member that holds the C++ object.
+  private def writeCppCall(w: IndentWriter, glue: String, m: Interface.Method, value: Field => String) {
+    val params = m.params.map(p => idSwift.local(p.ident)).toSet
+    val list = SwiftIdent.fresh("_params", params)
+    val ret = SwiftIdent.fresh("ret", params)
+    w.wl(s"var $list = djinni.swift.ParameterList()")
+    if (!m.static) {
+      w.wl(s"$list.addValue(${if (params.contains("inst")) "self.inst" else "inst"})")
+    }
+    for (p <- m.params) {
+      w.wl(s"$list.addValue(try ${marshal.toCpp(p.ty, value(p))})")
+    }
+    w.wl(s"var $ret = $glue(&$list)")
+    w.wl(s"try handleCppErrors(&$ret)")
+    if (!m.ret.isEmpty) {
+      w.wl(s"return try ${marshal.fromCpp(m.ret.get, ret)}")
+    }
+  }
+
+  private def asyncQueue = spec.swiftAsyncQueue.getOrElse("DispatchQueue.global(qos: .userInitiated)")
+
+  // The Swift type of the --swift-error-type record, with its module.
+  private var errorType: Option[String] = None
+
+  override def generate(idl: Seq[TypeDecl]) {
+    errorType = spec.swiftErrorType.map(name => idl.collectFirst {
+      case td: InternTypeDecl if td.body.isInstanceOf[Record] && idSwift.ty(td.ident.name) == name => marshal.fqTypename(td.ident.name, td.body)
+      case td: ExternTypeDecl if td.body.isInstanceOf[Record] && swiftBlock(td, "typename").contains(name) =>
+        swiftBlock(td, "module").fold(name)(module => s"$module.$name")
+    }.getOrElse(name))
+    super.generate(idl)
+  }
+
+  private def swiftBlock(td: ExternTypeDecl, key: String): Option[String] = td.properties.get("swift") match {
+    case Some(block: java.util.Map[_, _]) => Option(block.get(key)).map(_.toString)
+    case _ => None
+  }
+
+  private def typed(i: Interface, m: Interface.Method): Boolean = errorType.isDefined && SwiftErrorType.affected(i, m)
+
+  // An outcome, also inside a future, gives its value and throws its error.
+  private def returnsOutcome(m: Interface.Method): Boolean = m.ret.map(_.resolved).exists(r =>
+    marshal.isOutcome(r) || (marshal.isFuture(r) && marshal.isOutcome(r.args.head)))
+
+  private def returnsFuture(m: Interface.Method): Boolean = m.ret.map(_.resolved).exists(marshal.isFuture)
+
+  // The return type of a method with the typed error: the value of an outcome or a future.
+  private def typedReturnType(m: Interface.Method): String = m.ret.map(_.resolved) match {
+    case Some(tm) if marshal.isFuture(tm) && marshal.isOutcome(tm.args.head) => marshal.fqParamType(tm.args.head.args.head)
+    case Some(tm) if marshal.isFuture(tm) || marshal.isOutcome(tm) => marshal.fqParamType(tm.args.head)
+    case _ => marshal.fqReturnType(m.ret)
+  }
+
+  // A closure with the glue call. The helper changes its errors into the error type, and an outcome gives its value.
+  private def writeTypedCall(w: IndentWriter, m: Interface.Method, head: String, body: IndentWriter => Unit) {
+    w.wl(s"$head {")
+    w.nested { body(w) }
+    w.wl("}" + (if (returnsOutcome(m)) ".get()" else ""))
+  }
   private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
     val name = marshal.typename(ident, i)
-    writeDoc(w, doc)
+    val queue = asyncQueue
+    val cancelled = errorType.fold("CancellationError")(e => s"$e(cancellation:)")
+    val contract = Seq(
+      s" Each async method runs its blocking C++ call on `$queue`. Calls to one object can run at the same time.",
+      s" A task that is already cancelled when a method starts throws $cancelled and does not call C++. A task that waits",
+      s" for a C++ future resumes once, with the result or with $cancelled. The C++ future is not cancelled; its late result is dropped.")
+    writeDoc(w, Doc(if (doc.lines.isEmpty) contract else doc.lines ++ Seq("") ++ contract))
     w.w(s"public final class $name: @unchecked Sendable").braced {
-      // Prefixed names: an IDL method named proxy or queue must not collide with the storage
+      // Prefixed name: an IDL method named proxy must not collide with the storage
       w.wl(s"let djinniProxy: ${name}CppProxy")
-      w.wl(s"""private let djinniQueue = DispatchQueue(label: "${spec.swiftAsyncWrap.get}.${SwiftIdent.plain(ident)}")""")
       w.wl
       w.wl(s"init(proxy: ${name}CppProxy) { self.djinniProxy = proxy }")
       for (m <- i.methods.filter(!_.static)) {
@@ -267,64 +362,25 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         writeMethodDoc(w, m, idSwift.local)
         val call = s"djinniProxy.${idSwift.method(m.ident)}(${proxyArguments(m)})"
         val ret = m.ret.map(_.resolved)
-        // With --swift-error-type, a C++ exception of an outcome method becomes a value of the error type.
-        val typedOutcome = spec.swiftErrorType.isDefined && ret.exists(marshal.isOutcome)
-        w.w(s"public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
-        if (typedOutcome) {
-          w.w(s" throws(${marshal.fqParamType(ret.get.args(1))}) -> ${marshal.fqParamType(ret.get.args.head)}")
-        } else if (ret.exists(r => marshal.isOutcome(r) || marshal.isFuture(r))) {
-          w.w(s" throws -> ${marshal.fqParamType(ret.get.args.head)}")
-        } else {
-          w.w(s" throws -> ${marshal.fqReturnType(m.ret)}")
+        // With nonisolated(nonsending) by default, the wrapper would run on the actor of the caller and its result would cross a domain.
+        w.w(s"@concurrent public func ${idSwift.method(m.ident)}(${paramList(m)}) async")
+        errorType match {
+          case Some(e) => w.w(s" throws($e) -> ${typedReturnType(m)}")
+          case None if ret.exists(r => marshal.isOutcome(r) || marshal.isFuture(r)) => w.w(s" throws -> ${marshal.fqParamType(ret.get.args.head)}")
+          case None => w.w(s" throws -> ${marshal.fqReturnType(m.ret)}")
         }
         w.braced {
-          for (p <- m.params if !marshal.isSendableArgument(p.ty.resolved)) {
-            w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
+          writeSendableBoxes(w, m)
+          val capture = "[djinniProxy = self.djinniProxy] in"
+          val (helper, args) = (returnsFuture(m), errorType) match {
+            case (true, Some(e)) => ("djinniCallFutureTyped", s"$e.self, $queue")
+            case (true, None) => ("djinniCallFuture", queue)
+            case (false, Some(e)) => ("djinniCallTyped", s"$e.self, $queue")
+            case (false, None) => ("djinniCall", queue)
           }
-          if (typedOutcome) {
-            w.wl(s"let djinniResult: ${marshal.fqReturnType(m.ret)} = await withCheckedContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(returning: DjinniSupport.cppOutcome { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-            w.wl("return try djinniResult.get()")
-          } else if (ret.exists(marshal.isOutcome)) {
-            w.wl(s"let djinniResult: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-            w.wl("return try djinniResult.get()")
-          } else if (ret.exists(marshal.isFuture)) {
-            w.wl(s"let djinniFuture: ${marshal.fqReturnType(m.ret)} = try await withCheckedThrowingContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-            w.wl("return try await djinniFuture.value")
-          } else if (m.ret.isEmpty) {
-            w.wl("try await withCheckedThrowingContinuation { (djinniContinuation: CheckedContinuation<Void, any Swift.Error>) in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-          } else {
-            w.wl("return try await withCheckedThrowingContinuation { djinniContinuation in").nested {
-              w.wl("self.djinniQueue.async { [djinniProxy = self.djinniProxy] in").nested {
-                w.wl(s"djinniContinuation.resume(with: Result { try $call })")
-              }
-              w.wl("}")
-            }
-            w.wl("}")
-          }
+          // Without the error type, the error of a future of an outcome stays in the Result value.
+          val get = if (ret.exists(marshal.isOutcome) || (errorType.isDefined && returnsOutcome(m))) ".get()" else ""
+          w.wl(s"return try await DjinniSupport.$helper($args) { $capture try $call }$get")
         }
       }
     }
@@ -337,16 +393,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
       for (m <- i.methods.filter(!_.static)) {
         w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
-          w.wl("var _params = djinni.swift.ParameterList()")
-          w.wl("_params.addValue(inst)")
-          for (p <- m.params) {
-            w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
-          }
-          w.wl(s"var ret = ${swiftxxPrefix}${name}_${SwiftIdent.plain(m.ident)}(&_params)")
-          w.wl("try handleCppErrors(&ret)")
-          if (!m.ret.isEmpty) {
-            w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
-          }
+          writeCppCall(w, s"${swiftxxPrefix}${name}_${SwiftIdent.plain(m.ident)}", m, internalName(m, _))
         }
       }
     }
@@ -381,7 +428,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             // skip label for the first parameter
             if (m.params.nonEmpty) { w.w("_ ") }
             w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
-            w.wl(s") throws -> ${marshal.fqReturnType(m.ret)}")
+            if (typed(i, m)) {
+              w.wl(s") throws(${errorType.get}) -> ${typedReturnType(m)}")
+            } else {
+              w.wl(s") throws -> ${marshal.fqReturnType(m.ret)}")
+            }
           }
         }
       }
@@ -395,19 +446,14 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"final class ${marshal.typename(ident, i)}CppProxy: DjinniSupport.CppProxy, ${marshal.fqTypename(ident, i)}, @unchecked Sendable").braced {
           w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
           for (m <- i.methods.filter(!_.static)) {
-            w.w(s"func ${idSwift.method(m.ident)}(")
-            if (m.params.nonEmpty) { w.w("_ ") }
-            w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
-            w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
-              w.wl("var _params = djinni.swift.ParameterList()")
-              w.wl("_params.addValue(inst)")
-              for (p <- m.params) {
-                w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
+            val glue = s"${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}"
+            if (typed(i, m)) {
+              w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) throws(${errorType.get}) -> ${typedReturnType(m)}").braced {
+                writeTypedCall(w, m, s"return try DjinniSupport.djinniTyped(${errorType.get}.self)", writeCppCall(_, glue, m, internalName(m, _)))
               }
-              w.wl(s"var ret = ${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
-              w.wl("try handleCppErrors(&ret)")
-              if (!m.ret.isEmpty) {
-                w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
+            } else {
+              w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
+                writeCppCall(w, glue, m, internalName(m, _))
               }
             }
           }
@@ -421,7 +467,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           for (m <- i.methods.filter(!_.static)) {
             w.wl("{ inst, params, ret in").nested {
               for ((p, i) <- m.params.view.zipWithIndex) {
-                val pi = s"djinni.swift.getMember(params, $i)"
+                val pi = s"DjinniSupport.parameter(params, $i)"
                 w.wl(s"let _${SwiftIdent.plain(p.ident)} = try ${marshal.fromCpp(p.ty, pi)}")
               }
               val args = m.params.view.zipWithIndex.map{case (p, i) =>
@@ -460,7 +506,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"return try cppInterfaceToSwift(c, ${newProxyBlock})")
           }
           w.w("public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue").braced {
-            val newProxyBlock = if (i.ext.swift) {s"{ ${swiftxxPrefix}$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)}"} else {s"""{ throw DjinniError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
+            val newProxyBlock = if (i.ext.swift) {s"{ try checkedProxy(${swiftxxPrefix}$swiftProxyClassName.make(ctxPtr(s as SwiftType, ${swiftProxyVtbl}), dispatcherProtocalCall)) }"} else {s"""{ throw DjinniError("${marshal.typename(ident, i)} has no Swift host implementation: add +sw to the interface") }"""}
             w.wl(s"return try swiftInterfaceToCpp(s, ${newProxyBlock})")
           }
         }
@@ -471,18 +517,20 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"public class ${marshal.typename(ident, i)}_statics: @unchecked Sendable").braced {
           generateSwiftConstants(w, i.consts)
           for (m <- staticMethods) {
-            w.w(s"public static func ${idSwift.method(m.ident)}(")
-            if (m.params.nonEmpty) { w.w("_ ") }
-            w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
-            w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
-              w.wl("var _params = djinni.swift.ParameterList()")
-              for (p <- m.params) {
-              w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
+            val glue = s"${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}"
+            if (typed(i, m) && returnsFuture(m)) {
+              // The C++ call blocks, so it runs on the queue of the async wrappers
+              w.w(s"@concurrent public static func ${idSwift.method(m.ident)}(${paramList(m)}) async throws(${errorType.get}) -> ${typedReturnType(m)}").braced {
+                writeSendableBoxes(w, m)
+                writeTypedCall(w, m, s"return try await DjinniSupport.djinniCallFutureTyped(${errorType.get}.self, $asyncQueue)", writeCppCall(_, glue, m, sendableValue(m, _)))
               }
-              w.wl(s"var ret = ${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
-              w.wl("try handleCppErrors(&ret)")
-              if (!m.ret.isEmpty) {
-              w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
+            } else if (typed(i, m)) {
+              w.w(s"public static func ${idSwift.method(m.ident)}(${paramList(m)}) throws(${errorType.get}) -> ${typedReturnType(m)}").braced {
+                writeTypedCall(w, m, s"return try DjinniSupport.djinniTyped(${errorType.get}.self)", writeCppCall(_, glue, m, internalName(m, _)))
+              }
+            } else {
+              w.w(s"public static func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
+                writeCppCall(w, glue, m, internalName(m, _))
               }
             }
           }

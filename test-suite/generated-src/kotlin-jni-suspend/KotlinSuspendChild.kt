@@ -4,25 +4,24 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 abstract class KotlinSuspendChild {
     abstract suspend fun name(): String
 
+    /**
+     * Each suspend method runs its blocking C++ call on `kotlinx.coroutines.Dispatchers.IO`. Calls to one object can run at the same time.
+     * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future
+     * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.
+     */
     class CppProxy private constructor(private val nativeRef: Long) : KotlinSuspendChild() {
-        private val destroyed = AtomicBoolean(false)
-        private val dispatcher = Dispatchers.IO.limitedParallelism(1)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override suspend fun name(): String {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_name(this@CppProxy.nativeRef) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_name(this@CppProxy.nativeRef) }
         }
         private external fun native_name(_nativeRef: Long): String
 

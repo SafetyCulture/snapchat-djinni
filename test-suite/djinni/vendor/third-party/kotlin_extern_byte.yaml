@@ -1,0 +1,39 @@
+# An extern whose Java type is the primitive byte, for the array<extern> case.
+---
+name: extern_byte
+typedef: 'record'
+params: []
+prefix: ''
+cpp:
+  typename: 'int8_t'
+  header: '<cstdint>'
+  byValue: true
+objc:
+  typename: 'NSNumber'
+  header: '<Foundation/Foundation.h>'
+  boxed: 'NSNumber'
+  pointer: true
+  hash: '(NSUInteger)%s.integerValue'
+objcpp:
+  translator: '::djinni::I8'
+  header: '"DJIMarshal+Private.h"'
+java:
+  typename: 'byte'
+  boxed: 'java.lang.Byte'
+  reference: false
+  generic: false
+  hash: 'Byte.valueOf(%s).hashCode()'
+  writeToParcel: 'out.writeByte(%s)'
+  readFromParcel: 'in.readByte()'
+jni:
+  translator: '::djinni::I8'
+  header: '"Marshal.hpp"'
+  typename: jbyte
+  typeSignature: 'B'
+wasm:
+  typename: 'int8_t'
+  translator: '::djinni::I8'
+  header: '"djinni_wasm.hpp"'
+ts:
+  typename: 'number'
+  module: ''

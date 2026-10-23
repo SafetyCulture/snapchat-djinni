@@ -6,16 +6,16 @@
 #include "Outcome_swift.hpp"
 #include "swift_sendable_error.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableWithOutcomeData::fromCpp(const ::testsuite::SwiftSendableWithOutcomeData& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
-    ret->addValue(::djinni::swift::OutcomeAdaptor<::djinni::swift::DataRefAdaptor, ::djinni_generated::SwiftSendableError>::fromCpp(c.result));
+    ret->addValue(::djinni::swift::OutcomeAdaptor<::djinni::swift::DataRefAdaptor, ::djinni_generated_swift::SwiftSendableError>::fromCpp(c.result));
     return {ret};
 }
 ::testsuite::SwiftSendableWithOutcomeData SwiftSendableWithOutcomeData::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftSendableWithOutcomeData(::djinni::swift::OutcomeAdaptor<::djinni::swift::DataRefAdaptor, ::djinni_generated::SwiftSendableError>::toCpp(p->getValue(0)));
+    return ::testsuite::SwiftSendableWithOutcomeData(::djinni::swift::OutcomeAdaptor<::djinni::swift::DataRefAdaptor, ::djinni_generated_swift::SwiftSendableError>::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

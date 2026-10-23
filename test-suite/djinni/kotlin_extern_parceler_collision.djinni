@@ -1,0 +1,10 @@
+@extern "vendor/third-party/kotlin_extern.yaml"
+
+# An internal record with the name of the Parceler of the extern type: the generator must reject it.
+extern_kotlin_message_parceler = record {
+  value: i32;
+} deriving(parcelable)
+
+kotlin_extern_parceler_collision = record {
+  message: extern_kotlin_message;
+} deriving(parcelable)

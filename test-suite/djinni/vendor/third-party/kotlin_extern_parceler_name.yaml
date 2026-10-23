@@ -1,0 +1,31 @@
+# An extern record with the name of the Parceler of extern_kotlin_message. An extern writes no Kotlin file, so the names do not collide.
+---
+name: extern_kotlin_message_parceler
+typedef: 'record deriving(eq, ord, parcelable)'
+params: []
+prefix: ''
+cpp:
+  typename: 'kotlin_extern::PlainMessage'
+  header: '"kotlin_extern.pb.h"'
+  byValue: false
+objc:
+  typename: 'KEPlainMessage'
+  header: '"KEPlainMessage.pbobjc.h"'
+  boxed: 'KEPlainMessage'
+  pointer: true
+  hash: '%s.hash()'
+objcpp:
+  translator: 'djinni::kotlin_extern::PlainMessage::Translator'
+  header: '"kotlin_extern.djinni.objc.h"'
+java:
+  typename: 'com.dropbox.djinni.testextern.ExternPlainMessage'
+  boxed: 'com.dropbox.djinni.testextern.ExternPlainMessage'
+  reference: true
+  generic: false
+  hash: '%s.hashCode()'
+jni:
+  translator: 'djinni::kotlin_extern::PlainMessage::Translator'
+  header: '"kotlin_extern.djinni.jni.h"'
+  typename: jobject
+  typeSignature: 'Lcom/dropbox/djinni/testextern/ExternPlainMessage;'
+

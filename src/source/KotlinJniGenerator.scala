@@ -55,8 +55,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   private def typeParams(params: Seq[TypeParam]): String =
     if (params.isEmpty) "" else params.map(p => idJava.typeParam(p.ident)).mkString("<", ", ", ">")
 
-  private def writeThrows(w: IndentWriter) {
-    spec.javaCppException.foreach(e => w.wl(s"@Throws($e::class)"))
+  // With `typed`, the method throws the class of --kotlin-error-type too.
+  private def writeThrows(w: IndentWriter, typed: Boolean = false) {
+    val classes = spec.javaCppException.toSeq ++ (if (typed) spec.kotlinErrorType.toSeq else Seq())
+    if (classes.nonEmpty) w.wl(s"@Throws(${classes.map(_ + "::class").mkString(", ")})")
   }
 
   private def paramList(m: Interface.Method): String =
@@ -65,7 +67,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   // The type that a suspend function returns. A future<T> returns T.
   private def suspendReturnClause(ret: Option[TypeRef]): String = ret match {
     case Some(ty) => marshal.futureValueType(ty) match {
-      case Some("Unit") => ""
+      case Some(marshal.voidFutureValue) => ""
       case Some(value) => ": " + value
       case None => returnClause(ret)
     }
@@ -80,11 +82,95 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
 
   private def returnClause(ret: Option[TypeRef]): String = ret.fold("")(ty => ": " + marshal.returnType(Some(ty)))
 
+  // A method of --kotlin-error-type returns T for T, outcome<T, E>, future<T> and future<outcome<T, E>>.
+  // `future` is the argument of a future, and `outcome` is true when the value is an outcome<T, E>.
+  private case class TypedReturn(value: String, future: Option[MExpr], outcome: Boolean)
+
+  private def typedReturn(ret: Option[TypeRef]): TypedReturn = {
+    val future = ret.flatMap(r => marshal.futureArg(r.resolved))
+    val inner = ret.map(r => future.getOrElse(r.resolved))
+    TypedReturn(marshal.typedValue(ret), future, inner.exists(tm => marshal.outcomeTypes(tm).isDefined))
+  }
+
+  private def typedClause(t: TypedReturn): String = if (t.value == marshal.voidFutureValue) "" else ": " + t.value
+
+  // Waits in a suspend function for the C++ future in djinni_future. The statement starts with `prefix`. With an
+  // error type, a DjinniCppException fails the call with that class; other failures and cancellation stay as they are.
+  private def writeFutureWait(w: IndentWriter, ret: TypeRef, value: String, prefix: String, errorType: Option[String]) {
+    // A future<void> has no value. A record named unit is a value, and its Kotlin class is named Unit
+    val isVoid = value == marshal.voidFutureValue
+    w.wl(s"${prefix}suspendCancellableCoroutine<${if (isVoid) marshal.voidFutureValue else value}> { djinni_continuation ->").nested {
+      w.wl("val djinni_target = AtomicReference(djinni_continuation)")
+      w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
+      w.wl(s"djinni_future.then(Future.FutureHandler<${futureArg(ret)}> { djinni_result ->").nested {
+        w.wl("val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler")
+        w.wl("djinni_waiting.resumeWith(try {").nested {
+          if (isVoid) {
+            w.wl("djinni_result.get()")
+            w.wl("kotlin.Result.success(kotlin.Unit)")
+          } else {
+            w.wl("kotlin.Result.success(djinni_result.get())")
+          }
+        }
+        w.wl("} catch (djinni_e: ExecutionException) {").nested {
+          errorType match {
+            case None => w.wl("kotlin.Result.failure(djinni_e.cause ?: djinni_e)")
+            case Some(x) =>
+              w.wl("val djinni_cause = djinni_e.cause ?: djinni_e")
+              w.wl(s"kotlin.Result.failure(if (djinni_cause is com.snapchat.djinni.DjinniCppException) $x(djinni_cause) else djinni_cause)")
+          }
+        }
+        w.wl("} catch (djinni_e: Throwable) {").nested {
+          w.wl("kotlin.Result.failure(djinni_e)")
+        }
+        w.wl("})")
+      }
+      w.wl("})")
+    }
+    w.wl("}")
+  }
+
+  // The body of a method of --kotlin-error-type: a C++ exception throws the class with (cause: DjinniCppException),
+  // and the error of an outcome throws it with (error: E). A suspend function calls C++ on `dispatcher`.
+  private def writeTypedBody(w: IndentWriter, t: TypedReturn, ret: Option[TypeRef], call: String, suspend: Boolean,
+                             dispatcher: String, errorType: String) {
+    def guarded(prefix: String) {
+      w.wl(s"${prefix}try {").nested { w.wl(call) }
+      w.wl("} catch (djinni_e: com.snapchat.djinni.DjinniCppException) {").nested { w.wl(s"throw $errorType(djinni_e)") }
+      w.wl("}")
+    }
+    def native(prefix: String) {
+      if (suspend) {
+        w.wl(s"${prefix}withContext($dispatcher) {").nested { guarded("") }
+        w.wl("}")
+      } else {
+        guarded(prefix)
+      }
+    }
+    def unwrap() {
+      if (t.value == marshal.voidFutureValue) w.wl(s"djinni_outcome.match({ }, { throw $errorType(it) })")
+      else w.wl(s"return djinni_outcome.match({ it }, { throw $errorType(it) })")
+    }
+    (ret, t.future) match {
+      case (Some(r), Some(_)) =>
+        native("val djinni_future = ")
+        marshal.futureValueType(r).foreach(value =>
+          writeFutureWait(w, r, value, if (t.outcome) "val djinni_outcome = " else "return ", Some(errorType)))
+        if (t.outcome) unwrap()
+      case _ if t.outcome =>
+        native("val djinni_outcome = ")
+        unwrap()
+      case _ =>
+        native(if (t.value == marshal.voidFutureValue) "" else "return ")
+    }
+  }
+
   private def writeConsts(w: IndentWriter, consts: Seq[Const], inInterface: Boolean = false) {
     val constTypes = Set("Int", "Long", "Short", "Byte", "Float", "Double", "Boolean", "String")
 
     def writeValue(ty: TypeRef, v: Any): Unit = v match {
-      case l: Long if marshal.fieldType(ty).stripSuffix("?") == "Long" => w.w(l.toString + "L")
+      // Kotlin negates the literal 9223372036854775808L, which is out of range
+      case l: Long if marshal.fieldType(ty).stripSuffix("?") == "Long" => w.w(if (l == Long.MinValue) "Long.MIN_VALUE" else l.toString + "L")
       // An IDL float constant written without a decimal point parses as Long; Kotlin rejects an Int for Float/Double
       case l: Long if Set("Float", "Double").contains(marshal.fieldType(ty).stripSuffix("?")) =>
         w.w(if (marshal.fieldType(ty).stripSuffix("?") == "Float") l.toString + ".0f" else l.toString + ".0")
@@ -93,7 +179,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       case d: Double => w.w(d.toString)
       case b: Boolean => w.w(if (b) "true" else "false")
       case s: String => w.w(s.replace("$", "\\$"))
-      case e: EnumValue => w.w(s"${marshal.typename(ty)}.${idJava.enum(e)}")
+      case e: EnumValue => w.w(s"${marshal.typename(ty).stripSuffix("?")}.${idJava.enum(e)}")
       case v: ConstRef => w.w(idJava.const(v))
       case z: Map[_, _] =>
         val record = ty.resolved.base.asInstanceOf[MDef].body.asInstanceOf[Record]
@@ -124,11 +210,16 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     }
   }
 
+  // Kotlin comments nest, so a /* in a doc comment would comment out the rest of the file.
+  override def writeDoc(w: IndentWriter, doc: Doc) {
+    super.writeDoc(w, Doc(doc.lines.map(_.replace("/*", "/\\*"))))
+  }
+
   private def writeModuleInitializer(w: IndentWriter) {
     if (spec.jniUseOnLoad) {
       w.w("init").braced {
         w.w("try").braced {
-          w.wl(s"Class.forName(${q(marshal.packageName.getOrElse("") + "." + moduleClass)})")
+          w.wl(s"Class.forName(${q(marshal.packageName.fold(moduleClass)(_ + "." + moduleClass))})")
         }
         w.w("catch (e: ClassNotFoundException)").braced {
           w.wl(s"throw IllegalStateException(${q("Failed to initialize djinni module")}, e)")
@@ -178,25 +269,28 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     })
     i.consts.foreach(c => refs.find(c.ty))
     if (i.ext.cpp) {
-      refs.imports.add("java.util.concurrent.atomic.AtomicBoolean")
       refs.imports.add("com.snapchat.djinni.NativeObjectManager")
     }
     // JNI calls only the natives of an interface that C++ implements. It calls the methods of one that Kotlin implements.
     val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
     val suspendInstance = suspendWrap && i.methods.exists(m => !m.static)
     val suspendFuture = suspendWrap && i.methods.exists(m => !m.static && m.ret.exists(r => marshal.futureValueType(r).isDefined))
-    if (suspendInstance) {
-      refs.imports ++= Seq("kotlinx.coroutines.Dispatchers", "kotlinx.coroutines.withContext")
+    val dispatcher = spec.kotlinSuspendDispatcher.getOrElse("kotlinx.coroutines.Dispatchers.IO")
+    val statics = i.methods.filter(m => m.static && m.lang.java)
+    // With --kotlin-error-type, a static method that returns a future is a suspend function too.
+    val staticFuture = spec.kotlinErrorType.isDefined && statics.exists(m => m.ret.exists(r => marshal.futureValueType(r).isDefined))
+    if (suspendInstance || staticFuture) {
+      refs.imports += "kotlinx.coroutines.withContext"
     }
-    if (suspendFuture) {
+    if (suspendFuture || staticFuture) {
       refs.imports ++= Seq("com.snapchat.djinni.Future", "java.util.concurrent.ExecutionException",
         "java.util.concurrent.atomic.AtomicReference", "kotlinx.coroutines.suspendCancellableCoroutine")
     }
 
     val self = marshal.typename(ident, i)
     val typeParamList = typeParams(params)
-    val statics = i.methods.filter(m => m.static && m.lang.java)
     val asInterface = spec.javaGenInterface && statics.isEmpty && !i.ext.cpp
+    def typed(m: Interface.Method): Option[String] = spec.kotlinErrorType.filter(_ => KotlinErrorType.affected(i, m))
 
     writeKotlinFile(ident, origin, refs.imports, w => {
       writeDoc(w, doc)
@@ -208,11 +302,16 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         for (m <- i.methods if !m.static) {
           skipFirst { w.wl }
           writeMethodDoc(w, m, idJava.local)
-          writeThrows(w)
-          if (suspendWrap) {
+          writeThrows(w, typed(m).isDefined)
+          if (typed(m).isDefined) {
+            // KotlinJniIdent.check lets only a blocking toString(): String or hashCode(): Int through
+            val anyOverride = if (KotlinJniIdent.overridesAny(idJava.method(m.ident), m)) "override " else ""
+            w.wl(s"abstract $anyOverride${if (suspendWrap) "suspend " else ""}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${typedClause(typedReturn(m.ret))}")
+          } else if (suspendWrap) {
             w.wl(s"abstract suspend fun ${kt(idJava.method(m.ident))}(${paramList(m)})${suspendReturnClause(m.ret)}")
           } else {
-            w.wl(s"${modifier}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
+            val anyOverride = if (KotlinJniIdent.overridesAny(idJava.method(m.ident), m)) "override " else ""
+            w.wl(s"$modifier${anyOverride}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
           }
         }
 
@@ -226,21 +325,36 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             for (m <- statics) {
               w.wl
               writeMethodDoc(w, m, idJava.local)
-              writeThrows(w)
-              w.wl(s"@JvmStatic external fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
+              writeThrows(w, typed(m).isDefined)
+              val meth = idJava.method(m.ident)
+              typed(m) match {
+                case Some(errorType) =>
+                  // The native keeps its JVM name, so the JNI binding does not change. The public function needs another JVM name.
+                  val t = typedReturn(m.ret)
+                  val call = s"native_$meth(${m.params.map(p => kt(idJava.local(p.ident))).mkString(", ")})"
+                  w.w(s"@JvmStatic @JvmName(${q("djinni_" + meth)}) ${if (t.future.isDefined) "suspend " else ""}fun ${kt(meth)}(${paramList(m)})${typedClause(t)}").braced {
+                    writeTypedBody(w, t, m.ret, call, t.future.isDefined, dispatcher, errorType)
+                  }
+                  w.wl(s"@JvmStatic @JvmName(${q(meth)}) private external fun native_$meth(${paramList(m)})${returnClause(m.ret)}")
+                case None =>
+                  w.wl(s"@JvmStatic external fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}")
+              }
             }
           }
         }
 
         if (i.ext.cpp) {
           w.wl
+          if (suspendInstance) {
+            w.wl("/**")
+            w.wl(s" * Each suspend method runs its blocking C++ call on `$dispatcher`. Calls to one object can run at the same time.")
+            w.wl(" * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future")
+            w.wl(" * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.")
+            spec.kotlinErrorType.foreach(x => w.wl(s" * A C++ exception or the error of an outcome throws `$x`. CancellationException is not wrapped."))
+            w.wl(" */")
+          }
           annotationHeader.foreach(w.wl)
           w.w(s"class CppProxy$typeParamList private constructor(private val nativeRef: Long) : $self$typeParamList()").braced {
-            w.wl("private val destroyed = AtomicBoolean(false)")
-            if (suspendInstance) {
-              w.wl("private val dispatcher = Dispatchers.IO.limitedParallelism(1)")
-            }
-            w.wl
             w.w("init").braced {
               w.wl("if (nativeRef == 0L) throw RuntimeException(\"nativeRef is zero\")")
               w.wl("NativeObjectManager.register(this, nativeRef)")
@@ -250,48 +364,30 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
               val meth = idJava.method(m.ident)
               val returnStmt = m.ret.fold("")(_ => "return ")
               w.wl
-              writeThrows(w)
-              if (suspendWrap) {
-                w.w(s"override suspend fun ${kt(meth)}(${paramList(m)})${suspendReturnClause(m.ret)}").braced {
-                  w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                  val call = s"native_$meth(this.nativeRef${preComma(args)})"
-                  m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
-                    case Some((ret, value)) =>
-                      // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
-                      w.wl(s"val djinni_future = withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
-                      w.wl(s"return suspendCancellableCoroutine<${if (value == "Unit") "kotlin.Unit" else value}> { djinni_continuation ->").nested {
-                        w.wl("val djinni_target = AtomicReference(djinni_continuation)")
-                        w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
-                        w.wl(s"djinni_future.then(Future.FutureHandler<${futureArg(ret)}> { djinni_result ->").nested {
-                          w.wl("val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler")
-                          w.wl("djinni_waiting.resumeWith(try {").nested {
-                            if (value == "Unit") {
-                              w.wl("djinni_result.get()")
-                              w.wl("kotlin.Result.success(kotlin.Unit)")
-                            } else {
-                              w.wl("kotlin.Result.success(djinni_result.get())")
-                            }
-                          }
-                          w.wl("} catch (djinni_e: ExecutionException) {").nested {
-                            w.wl("kotlin.Result.failure(djinni_e.cause ?: djinni_e)")
-                          }
-                          w.wl("} catch (djinni_e: Throwable) {").nested {
-                            w.wl("kotlin.Result.failure(djinni_e)")
-                          }
-                          w.wl("})")
-                        }
-                        w.wl("})")
-                      }
-                      w.wl("}")
-                    case None =>
-                      w.wl(s"${returnStmt}withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
+              writeThrows(w, typed(m).isDefined)
+              typed(m) match {
+                case Some(errorType) =>
+                  val t = typedReturn(m.ret)
+                  val ref = if (suspendWrap) "this@CppProxy.nativeRef" else "this.nativeRef"
+                  w.w(s"override ${if (suspendWrap) "suspend " else ""}fun ${kt(meth)}(${paramList(m)})${typedClause(t)}").braced {
+                    // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
+                    writeTypedBody(w, t, m.ret, s"native_$meth($ref${preComma(args)})", suspendWrap, dispatcher, errorType)
                   }
-                }
-              } else {
-                w.w(s"override fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}").braced {
-                  w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                  w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)})")
-                }
+                case None if suspendWrap =>
+                  w.w(s"override suspend fun ${kt(meth)}(${paramList(m)})${suspendReturnClause(m.ret)}").braced {
+                    m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
+                      case Some((ret, value)) =>
+                        // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
+                        w.wl(s"val djinni_future = withContext($dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
+                        writeFutureWait(w, ret, value, "return ", None)
+                      case None =>
+                        w.wl(s"${returnStmt}withContext($dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
+                    }
+                  }
+                case None =>
+                  w.w(s"override fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}").braced {
+                    w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)})")
+                  }
               }
               val nativeParams = "_nativeRef: Long" + preComma(paramList(m))
               w.wl(s"private external fun native_$meth($nativeParams)${returnClause(m.ret)}")
@@ -315,9 +411,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   override def generate(idl: Seq[TypeDecl]) {
     super.generate(idl)
     for ((name, (fqn, origin)) <- parcelers.toSeq.sortBy(_._1)) {
-      writeKotlinFile(name, origin, List("android.os.Parcel", "kotlinx.parcelize.Parceler"), w => {
+      writeKotlinFile(name, origin, List("android.os.BadParcelableException", "android.os.Parcel", "kotlinx.parcelize.Parceler"), w => {
         w.w(s"${accessModifier}object $name : Parceler<$fqn>").braced {
-          w.wl(s"override fun create(parcel: Parcel): $fqn = $fqn.parseFrom(requireNotNull(parcel.createByteArray()))")
+          w.wl(s"override fun create(parcel: Parcel): $fqn =").nested {
+            w.wl(s"""$fqn.parseFrom(parcel.createByteArray() ?: throw BadParcelableException("The Parcel has no byte array for $fqn"))""")
+          }
           w.wl
           w.w(s"override fun $fqn.write(parcel: Parcel, flags: Int)").braced {
             w.wl("parcel.writeByteArray(toByteArray())")
@@ -369,10 +467,13 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         w.w(")")
       }
       w.w(inherits)
-      // A data class compares arrays by reference. Java compares the content.
+      // A data class compares arrays by reference and floats by total order. Java compares the content, and floats by IEEE 754.
       def isArray(f: Field) = f.ty.resolved.base == MBinary || f.ty.resolved.base == MArray
-      val hasArrays = !extended && r.fields.exists(isArray)
-      val hasBody = r.consts.nonEmpty || extended || r.fields.isEmpty || hasArrays || r.derivingTypes.contains(DerivingType.Ord)
+      def isFloat(f: Field) = Set("Float", "Double").contains(marshal.fieldType(f.ty))
+      // Kotlin == compares Float? and Double? by IEEE 754 too. Java compares a boxed float with equals.
+      def isOptionalFloat(f: Field) = Set("Float?", "Double?").contains(marshal.fieldType(f.ty))
+      val customEquals = !extended && r.fields.exists(f => isArray(f) || isFloat(f))
+      val hasBody = r.consts.nonEmpty || extended || r.fields.isEmpty || customEquals || r.derivingTypes.contains(DerivingType.Ord)
       def writeBody() {
         val skipFirst = SkipFirst()
         if (r.consts.nonEmpty) {
@@ -389,7 +490,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl("return " + body)
           }
         }
-        if (hasArrays) {
+        if (customEquals) {
           skipFirst { w.wl }
           val star = if (params.isEmpty) "" else "<*>"
           w.w("override fun equals(other: Any?): Boolean").braced {
@@ -397,7 +498,9 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl(s"if (other !is $self$star) return false")
             val tests = r.fields.map { f =>
               val name = kt(idJava.field(f.ident))
-              if (isArray(f)) s"this.$name.contentEquals(other.$name)" else s"this.$name == other.$name"
+              if (isArray(f)) s"this.$name.contentEquals(other.$name)"
+              else if (isOptionalFloat(f)) s"java.util.Objects.equals(this.$name, other.$name)"
+              else s"this.$name == other.$name"
             }
             w.wl("return " + tests.mkString(" && "))
           }
@@ -406,7 +509,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl("var hashCode = 17")
             for (f <- r.fields) {
               val name = kt(idJava.field(f.ident))
-              val hash = if (isArray(f)) s"$name.contentHashCode()" else s"java.util.Objects.hashCode($name)"
+              val hash =
+                if (isArray(f)) s"$name.contentHashCode()"
+                // -0.0 + 0.0 is 0.0, so -0.0 and 0.0, which are equal, have one hash code
+                else if (isFloat(f)) s"($name + ${if (marshal.fieldType(f.ty) == "Float") "0.0f" else "0.0"}).hashCode()"
+                else s"java.util.Objects.hashCode($name)"
               w.wl(s"hashCode = hashCode * 31 + $hash")
             }
             w.wl("return hashCode")
@@ -418,7 +525,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
             w.wl("var tempResult: Int")
             for (f <- r.fields) {
               val name = kt(idJava.field(f.ident))
-              w.wl(s"tempResult = this.$name.compareTo(other.$name)")
+              if (isFloat(f)) {
+                w.wl(s"tempResult = if (this.$name < other.$name) -1 else if (this.$name > other.$name) 1 else 0")
+              } else {
+                w.wl(s"tempResult = this.$name.compareTo(other.$name)")
+              }
               w.w("if (tempResult != 0)").braced {
                 w.wl("return tempResult")
               }

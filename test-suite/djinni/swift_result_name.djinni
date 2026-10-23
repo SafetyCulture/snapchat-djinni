@@ -1,0 +1,27 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# A record named result is a Swift type named Result in the module. It must not hide Swift.Result in the
+# wrappers or in the outcome type.
+
+swift_result_error = record {
+  message: string;
+} deriving(eq, error)
+
+result = record {
+  value: i32;
+}
+
+swift_result_holder = record {
+  outcome: outcome<i32, swift_result_error>;
+  value: result;
+}
+
+swift_result_service = interface +c {
+  static create(): swift_result_service;
+  echo(value: result): result;
+  fetch(value: result): outcome<result, swift_result_error>;
+  load(): future<result>;
+  ping();
+  plain(): i32;
+}

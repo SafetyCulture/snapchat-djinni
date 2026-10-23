@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Generating and compiling this makes sure other languages don't break
@@ -20,33 +19,27 @@ abstract class UsesSingleLanguageListeners {
     abstract fun returnForJava(): JavaOnlyListener?
 
     class CppProxy private constructor(private val nativeRef: Long) : UsesSingleLanguageListeners() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun callForObjC(l: ObjcOnlyListener?) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             native_callForObjC(this.nativeRef, l)
         }
         private external fun native_callForObjC(_nativeRef: Long, l: ObjcOnlyListener?)
 
         override fun returnForObjC(): ObjcOnlyListener? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_returnForObjC(this.nativeRef)
         }
         private external fun native_returnForObjC(_nativeRef: Long): ObjcOnlyListener?
 
         override fun callForJava(l: JavaOnlyListener?) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             native_callForJava(this.nativeRef, l)
         }
         private external fun native_callForJava(_nativeRef: Long, l: JavaOnlyListener?)
 
         override fun returnForJava(): JavaOnlyListener? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_returnForJava(this.nativeRef)
         }
         private external fun native_returnForJava(_nativeRef: Long): JavaOnlyListener?

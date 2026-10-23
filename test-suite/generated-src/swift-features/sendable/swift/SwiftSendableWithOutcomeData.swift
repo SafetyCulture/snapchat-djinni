@@ -3,10 +3,10 @@
 
 import Foundation
 
-public struct SwiftSendableWithOutcomeData: @unchecked Sendable {
-    public let result: Result<Foundation.NSData, TestSuite.SwiftSendableError>
+public struct SwiftSendableWithOutcomeData {
+    public let result: Swift.Result<Foundation.NSData, TestSuite.SwiftSendableError>
 
-    public init(result: Result<Foundation.NSData, TestSuite.SwiftSendableError>)
+    public init(result: Swift.Result<Foundation.NSData, TestSuite.SwiftSendableError>)
     {
         self.result = result
     }

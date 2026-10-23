@@ -6,7 +6,7 @@
 #include "../cpp/swift_sendable_plain.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftSendablePlain {
     using CppType = ::testsuite::SwiftSendablePlain;
@@ -14,4 +14,4 @@ struct SwiftSendablePlain {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

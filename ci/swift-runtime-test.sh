@@ -9,6 +9,7 @@
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
 #   BAZEL, BAZEL_ARGS  as in check-byte-identity.sh
 #   RUNS               runs of the program in each mode (default: 3)
+#   RUNTIME_TIMEOUT    seconds after which a run of the program is killed (default: 300)
 #   KEEP_OUT           set to 1 to keep the work directory
 set -euo pipefail
 
@@ -43,18 +44,40 @@ if [ ! -f "$spb_mod/libSwiftProtobuf.a" ]; then
 fi
 
 out="$work/out"
+# The queue of the application runs the blocking C++ calls; the other runs use the default queue.
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$out/cpp" --cpp-namespace rt \
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-async-queue RuntimeQueues.blocking \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
-# The error type needs its own IDL, because every method of a C++ interface must return an outcome.
+# The error type has its own IDL: every method that Swift calls into C++ throws it.
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$out/cpp" --cpp-namespace rt \
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-error-type CruxError \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_error.djinni)
+# Without the async wrappers the protocol methods throw the error type.
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out/cpp" --cpp-namespace rt \
+  --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module \
+  --swift-error-type SyncError \
+  --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime_error_sync.djinni)
+
+# Swift calls the make function of a Swift proxy directly, so it needs an exception boundary
+made=0
+for f in "$out"/swiftxx/*.cpp; do
+  if grep -q '::make(void\* instance' "$f"; then
+    made=$((made + 1))
+    if ! grep -A12 '::make(void\* instance' "$f" | grep -q 'catch (\.\.\.)'; then
+      echo "FAIL: the make function in $f has no catch (...)" >&2
+      exit 1
+    fi
+  fi
+done
+[ "$made" -gt 0 ] || { echo "FAIL: no make function was generated" >&2; exit 1; }
 
 # Legacy records have var fields. The record crosses the C++ boundary in both directions.
 (cd "$src" && java -jar "$jar" \
@@ -63,6 +86,14 @@ out="$work/out"
   --swift-legacy-records \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_legacy.djinni)
+
+# The same program with the default queue: runtime.djinni without --swift-async-queue replaces its files.
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$work/default/cpp" --cpp-namespace rt \
+  --swift-out "$work/default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --idl runtime.djinni)
+cp -R "$out/swift" "$out/swift-default"
+cp "$work"/default/swift/*.swift "$out/swift-default/"
 
 # Modules
 mods="$work/mods"; build="$work/build"
@@ -92,22 +123,43 @@ for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/Dat
   "${CXX:-clang++}" "${cxxflags[@]}" -c "$f" -o "$objs/$(basename "$f").o"
 done
 
+# The program has a watchdog of its own. This guard kills it from outside when even the watchdog cannot run.
+run_guarded() { # <command> [arguments]
+  "$@" &
+  local pid=$! guard status=0
+  ( sleep "${RUNTIME_TIMEOUT:-300}"; echo "FAIL: the runtime test did not end in ${RUNTIME_TIMEOUT:-300} s" >&2; kill -9 "$pid" 2>/dev/null ) &
+  guard=$!
+  wait "$pid" || status=$?
+  kill "$guard" 2>/dev/null || true
+  wait "$guard" 2>/dev/null || true
+  [ "$status" -eq 0 ] || exit "$status"
+}
+
 # Swift: DjinniSupport as a static library, then the program. Each mode has its own build.
+# RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni.
 run_mode() { # <swiftc flags>
   local flags=$1 build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
   echo "== [$flags]"
+  # -enable-testing lets main.swift reach the internal proxy caches with @testable import
   # shellcheck disable=SC2086
   swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-    -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
-  # shellcheck disable=SC2086
-  swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out"/swift/*.swift "$src/main.swift" \
-    "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test"
+    -enable-testing -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
+  local variant
+  for variant in swift swift-default; do
+    # shellcheck disable=SC2086
+    swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out/$variant"/*.swift "$src/main.swift" \
+      "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-$variant"
+  done
   local i
   for i in $(seq 1 "$runs"); do
-    "$build/runtime-test"
+    run_guarded env RT_QUEUE_LABEL=djinni.runtime.blocking "$build/runtime-test-swift"
+  done
+  echo "== [$flags] default queue"
+  for i in $(seq 1 "$runs"); do
+    run_guarded env RT_QUEUE_LABEL=com.apple.root.user-initiated-qos "$build/runtime-test-swift-default"
   done
 }
 run_mode "-swift-version 5"

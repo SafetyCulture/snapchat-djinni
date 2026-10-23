@@ -2,6 +2,7 @@
 #include "kj_blob.hpp"
 #include "kj_both.hpp"
 #include "kj_color.hpp"
+#include "kj_future_source.hpp"
 #include "kj_item.hpp"
 #include "kj_listener.hpp"
 #include "kj_message_box.hpp"
@@ -12,12 +13,32 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <thread>
 
 namespace {
 
 std::atomic<int32_t> liveServices{0};
 std::atomic<int32_t> pendingStarted{0};
+
+djinni::expected<int32_t, kj::KjError> divideValues(int32_t a, int32_t b) {
+    if (b == 0) {
+        return djinni::make_unexpected(kj::KjError("division by zero", 7));
+    }
+    return a / b;
+}
+
+// Completes the future with the value on another thread after the delay.
+template <typename T>
+djinni::Future<T> later(T value, int32_t millis) {
+    djinni::Promise<T> promise;
+    auto future = promise.getFuture();
+    std::thread([promise = std::move(promise), value = std::move(value), millis]() mutable {
+        std::this_thread::sleep_for(std::chrono::milliseconds(millis));
+        promise.setValue(std::move(value));
+    }).detach();
+    return future;
+}
 
 class KjServiceImpl : public kj::KjService {
 public:
@@ -34,32 +55,38 @@ public:
 
     kj::KjMessageBox echo_message_box(const kj::KjMessageBox& box) override { return box; }
 
-    djinni::expected<int32_t, kj::KjError> divide(int32_t a, int32_t b) override {
-        if (b == 0) {
-            return djinni::make_unexpected(kj::KjError("division by zero", 7));
-        }
-        return a / b;
-    }
+    djinni::expected<int32_t, kj::KjError> divide(int32_t a, int32_t b) override { return divideValues(a, b); }
 
     int32_t call_listener(const std::shared_ptr<kj::KjListener>& listener, int32_t value) override {
         return listener->on_value(value);
     }
 
-    djinni::Future<int32_t> delayed(int32_t value, int32_t millis) override {
-        djinni::Promise<int32_t> promise;
-        auto future = promise.getFuture();
-        std::thread([promise = std::move(promise), value, millis]() mutable {
-            std::this_thread::sleep_for(std::chrono::milliseconds(millis));
-            promise.setValue(value);
-        }).detach();
-        return future;
+    std::string await_source(const std::shared_ptr<kj::KjFutureSource>& source) override {
+        auto future = source->produce();
+        try {
+            return "value " + std::to_string(future.get());
+        } catch (const std::exception& e) {
+            return e.what();
+        }
     }
 
+    djinni::Future<int32_t> delayed(int32_t value, int32_t millis) override { return later(value, millis); }
+
+    djinni::Future<djinni::expected<int32_t, kj::KjError>> divide_later(int32_t a, int32_t b, int32_t millis) override {
+        return later(divideValues(a, b), millis);
+    }
+
+    // A second call before complete_pending replaces the promise of the first call. The first future breaks with
+    // BrokenPromiseException instead of waiting for ever. The old promise is destroyed outside the lock, because its
+    // handler runs when it is destroyed.
     djinni::Future<int32_t> pending() override {
         pendingStarted.fetch_add(1);
+        std::unique_ptr<djinni::Promise<int32_t>> previous;
         std::lock_guard<std::mutex> lock(_mutex);
+        previous = std::move(_pending);
         _pending = std::make_unique<djinni::Promise<int32_t>>();
-        return _pending->getFuture();
+        auto future = _pending->getFuture();
+        return future;
     }
 
     int32_t pending_started() override { return pendingStarted.load(); }
@@ -87,6 +114,17 @@ public:
     }
 
     int32_t fail() override { throw std::runtime_error("boom"); }
+
+    int32_t fail_unknown() override { throw 42; }
+
+    djinni::Future<int32_t> dropped() override {
+        djinni::Promise<int32_t> promise;
+        return promise.getFuture();
+    }
+
+    djinni::Future<int32_t> unknown_future() override {
+        return djinni::Promise<int32_t>::reject(std::make_exception_ptr(42));
+    }
 
     void busy(int32_t millis) override {
         const int32_t active = ++_active;
@@ -132,6 +170,18 @@ std::shared_ptr<kj::KjBoth> KjServiceImpl::make_both() { return std::make_shared
 
 int32_t kj::KjService::live_count() {
     return liveServices.load();
+}
+
+int32_t kj::KjService::fail_static() {
+    throw std::runtime_error("static boom");
+}
+
+djinni::expected<int32_t, kj::KjError> kj::KjService::divide_static(int32_t a, int32_t b) {
+    return divideValues(a, b);
+}
+
+djinni::Future<int32_t> kj::KjService::delayed_static(int32_t value, int32_t millis) {
+    return later(value, millis);
 }
 
 std::shared_ptr<kj::KjService> kj::KjService::create() {

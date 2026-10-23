@@ -6,7 +6,7 @@
 #include "../cpp/swift_sendable_service.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftSendableService = djinni::swift::Interface<::testsuite::SwiftSendableService>;
 
@@ -19,4 +19,4 @@ public:
     void ping() override;
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

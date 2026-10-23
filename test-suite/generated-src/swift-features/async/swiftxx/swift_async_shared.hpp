@@ -6,7 +6,7 @@
 #include "../cpp/swift_async_shared.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftAsyncShared = djinni::swift::Interface<::testsuite::SwiftAsyncShared>;
 
@@ -19,4 +19,4 @@ public:
     int32_t value() override;
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

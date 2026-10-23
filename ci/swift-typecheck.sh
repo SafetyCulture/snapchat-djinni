@@ -3,15 +3,21 @@
 # syntax-checks the generated Swift/C++ glue.
 #
 # The script generates Swift and Swift/C++ glue with the built generator. It runs
-# `swiftc -typecheck` over the generated Swift in Swift 5 mode and in Swift 6 mode with complete
-# strict concurrency checking. Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
+# `swiftc -typecheck` over the generated Swift in Swift 5 mode, in Swift 6 mode with complete
+# strict concurrency checking, and in Swift 6 mode with NonisolatedNonsendingByDefault (the mode of
+# Approachable Concurrency in the app modules). Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
 # generated protobuf types (module S12Protos) are the real messages of the assets protos
 # (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
-# because they come from other build steps.
+# because they come from other build steps. One more pass generates the whole Crux IDL (main.djinni) with
+# --swift-error-type CruxError and --swift-async-wrap; the fixture adds the crux_error record, which Crux lacks.
+#
+# It also compiles the Java, JNI C++ and Objective-C++ output of the +sw host case of the test suite, so the
+# other languages still compile next to the Swift files. That needs javac and the JNI headers of a JDK.
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
+#   JAVA_HOME          JDK with include/jni.h (default: derived from javac)
 #   IDL_FILES          comma separated files of crux/djinni/domain to import
 #                      (default: common.djinni,media.djinni,assets.djinni)
 #   DJINNI_FLAGS       extra generator flags
@@ -77,6 +83,19 @@ out_async="$work/out-async"
   --swift-out "$out_async/swift" --swift-module Crux --swift-private-in-same-module \
   --swift-async-wrap com.safetyculture.crux \
   --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
+# The whole Crux IDL with --swift-error-type and the async wrappers. The Crux IDL has no error record, so the
+# fixture adds crux_error.
+python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-error" "$repo_root" main.djinni
+printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-error/crux/djinni/domain/ci_crux_error.djinni"
+printf '@import "ci_crux_error.djinni"\n' >>"$work/fx-error/crux/djinni/domain/swift_fixture.djinni"
+out_error="$work/out-error"
+# shellcheck disable=SC2086
+(cd "$work/fx-error" && java -jar "$jar" \
+  --cpp-out "$out_error/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h --ident-cpp-method FooBar \
+  --swift-out "$out_error/swift" --swift-module Crux --swift-private-in-same-module \
+  --swiftxx-out "$out_error/swiftxx" --swiftxx-include-cpp-prefix generated/ \
+  --swift-async-wrap com.safetyculture.crux --swift-error-type CruxError \
+  --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 
 # Stub modules
 mods="$work/mods"
@@ -85,10 +104,14 @@ python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12Pro
 # The real s12 Swift messages of the assets protos come with the checkout; the other yamls keep stubs
 cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
 python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
+errmods="$work/error-mods"
+mkdir -p "$errmods"
+python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx-error/extern" "$work/S12ProtosErrorStubs.swift" "$repo_root/ci/fixtures/s12"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$errmods/CruxCxx.hpp" "$out_error/swiftxx"
 
 # Test-suite cases: the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
-case_names=(host idents types sendable legacy future-field async error)
+case_names=(host idents types sendable legacy future-field async error result-name naming deriving const-strings labels recursive)
 tsmods="$work/ts-mods"
 mkdir -p "$tsmods"
 swiftxx_dirs=()
@@ -115,6 +138,7 @@ module DjinniSupportCxx {
 EOF
 }
 { support_module; printf 'module CruxCxx {\n  header "%s/CruxCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$mods"; } >"$mods/module.modulemap"
+{ support_module; printf 'module CruxCxx {\n  header "%s/CruxCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$errmods"; } >"$errmods/module.modulemap"
 { support_module; printf 'module TestSuiteCxx {\n  header "%s/TestSuiteCxx.hpp"\n  requires cplusplus\n  export *\n}\n' "$tsmods"; } >"$tsmods/module.modulemap"
 {
   support_module
@@ -130,6 +154,8 @@ single_case_mods() { # <module dir> <case>
 }
 single_case_mods "$work/error-legacy-mods" error-legacy
 single_case_mods "$work/separate-mods" separate-module
+# The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
+SWIFTXX_NAMESPACE='djinni_options::nested' single_case_mods "$work/nested-mods" nested-ns
 
 # The application declares how its error type holds a C++ exception, so the stub stands in for it.
 error_conformance="$work/CruxErrorConformance.swift"
@@ -139,6 +165,9 @@ import DjinniSupport
 extension CruxError: CppExceptionConvertible {
     public init(cppException error: DjinniError) {
         self.init(message: error.errorMessage, code: -1)
+    }
+    public init(cancellation: CancellationError) {
+        self.init(message: "cancelled", code: -2)
     }
 }
 EOF
@@ -151,10 +180,26 @@ swift_pass() { # <swiftc flags>
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build" -I "$spb_mod")
   swiftc -emit-module -emit-module-path "$build/S12Protos.swiftmodule" -module-name S12Protos \
     -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosStubs.swift" "$work"/*.pb.swift
-  echo "== [$flags] DjinniSupport (support-lib/swift)"
+  # DjinniSupport is a package with its own settings; only the modules that use the generated code turn the
+  # upcoming feature on, so its nonisolated members stay concurrent.
+  local support_flags=${flags/ -enable-upcoming-feature NonisolatedNonsendingByDefault/}
+  echo "== [$flags] DjinniSupport (support-lib/swift, $support_flags)"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
-    -parse-as-library $flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift
+    -parse-as-library $support_flags "${cxx[@]}" -I "$mods" "$repo_root"/support-lib/swift/*.swift
+  # The closure of Future.getResult runs on a global queue. Strict concurrency must reject a main-actor closure there.
+  case "$flags" in
+    *strict-concurrency*)
+      echo "== [$flags] negative case: a main-actor closure in Future.getResult"
+      # shellcheck disable=SC2086
+      if negative="$(swiftc -typecheck -parse-as-library -module-name Negative $flags "${cxx[@]}" -I "$mods" "$repo_root/ci/swift-negative/future_get_result_main_actor.swift" 2>&1)"; then
+        echo "FAIL: the main-actor closure typechecks, so Future.getResult is not @Sendable" >&2
+        exit 1
+      fi
+      printf '%s\n' "$negative" | grep -q "main actor-isolated" || { echo "FAIL: the negative case failed for another reason:" >&2; printf '%s\n' "$negative" >&2; exit 1; }
+      echo "NEGATIVE CASE REJECTED [$flags]"
+      ;;
+  esac
   echo "== [$flags] Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
@@ -163,10 +208,20 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
   echo "SWIFT ASYNC TYPECHECK OK [$flags]"
+  # The S12Protos module of the whole Crux IDL has more messages, so it has its own directory.
+  mkdir -p "$build/error"
+  cp "$build"/DjinniSupport.* "$build/error/"
+  swiftc -emit-module -emit-module-path "$build/error/S12Protos.swiftmodule" -module-name S12Protos \
+    -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosErrorStubs.swift" "$work"/*.pb.swift
+  local errcxx=("${cxx[@]/#$build/$build/error}")
+  echo "== [$flags] Crux IDL with --swift-error-type and --swift-async-wrap (generated Swift, $(ls "$out_error"/swift/*.swift | wc -l | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
+  echo "SWIFT ERROR TYPE TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
-  files+=("$error_conformance")
+  files+=("$error_conformance" "$repo_root/ci/swift-typecheck/AsyncCallers.swift")
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
@@ -178,6 +233,10 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
   echo "TEST-SUITE ERROR-LEGACY SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite nested-ns (--swiftxx-namespace djinni_options::nested)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/nested-mods" "$cases/nested-ns"/swift/*.swift
+  echo "TEST-SUITE NESTED-NS SWIFT TYPECHECK OK [$flags]"
   # Without --swift-private-in-same-module the public files and the private files are two modules.
   echo "== [$flags] TestSuite separate-module"
   local sm="$build/separate" public=() private=() f
@@ -194,6 +253,7 @@ swift_pass() { # <swiftc flags>
 }
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
+swift_pass "-swift-version 6 -strict-concurrency=complete -enable-upcoming-feature NonisolatedNonsendingByDefault"
 
 # The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
 if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
@@ -229,13 +289,35 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-for c in error-legacy separate-module; do
+for c in error-legacy separate-module nested-ns; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
-echo "TEST-SUITE ERROR-LEGACY AND SEPARATE-MODULE C++ GLUE SYNTAX OK"
+echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE AND NESTED-NS C++ GLUE SYNTAX OK"
+
+# An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
+# The other languages must still compile next to the Swift files.
+host="$cases/host"
+echo "== Host languages of the +sw interfaces (swift-features/host): javac, JNI C++, Objective-C++"
+java_home="${JAVA_HOME:-}"
+[ -n "$java_home" ] || java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+[ -f "$java_home/include/jni.h" ] || { echo "jni.h is not in $java_home/include (set JAVA_HOME)" >&2; exit 2; }
+mkdir -p "$work/host-java"
+# shellcheck disable=SC2046
+javac -nowarn -d "$work/host-java" $(find "$host/java" "$repo_root/support-lib/java" -name '*.java')
+echo "HOST JAVA OK"
+for f in "$host"/jni/*.cpp; do
+  "${CXX:-clang++}" -std=c++17 -fsyntax-only -I "$host/jni" -I "$host/cpp" -I "$repo_root/support-lib" -I "$repo_root/support-lib/jni" \
+    -I "$java_home/include" -I "$java_home/include/darwin" "$f"
+done
+echo "HOST JNI C++ SYNTAX OK"
+for f in "$host"/objc/*.mm; do
+  "${CXX:-clang++}" -x objective-c++ -std=c++17 -fobjc-arc -fsyntax-only -I "$host/objc" -I "$host/cpp" \
+    -I "$repo_root/support-lib" -I "$repo_root/support-lib/objc" "$f"
+done
+echo "HOST OBJECTIVE-C++ SYNTAX OK"
 
 echo "== Runtime C++ (support-lib/swiftxx, objc/DataRef_objc.cpp): clang++ -fsyntax-only"
 for f in "$repo_root"/support-lib/swiftxx/*.cpp "$repo_root/support-lib/objc/DataRef_objc.cpp"; do

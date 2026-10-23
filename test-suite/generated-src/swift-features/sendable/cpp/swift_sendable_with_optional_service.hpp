@@ -11,7 +11,7 @@ namespace testsuite {
 
 class SwiftSendableService;
 
-/** An interface is only allowed inside a container. */
+/** An interface is Sendable: the protocol is AnyObject, Sendable. It is only allowed inside a container. */
 struct SwiftSendableWithOptionalService final {
     /*nullable*/ std::shared_ptr<SwiftSendableService> service;
 

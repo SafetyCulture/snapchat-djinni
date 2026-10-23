@@ -46,6 +46,18 @@ kj_item = record {
   note: optional<string>;
 } deriving(eq)
 
+# Float fields compare as in Java and C++: -0.0 equals 0.0, and NaN equals nothing.
+kj_floats = record {
+  f: f32;
+  d: f64;
+  opt: optional<f64>;
+} deriving(eq)
+
+kj_ordered_floats = record {
+  f: f32;
+  d: f64;
+} deriving(eq, ord)
+
 # The extern type has the Kotlin keys, so the JNI code binds its pure Kotlin class.
 kj_message_box = record {
   message: extern_kotlin_message;
@@ -57,6 +69,11 @@ kj_listener = interface +j {
   on_value(value: i32): i32;
 }
 
+# Kotlin implements this one and returns a future to C++.
+kj_future_source = interface +j {
+  produce(): future<i32>;
+}
+
 # C++ and Kotlin can implement this one.
 kj_both = interface +c +j {
   value(): i32;
@@ -66,6 +83,10 @@ kj_service = interface +c {
   static create(): kj_service;
   # The number of C++ services that are alive.
   static live_count(): i32;
+  # Static methods for --kotlin-error-type: a C++ exception, an outcome and a future.
+  static fail_static(): i32;
+  static divide_static(a: i32, b: i32): outcome<i32, kj_error>;
+  static delayed_static(value: i32, millis: i32): future<i32>;
   add(a: i32, b: i32): i32;
   echo(item: kj_item): kj_item;
   echo_blob(blob: kj_blob): kj_blob;
@@ -73,7 +94,11 @@ kj_service = interface +c {
   echo_message_box(box: kj_message_box): kj_message_box;
   divide(a: i32, b: i32): outcome<i32, kj_error>;
   call_listener(listener: kj_listener, value: i32): i32;
+  # Waits for the future of the source. Returns "value <n>", or the text of the C++ exception of a failed future.
+  await_source(source: kj_future_source): string;
   delayed(value: i32, millis: i32): future<i32>;
+  # A future of an outcome: C++ completes it after the delay with a value, or with the error for division by zero.
+  divide_later(a: i32, b: i32, millis: i32): future<outcome<i32, kj_error>>;
   pending(): future<i32>;
   failing_future(): future<i32>;
   done(): future<void>;
@@ -81,6 +106,12 @@ kj_service = interface +c {
   # Calls of pending() that reached C++; a cancelled-before-start call must not count
   pending_started(): i32;
   fail(): i32;
+  # An exception that does not derive from std::exception
+  fail_unknown(): i32;
+  # A future whose promise C++ drops without a value
+  dropped(): future<i32>;
+  # A future that C++ rejects with an exception that does not derive from std::exception
+  unknown_future(): future<i32>;
   busy(millis: i32);
   max_concurrent(): i32;
   invert(color: kj_color): kj_color;

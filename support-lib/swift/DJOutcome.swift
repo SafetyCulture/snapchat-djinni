@@ -11,20 +11,20 @@ public enum OutcomeMarshaller<Res: Marshaller, Err: Marshaller>: Marshaller
     public typealias SwiftType = Result<Res.SwiftType, Err.SwiftType>
     public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         try withUnsafePointer(to: v) { p in
-            if (djinni.swift.getSize(p) == 1) {
-                return .success(try Res.fromCpp(djinni.swift.getMember(p, 0)))
+            if (try compositeSize(p) == 1) {
+                return .success(try Res.fromCpp(compositeMember(p, 0)))
             }
-            return .failure(try Err.fromCpp(djinni.swift.getMember(p, 1)))
+            return .failure(try Err.fromCpp(compositeMember(p, 1)))
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var comp = djinni.swift.makeCompositeValue()
         switch s {
         case .success(let r):
-            djinni.swift.addMember(&comp, try Res.toCpp(r))
+            try addMember(&comp, try Res.toCpp(r))
         case .failure(let e):
-            djinni.swift.addMember(&comp, djinni.swift.makeVoidValue())
-            djinni.swift.addMember(&comp, try Err.toCpp(e))
+            try addMember(&comp, djinni.swift.makeVoidValue())
+            try addMember(&comp, try Err.toCpp(e))
         }
         return comp
     }

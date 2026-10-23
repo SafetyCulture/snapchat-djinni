@@ -3,7 +3,7 @@
 
 #include "swift_sendable_service.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableService_ping(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftSendableService::toCpp(params->getValue(0));
@@ -16,12 +16,20 @@ catch (const std::exception& e) {
 catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
-djinni::swift::AnyValue SwiftSendableServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
+djinni::swift::AnyValue SwiftSendableServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftSendableServiceSwiftProxy>(instance, dispatcher)};
+}
+catch (const std::exception& e) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 void SwiftSendableServiceSwiftProxy::ping() {
     djinni::swift::ParameterList params;
     callProtocol(0, &params);
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

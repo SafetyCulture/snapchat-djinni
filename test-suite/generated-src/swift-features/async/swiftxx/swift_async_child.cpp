@@ -3,7 +3,7 @@
 
 #include "swift_async_child.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftAsyncChild_name(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncChild::toCpp(params->getValue(0));
@@ -17,4 +17,4 @@ catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

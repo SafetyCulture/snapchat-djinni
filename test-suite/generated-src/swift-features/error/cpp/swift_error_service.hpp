@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "Future.hpp"
 #include "expected.hpp"
 #include <cstdint>
 #include <memory>
@@ -18,14 +19,25 @@ class SwiftErrorService {
 public:
     virtual ~SwiftErrorService() = default;
 
-    /** A static method is exempt. */
+    /** Static methods throw the error type too. */
     static /*not-null*/ std::shared_ptr<SwiftErrorService> create();
+
+    static ::djinni::Future<SwiftErrorItem> load_static(const std::string & id);
 
     virtual djinni::expected<SwiftErrorItem, CruxError> fetch(const std::string & id) = 0;
 
     virtual djinni::expected<int32_t, CruxError> count() = 0;
 
     virtual djinni::expected<bool, CruxError> watch(const /*not-null*/ std::shared_ptr<SwiftErrorObserver> & observer) = 0;
+
+    /** Methods without an outcome throw the error type for a C++ exception and a cancellation. */
+    virtual int32_t add(int32_t a, int32_t b) = 0;
+
+    virtual void ping() = 0;
+
+    virtual ::djinni::Future<SwiftErrorItem> load(const std::string & id) = 0;
+
+    virtual ::djinni::Future<djinni::expected<SwiftErrorItem, CruxError>> fetch_later(const std::string & id) = 0;
 };
 
 } // namespace testsuite

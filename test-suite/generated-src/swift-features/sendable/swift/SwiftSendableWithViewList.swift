@@ -3,7 +3,7 @@
 
 import Foundation
 
-public struct SwiftSendableWithViewList: @unchecked Sendable {
+public struct SwiftSendableWithViewList {
     public let views: Array<Foundation.NSData>
 
     public init(views: Array<Foundation.NSData>)

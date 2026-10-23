@@ -40,6 +40,9 @@ public:
 
     virtual ::djinni::Future<void> flush() = 0;
 
+    /** The value of the future is not Sendable. */
+    virtual ::djinni::Future<::djinni::DataRef> load_data() = 0;
+
     virtual void send(const ::djinni::DataRef & data, const std::vector<std::string> & tags) = 0;
 
     virtual void watch(const /*not-null*/ std::shared_ptr<SwiftAsyncObserver> & observer) = 0;

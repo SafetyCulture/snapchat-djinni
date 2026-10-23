@@ -12,7 +12,7 @@ final class SwiftAsyncSharedCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftAsy
     func value() throws -> Int32 {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncShared_value(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncShared_value(&_params)
         try handleCppErrors(&ret)
         return try I32Marshaller.fromCpp(ret)
     }
@@ -29,6 +29,6 @@ public enum SwiftAsyncSharedMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { SwiftAsyncSharedCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_generated.SwiftAsyncSharedSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncSharedMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_generated_swift.SwiftAsyncSharedSwiftProxy.make(ctxPtr(s as SwiftType, swiftAsyncSharedMethods), dispatcherProtocalCall)) })
     }
 }

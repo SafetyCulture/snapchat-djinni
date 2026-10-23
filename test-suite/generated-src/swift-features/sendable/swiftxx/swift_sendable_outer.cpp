@@ -4,16 +4,16 @@
 #include "swift_sendable_outer.hpp"  // my header
 #include "swift_sendable_with_data.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftSendableOuter::fromCpp(const ::testsuite::SwiftSendableOuter& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
-    ret->addValue(::djinni_generated::SwiftSendableWithData::fromCpp(c.inner));
+    ret->addValue(::djinni_generated_swift::SwiftSendableWithData::fromCpp(c.inner));
     return {ret};
 }
 ::testsuite::SwiftSendableOuter SwiftSendableOuter::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftSendableOuter(::djinni_generated::SwiftSendableWithData::toCpp(p->getValue(0)));
+    return ::testsuite::SwiftSendableOuter(::djinni_generated_swift::SwiftSendableWithData::toCpp(p->getValue(0)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

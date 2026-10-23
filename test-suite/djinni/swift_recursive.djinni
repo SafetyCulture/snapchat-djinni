@@ -1,0 +1,34 @@
+@extern "../../support-lib/dataview.yaml"
+
+# A record can hold itself through a list. The Sendable rule must end, and it must still find a DataView.
+
+# Holds a DataView itself, and the same record through a list.
+swift_recursive_view = record {
+  view: DataView;
+  children: list<swift_recursive_view>;
+}
+
+# Holds nothing that makes it not Sendable.
+swift_recursive_plain = record {
+  name: string;
+  children: list<swift_recursive_plain>;
+}
+
+# Two records that hold each other through lists. Only the second has a DataView, and both are not Sendable.
+swift_recursive_first = record {
+  seconds: list<swift_recursive_second>;
+}
+
+swift_recursive_second = record {
+  firsts: list<swift_recursive_first>;
+  view: DataView;
+}
+
+# Two records that hold each other and no DataView.
+swift_recursive_left = record {
+  rights: list<swift_recursive_right>;
+}
+
+swift_recursive_right = record {
+  lefts: list<swift_recursive_left>;
+}

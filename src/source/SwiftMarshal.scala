@@ -36,11 +36,22 @@ object SwiftIdent {
     else if (keywords.contains(ident)) "`" + ident + "`"
     else ident
 
-  // An argument label at a call site does not need backticks, except for inout, var and let.
-  def label(ident: String): String = if (Set("`inout`", "`var`", "`let`").contains(ident)) ident else ident.replace("`", "")
+  // An argument label at a call site does not need backticks, except for inout.
+  def label(ident: String): String = if (ident == "`inout`") ident else ident.replace("`", "")
 
   // The name without escaping, for identifiers that are part of a longer name.
   def plain(ident: String): String = IdentStyle.camelLower(ident)
+
+  // Names that the generated marshaller of a record uses: the closure parameter and the C++ namespace.
+  val reservedLocals = Set("p", "djinni")
+
+  // A local name that differs from every name in `taken`. The base name stays when it is free, so the output
+  // of an IDL without the collision does not change.
+  def fresh(base: String, taken: Set[String]): String = {
+    var name = base
+    while (taken.contains(name)) name += "_"
+    name
+  }
 }
 
 class SwiftMarshal(spec: Spec) extends Marshal(spec) {
@@ -78,6 +89,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   def hasErrorName(tm: MExpr, name: String): Boolean = tm.base match {
     case d: MDef => idSwift.ty(d.name) == name
     case e: MExtern => e.swift.typename == name
+    case p: MProtobuf => p.body.swift.exists(o => o.prefix + p.name == name)
     case _ => false
   }
 
@@ -86,8 +98,23 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
     case _ => false
   }
 
+  // True when the type holds a DataRef (shared, mutable memory) or a DataView (memory that C++ owns), also in a
+  // record or in a type argument. No value of such a type is Sendable. A record can hold itself through a list, so the
+  // records that the search has entered are not entered again.
+  def holdsBuffer(tm: MExpr): Boolean = holdsBuffer(tm, Set())
+
+  private def holdsBuffer(tm: MExpr, entered: Set[String]): Boolean = tm.args.exists(holdsBuffer(_, entered)) || (tm.base match {
+    case e: MExtern => e.name == "DataRef" || e.name == "DataView"
+    case d: MDef if entered.contains(d.name) => false
+    case d: MDef => d.body match {
+      case r: Record => r.fields.exists(f => holdsBuffer(f.ty.resolved, entered + d.name))
+      case _ => false
+    }
+    case _ => false
+  })
+
   // True when a value of the type can cross into a closure that runs on another queue.
-  def isSendableArgument(tm: MExpr): Boolean = tm.base match {
+  def isSendableArgument(tm: MExpr): Boolean = if (holdsBuffer(tm)) false else tm.base match {
     case d: MDef if d.defType == DInterface => true
     case MOptional | MList | MArray | MSet | MMap => tm.args.forall(isSendableArgument)
     case _ => isSendable(tm)
@@ -103,7 +130,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
     case e: MExtern =>
       if (e.defType == DInterface) false
       else if (e.swift.translator.startsWith("ProtobufMarshaller")) true
-      else if (e.swift.typename == "Result") tm.args.forall(isSendable)
+      else if (e.swift.typename == "Result" || e.swift.typename == "Swift.Result") tm.args.forall(isSendable)
       else if (e.swift.typename == "DJFuture") tm.args.forall(isSendable)
       else false
     case _: MParam => false

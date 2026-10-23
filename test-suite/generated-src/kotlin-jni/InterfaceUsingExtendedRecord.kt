@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class InterfaceUsingExtendedRecord {
     abstract fun meth(er: ExtendedRecord): ExtendedRecord
@@ -16,15 +15,12 @@ abstract class InterfaceUsingExtendedRecord {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : InterfaceUsingExtendedRecord() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun meth(er: ExtendedRecord): ExtendedRecord {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_meth(this.nativeRef, er)
         }
         private external fun native_meth(_nativeRef: Long, er: ExtendedRecord): ExtendedRecord

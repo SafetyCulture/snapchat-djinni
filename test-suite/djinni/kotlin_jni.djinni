@@ -23,3 +23,27 @@ kotlin_jni_listener = interface +j {
   const label: optional<string> = "label";
   on_event(value: i32);
 }
+
+# C++ implements this one. The parameter name must not collide with the members of the generated proxy.
+kotlin_jni_proxy = interface +c {
+  static create(): kotlin_jni_proxy;
+  mark(destroyed: bool): bool;
+}
+
+# Java compiles these constants. A /* in a Kotlin comment opens a nested comment.
+kotlin_jni_constants = record {
+  const optional_enum: optional<constant_enum> = constant_enum::some_value;
+  const min_i64: i64 = -9223372036854775808;
+  value: i32;
+}
+
+# Methods with the names and the signatures of the members of Any. C++ implements the first interface.
+kotlin_jni_any_names = interface +c {
+  to_string(): string;
+  hash_code(): i32;
+}
+
+kotlin_jni_any_names_listener = interface +j {
+  to_string(): string;
+  hash_code(): i32;
+}

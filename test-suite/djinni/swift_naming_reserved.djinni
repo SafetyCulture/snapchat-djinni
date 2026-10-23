@@ -1,0 +1,15 @@
+# The wrapper of --swift-async-wrap names its locals and members djinniXxx. An IDL name that Swift writes the same
+# way would hide one of them, so the generator rejects it with --swift-async-wrap.
+
+swift_naming_reserved_service = interface +c {
+  static create(): swift_naming_reserved_service;
+  # Not reserved: the name has no capital letter after djinni.
+  fine(djinni: i32);
+  proxy(djinni_proxy: i32);
+  djinni_queue(): i32;
+}
+
+# Swift implements this one, so no wrapper is made and the names are free.
+swift_naming_reserved_host = interface +j +sw {
+  on_event(djinni_proxy: i32);
+}

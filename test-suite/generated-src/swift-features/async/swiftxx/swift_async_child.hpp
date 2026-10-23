@@ -6,10 +6,10 @@
 #include "../cpp/swift_async_child.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftAsyncChild = djinni::swift::Interface<::testsuite::SwiftAsyncChild>;
 
 djinni::swift::AnyValue SwiftAsyncChild_name(const djinni::swift::ParameterList* params);
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

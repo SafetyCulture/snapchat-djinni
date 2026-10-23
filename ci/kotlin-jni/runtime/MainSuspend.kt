@@ -1,6 +1,9 @@
 package rt.kj
 
+import com.snapchat.djinni.DjinniCppException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -12,11 +15,24 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.lang.ref.WeakReference
+import java.util.concurrent.Executors
 import kotlin.coroutines.coroutineContext
 
+// The dispatcher of --kotlin-suspend-dispatcher in the second run of this program.
+object TestDispatchers {
+    val blocking: ExecutorCoroutineDispatcher = Executors.newCachedThreadPool { task ->
+        Thread(task, "kj-blocking").apply { isDaemon = true }
+    }.asCoroutineDispatcher()
+}
+
 class Doubler : KjListener() {
-    override fun onValue(value: Int): Int = value * 2
+    @Volatile var thread: String = ""
+    override fun onValue(value: Int): Int {
+        thread = Thread.currentThread().name
+        return value * 2
+    }
 }
 
 fun check(condition: Boolean, message: String) {
@@ -28,6 +44,8 @@ fun check(condition: Boolean, message: String) {
 
 fun main(args: Array<String>) {
     System.load(args[0])
+    // The thread name of the dispatcher that runs the C++ calls.
+    val expectedThread = args.getOrElse(1) { "DefaultDispatcher-worker" }
     // A watchdog fails the run when the runtime deadlocks.
     val watchdog = Thread {
         Thread.sleep(120_000)
@@ -49,7 +67,9 @@ fun main(args: Array<String>) {
         check(service.divide(1, 0).errorOrNull()?.mCode == 7, "outcome error")
 
         // C++ calls a Kotlin object from the thread of the dispatcher.
-        check(service.callListener(Doubler(), 21) == 42, "call into Kotlin")
+        val doubler = Doubler()
+        check(service.callListener(doubler, 21) == 42, "call into Kotlin")
+        check(doubler.thread.startsWith(expectedThread), "the C++ call runs on $expectedThread, not ${doubler.thread}")
 
         // A future is a suspend function that returns the value.
         check(service.delayed(7, 50) == 7, "future")
@@ -116,6 +136,49 @@ fun main(args: Array<String>) {
         }
         service.done()
 
+        // A C++ exception is a DjinniCppException. An exception outside std::exception does not stop the JVM.
+        try {
+            service.fail()
+            check(false, "a C++ exception must throw")
+        } catch (e: DjinniCppException) {
+            check(e.message?.contains("boom") == true, "exception message: ${e.message}")
+        }
+        try {
+            service.failUnknown()
+            check(false, "an unknown C++ exception must throw")
+        } catch (e: DjinniCppException) {
+            check(e.message == "unknown C++ exception", "message of an unknown C++ exception: ${e.message}")
+        }
+
+        // A promise that C++ drops fails the call. A rejection with an exception outside std::exception fails it too.
+        try {
+            withTimeout(10_000) { service.dropped() }
+            check(false, "a dropped promise must fail the call")
+        } catch (e: DjinniCppException) {
+            check(e.message?.contains("broken promise") == true, "dropped promise error: ${e.message}")
+        } catch (e: CancellationException) {
+            check(false, "the call on a dropped promise never returns")
+        }
+        try {
+            withTimeout(10_000) { service.unknownFuture() }
+            check(false, "an unknown rejection must fail the call")
+        } catch (e: DjinniCppException) {
+            check(e.message == "unknown C++ exception", "unknown rejection error: ${e.message}")
+        } catch (e: CancellationException) {
+            check(false, "the call on an unknown rejection never returns")
+        }
+
+        // A second call before complete_pending replaces the promise of the first call. The first call fails, and the
+        // second call is not blocked.
+        val firstCall = async(Dispatchers.Default) { runCatching { service.pending() } }
+        delay(200)
+        val secondCall = async(Dispatchers.Default) { service.pending() }
+        delay(200)
+        val firstResult = withTimeoutOrNull(10_000) { firstCall.await() }
+        check(firstResult?.exceptionOrNull() is DjinniCppException, "the first call fails when a second call replaces its promise: $firstResult")
+        service.completePending(5)
+        check(withTimeoutOrNull(10_000) { secondCall.await() } == 5, "the second call completes")
+
         // A late result is dropped.
         val late = launch(Dispatchers.Default) { service.delayed(3, 300) }
         delay(50)
@@ -132,11 +195,18 @@ fun main(args: Array<String>) {
         }
         service.completePending(3)
 
-        // One C++ object runs one call at a time.
+        // Calls to one C++ object run at the same time.
         coroutineScope {
-            (0 until 40).map { async(Dispatchers.Default) { service.busy(5) } }.awaitAll()
+            (0 until 40).map { async(Dispatchers.Default) { service.busy(20) } }.awaitAll()
         }
-        check(service.maxConcurrent() == 1, "calls to one C++ object interleave: ${service.maxConcurrent()}")
+        check(service.maxConcurrent() > 1, "calls to one C++ object run one at a time: ${service.maxConcurrent()}")
+
+        // A call to an object does not wait for a blocking call on the same object, as cancel() must not.
+        val blocking = launch(Dispatchers.Default) { service.busy(3000) }
+        delay(200)
+        val quick = withTimeoutOrNull(1500) { service.add(1, 1) }
+        check(quick == 2, "a call waits for a blocking call on the same object")
+        blocking.join()
 
         // Many coroutines use one object.
         val sum = coroutineScope {

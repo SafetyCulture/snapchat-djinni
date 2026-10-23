@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Helper methods used by various different tests.
@@ -106,8 +105,6 @@ abstract class TestHelpers {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : TestHelpers() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)

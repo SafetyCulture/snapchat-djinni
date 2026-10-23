@@ -6,7 +6,7 @@
 #include "../cpp/swift_sendable_with_service_list.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftSendableWithServiceList {
     using CppType = ::testsuite::SwiftSendableWithServiceList;
@@ -14,4 +14,4 @@ struct SwiftSendableWithServiceList {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

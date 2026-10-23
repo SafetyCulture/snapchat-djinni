@@ -6,7 +6,7 @@
 #include "../cpp/swift_async_item.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftAsyncItem {
     using CppType = ::testsuite::SwiftAsyncItem;
@@ -14,4 +14,4 @@ struct SwiftAsyncItem {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

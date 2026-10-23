@@ -6,7 +6,7 @@
 #include "../cpp/swift_legacy_with_data.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftLegacyWithData {
     using CppType = ::testsuite::SwiftLegacyWithData;
@@ -14,4 +14,4 @@ struct SwiftLegacyWithData {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

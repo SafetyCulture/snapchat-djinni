@@ -1,0 +1,8 @@
+@extern "vendor/third-party/kotlin_extern.yaml"
+@extern "vendor/third-party/kotlin_extern_parceler_name.yaml"
+
+# An extern named like the Parceler of another extern type: it writes no Kotlin file, so it must not collide.
+kotlin_extern_parceler_name_holder = record {
+  message: extern_kotlin_message;
+  named: extern_kotlin_message_parceler;
+} deriving(parcelable)

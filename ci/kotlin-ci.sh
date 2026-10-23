@@ -36,7 +36,8 @@ fetch() { # <url> <file> <sha256>
 
 kotlin_zip="$cache/kotlin-compiler-$kotlin_version.zip"
 fetch "https://github.com/JetBrains/kotlin/releases/download/v$kotlin_version/kotlin-compiler-$kotlin_version.zip" "$kotlin_zip" "$kotlin_sha256"
-if [ ! -x "$cache/kotlinc-$kotlin_version/bin/kotlinc" ]; then
+# An extracted tree is used only when it is the pinned version. A half extracted or older tree is replaced.
+if [ ! -x "$cache/kotlinc-$kotlin_version/bin/kotlinc" ] || ! "$cache/kotlinc-$kotlin_version/bin/kotlinc" -version 2>&1 | grep -qF "$kotlin_version"; then
   rm -rf "$cache/unpack" "$cache/kotlinc-$kotlin_version"
   mkdir -p "$cache/unpack"
   unzip -q "$kotlin_zip" -d "$cache/unpack"
@@ -61,5 +62,7 @@ export KOTLIN_JNI_CHECK_CRUX=0
 export CXX="${CXX:-g++}"
 export CXXFLAGS="-include stdexcept ${CXXFLAGS:-}"
 
+# Futures and promises on their own, with a C++ compiler only
+"$repo_root/ci/cpp-future-test.sh"
 "$repo_root/ci/kotlin-jni-check.sh"
 "$repo_root/ci/kotlin-jni-runtime-test.sh"

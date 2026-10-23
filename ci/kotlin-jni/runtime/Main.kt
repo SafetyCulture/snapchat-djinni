@@ -2,10 +2,14 @@ package rt.kj
 
 import com.dropbox.djinni.testextern.ExternKotlinMessage
 import java.util.EnumSet
+import com.snapchat.djinni.DjinniCppException
+import com.snapchat.djinni.Future
+import com.snapchat.djinni.Promise
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.TimeoutException
 
 class Doubler : KjListener() {
     override fun onValue(value: Int): Int = value * 2
@@ -55,12 +59,24 @@ fun main(args: Array<String>) {
 
     check(service.callListener(Doubler(), 21) == 42, "call into Kotlin")
 
+    // A Kotlin future that C++ waits for. A failure without a message gives C++ the toString() text.
+    val valueSource = object : KjFutureSource() {
+        override fun produce(): Future<Int> = Promise<Int>().apply { setValue(4) }.future
+    }
+    check(service.awaitSource(valueSource) == "value 4", "a Kotlin future with a value")
+    val failingSource = object : KjFutureSource() {
+        override fun produce(): Future<Int> = Promise<Int>().apply { setException(IllegalStateException()) }.future
+    }
+    val text = service.awaitSource(failingSource)
+    check(text == "java.lang.IllegalStateException", "a Kotlin future that fails without a message gives C++ the toString() text, not \"$text\"")
+
     check(service.delayed(7, 50).get() == 7, "future")
 
     try {
         service.fail()
         check(false, "a C++ exception must throw")
     } catch (e: RuntimeException) {
+        check(e is DjinniCppException, "a C++ exception is a DjinniCppException, not ${e::class}")
         check(e.message?.contains("boom") == true, "exception message: ${e.message}")
     }
 
@@ -73,6 +89,50 @@ fun main(args: Array<String>) {
     // Integer literals for float constants compile and read as floats.
     check(KjConstants.F32_ONE == 1.0f, "f32 constant from an integer literal")
     check(KjConstants.F64_MINUS_TWO == -2.0, "f64 constant from an integer literal")
+    // An exception that does not derive from std::exception must not stop the JVM.
+    try {
+        service.failUnknown()
+        check(false, "an unknown C++ exception must throw")
+    } catch (e: DjinniCppException) {
+        check(e.message == "unknown C++ exception", "message of an unknown C++ exception: ${e.message}")
+    }
+
+    // A promise that C++ drops fails the future. It does not wait for ever.
+    try {
+        service.dropped().get(10, TimeUnit.SECONDS)
+        check(false, "a dropped promise must fail the future")
+    } catch (e: ExecutionException) {
+        check(e.cause is DjinniCppException && e.cause?.message?.contains("broken promise") == true, "dropped promise error: ${e.cause}")
+    } catch (e: TimeoutException) {
+        check(false, "the future of a dropped promise never completes")
+    }
+
+    // A future that C++ rejects with an exception outside std::exception fails too.
+    try {
+        service.unknownFuture().get(10, TimeUnit.SECONDS)
+        check(false, "an unknown rejection must fail the future")
+    } catch (e: ExecutionException) {
+        check(e.cause is DjinniCppException && e.cause?.message == "unknown C++ exception", "unknown rejection error: ${e.cause}")
+    } catch (e: TimeoutException) {
+        check(false, "the future of an unknown rejection never completes")
+    }
+
+    // Float fields compare as in Java and C++ (IEEE), not by total order.
+    check(KjFloats(0.0f, 0.0, null) == KjFloats(-0.0f, -0.0, null), "-0.0 equals 0.0")
+    // One negative zero in each pair: with two, the hash codes can be equal by chance.
+    val f32Zeros = Pair(KjFloats(-0.0f, 1.0, null), KjFloats(0.0f, 1.0, null))
+    val f64Zeros = Pair(KjFloats(1.0f, -0.0, null), KjFloats(1.0f, 0.0, null))
+    for ((negative, positive) in listOf(f32Zeros, f64Zeros)) {
+        check(negative == positive && negative.hashCode() == positive.hashCode(), "equal records have one hash code: $negative, $positive")
+    }
+    val nanFloats = KjFloats(Float.NaN, Double.NaN, null)
+    check(nanFloats != nanFloats.copy(), "NaN is not equal to NaN")
+    check(KjFloats(1.0f, 1.0, Double.NaN) == KjFloats(1.0f, 1.0, Double.NaN), "an optional float compares by equals, as in Java")
+    check(KjOrderedFloats(0.0f, 0.0).compareTo(KjOrderedFloats(-0.0f, -0.0)) == 0, "-0.0 and 0.0 are equal in the order")
+    check(KjOrderedFloats(Float.NaN, 0.0).compareTo(KjOrderedFloats(1.0f, 0.0)) == 0, "NaN compares equal in the order")
+    check(KjOrderedFloats(1.0f, Double.NaN).compareTo(KjOrderedFloats(1.0f, 5.0)) == 0, "NaN compares equal in the second field")
+    check(KjOrderedFloats(1.0f, 0.0).compareTo(KjOrderedFloats(2.0f, 0.0)) < 0, "smaller float first")
+    check(KjOrderedFloats(2.0f, 0.0).compareTo(KjOrderedFloats(1.0f, 9.0)) > 0, "larger float first")
 
     // Many threads call one object.
     val pool = Executors.newFixedThreadPool(8)

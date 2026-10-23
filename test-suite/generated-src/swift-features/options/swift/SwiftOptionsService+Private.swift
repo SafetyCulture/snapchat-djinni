@@ -27,11 +27,11 @@ final class SwiftOptionsServiceCppProxy: DjinniSupport.CppProxy, TestSuite.Swift
 }
 let swiftOptionsServiceMethods: Vtbl<SwiftOptionsService> = [
     { inst, params, ret in
-        let _value = try I32Marshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _value = try I32Marshaller.fromCpp(DjinniSupport.parameter(params, 0))
         djinni.swift.setReturnValue(ret, try I32Marshaller.toCpp(inst.compute(_value)))
     },
     { inst, params, ret in
-        let _id = try StringMarshaller.fromCpp(djinni.swift.getMember(params, 0))
+        let _id = try StringMarshaller.fromCpp(DjinniSupport.parameter(params, 0))
         djinni.swift.setReturnValue(ret, try DjinniSupport.FutureMarshaller<SwiftOptionsItemMarshaller>.toCpp(inst.load(_id)))
     },
 ]
@@ -42,10 +42,12 @@ public enum SwiftOptionsServiceMarshaller: DjinniSupport.Marshaller {
         return try cppInterfaceToSwift(c, { SwiftOptionsServiceCppProxy(c) as SwiftType })
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
-        return try swiftInterfaceToCpp(s, { djinni_options.SwiftOptionsServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftOptionsServiceMethods), dispatcherProtocalCall)})
+        return try swiftInterfaceToCpp(s, { try checkedProxy(djinni_options.SwiftOptionsServiceSwiftProxy.make(ctxPtr(s as SwiftType, swiftOptionsServiceMethods), dispatcherProtocalCall)) })
     }
 }
 public class SwiftOptionsService_statics: @unchecked Sendable {
+    /** An interface constant is emitted on the _statics class */
+    public static let maxCount: Int32 = 64
     public static func create() throws -> TestSuite.SwiftOptionsService {
         var _params = djinni.swift.ParameterList()
         var ret = djinni_options.SwiftOptionsService_create(&_params)

@@ -1,4 +1,5 @@
 #include "runtime_async.hpp"
+#include "runtime_color.hpp"
 #include "runtime_error.hpp"
 #include "runtime_listener.hpp"
 
@@ -53,10 +54,45 @@ public:
 
     int32_t fail_unknown() override { throw 42; }
 
+    // A second call before complete_pending replaces the promise of the first call. The first future breaks with
+    // BrokenPromiseException instead of waiting for ever. The old promise is destroyed outside the lock, because
+    // its handler runs when it is destroyed.
     djinni::Future<int32_t> pending() override {
+        std::unique_ptr<djinni::Promise<int32_t>> previous;
         std::lock_guard<std::mutex> lock(_mutex);
+        previous = std::move(_pending);
         _pending = std::make_unique<djinni::Promise<int32_t>>();
-        return _pending->getFuture();
+        auto future = _pending->getFuture();
+        // The count moves after the new promise is stored, so a test that waits for the count knows that this call
+        // replaced the promise of the call before
+        _pendingStarted.fetch_add(1);
+        return future;
+    }
+
+    djinni::Future<rt::RuntimeColor> bad_color_future() override {
+        return djinni::Promise<rt::RuntimeColor>::resolve(static_cast<rt::RuntimeColor>(99));
+    }
+
+    djinni::Future<int32_t> dropped() override {
+        djinni::Promise<int32_t> promise;
+        return promise.getFuture();
+    }
+
+    std::string describe_future_failure(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        // The handler is chained before the Swift host completes its future, so it runs inside the completion.
+        // It throws an exception that does not derive from std::exception.
+        auto next = listener->delayed_future(1, 50).then([](djinni::Future<int32_t> f) -> int32_t {
+            f.get();
+            throw 42;
+        });
+        try {
+            next.get();
+        } catch (int value) {
+            return "int " + std::to_string(value);
+        } catch (const std::exception& e) {
+            return e.what();
+        }
+        return "no error";
     }
 
     void complete_pending(int32_t value) override {
@@ -80,11 +116,18 @@ public:
 
     int32_t max_concurrent() override { return _maxActive.load(); }
 
+    int32_t pending_started() override { return _pendingStarted.load(); }
+
+    int32_t call_listener(const std::shared_ptr<rt::RuntimeListener>& listener, int32_t value) override {
+        return listener->on_value(value);
+    }
+
     std::shared_ptr<rt::RuntimeAsync> same() override { return shared_from_this(); }
 
 private:
     std::atomic<int32_t> _active{0};
     std::atomic<int32_t> _maxActive{0};
+    std::atomic<int32_t> _pendingStarted{0};
     std::mutex _mutex;
     std::unique_ptr<djinni::Promise<int32_t>> _pending;
 };

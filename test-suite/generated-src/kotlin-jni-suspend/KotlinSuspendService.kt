@@ -5,10 +5,9 @@ package com.dropbox.djinni.test
 
 import com.snapchat.djinni.Future
 import com.snapchat.djinni.NativeObjectManager
+import java.util.EnumSet
 import java.util.concurrent.ExecutionException
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
@@ -29,6 +28,9 @@ abstract class KotlinSuspendService {
     /** Parameters with the names of Kotlin keywords. */
     abstract suspend fun names(`in`: Int, `val`: Int): ArrayList<String>
 
+    /** A parameter named destroyed must not collide with the proxy. */
+    abstract suspend fun mark(destroyed: Boolean): Boolean
+
     abstract suspend fun send(data: java.nio.ByteBuffer, tags: ArrayList<String>)
 
     abstract suspend fun watch(observer: KotlinSuspendObserver?)
@@ -39,47 +41,54 @@ abstract class KotlinSuspendService {
 
     abstract suspend fun both(both: KotlinSuspendBoth?): KotlinSuspendBoth?
 
+    abstract suspend fun echoUnit(value: Unit): Unit
+
+    abstract suspend fun loadUnit(): Unit
+
+    abstract suspend fun loadFlags(): EnumSet<KotlinSuspendFlags>
+
+    abstract suspend fun loadOptionalFlags(): EnumSet<KotlinSuspendFlags>?
+
+    abstract suspend fun loadFlagsList(): ArrayList<EnumSet<KotlinSuspendFlags>>
+
     companion object {
 
         @JvmStatic external fun create(): KotlinSuspendService?
     }
 
+    /**
+     * Each suspend method runs its blocking C++ call on `kotlinx.coroutines.Dispatchers.IO`. Calls to one object can run at the same time.
+     * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future
+     * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.
+     */
     class CppProxy private constructor(private val nativeRef: Long) : KotlinSuspendService() {
-        private val destroyed = AtomicBoolean(false)
-        private val dispatcher = Dispatchers.IO.limitedParallelism(1)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override suspend fun ping() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(this.dispatcher) { native_ping(this@CppProxy.nativeRef) }
+            withContext(kotlinx.coroutines.Dispatchers.IO) { native_ping(this@CppProxy.nativeRef) }
         }
         private external fun native_ping(_nativeRef: Long)
 
         override suspend fun count(): Int {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_count(this@CppProxy.nativeRef) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_count(this@CppProxy.nativeRef) }
         }
         private external fun native_count(_nativeRef: Long): Int
 
         override suspend fun find(id: String, limit: Int?): KotlinSuspendItem? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_find(this@CppProxy.nativeRef, id, limit) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_find(this@CppProxy.nativeRef, id, limit) }
         }
         private external fun native_find(_nativeRef: Long, id: String, limit: Int?): KotlinSuspendItem?
 
         override suspend fun fetch(id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_fetch(this@CppProxy.nativeRef, id) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_fetch(this@CppProxy.nativeRef, id) }
         }
         private external fun native_fetch(_nativeRef: Long, id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError>
 
         override suspend fun load(id: String): KotlinSuspendItem {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            val djinni_future = withContext(this.dispatcher) { native_load(this@CppProxy.nativeRef, id) }
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_load(this@CppProxy.nativeRef, id) }
             return suspendCancellableCoroutine<KotlinSuspendItem> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -98,8 +107,7 @@ abstract class KotlinSuspendService {
         private external fun native_load(_nativeRef: Long, id: String): com.snapchat.djinni.Future<KotlinSuspendItem>
 
         override suspend fun flush() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            val djinni_future = withContext(this.dispatcher) { native_flush(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_flush(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<kotlin.Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -119,40 +127,120 @@ abstract class KotlinSuspendService {
         private external fun native_flush(_nativeRef: Long): com.snapchat.djinni.Future<Void>
 
         override suspend fun names(`in`: Int, `val`: Int): ArrayList<String> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_names(this@CppProxy.nativeRef, `in`, `val`) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_names(this@CppProxy.nativeRef, `in`, `val`) }
         }
         private external fun native_names(_nativeRef: Long, `in`: Int, `val`: Int): ArrayList<String>
 
+        override suspend fun mark(destroyed: Boolean): Boolean {
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_mark(this@CppProxy.nativeRef, destroyed) }
+        }
+        private external fun native_mark(_nativeRef: Long, destroyed: Boolean): Boolean
+
         override suspend fun send(data: java.nio.ByteBuffer, tags: ArrayList<String>) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(this.dispatcher) { native_send(this@CppProxy.nativeRef, data, tags) }
+            withContext(kotlinx.coroutines.Dispatchers.IO) { native_send(this@CppProxy.nativeRef, data, tags) }
         }
         private external fun native_send(_nativeRef: Long, data: java.nio.ByteBuffer, tags: ArrayList<String>)
 
         override suspend fun watch(observer: KotlinSuspendObserver?) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(this.dispatcher) { native_watch(this@CppProxy.nativeRef, observer) }
+            withContext(kotlinx.coroutines.Dispatchers.IO) { native_watch(this@CppProxy.nativeRef, observer) }
         }
         private external fun native_watch(_nativeRef: Long, observer: KotlinSuspendObserver?)
 
         override suspend fun child(): KotlinSuspendChild? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_child(this@CppProxy.nativeRef) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_child(this@CppProxy.nativeRef) }
         }
         private external fun native_child(_nativeRef: Long): KotlinSuspendChild?
 
         override suspend fun attach(child: KotlinSuspendChild?, parent: KotlinSuspendService?) {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            withContext(this.dispatcher) { native_attach(this@CppProxy.nativeRef, child, parent) }
+            withContext(kotlinx.coroutines.Dispatchers.IO) { native_attach(this@CppProxy.nativeRef, child, parent) }
         }
         private external fun native_attach(_nativeRef: Long, child: KotlinSuspendChild?, parent: KotlinSuspendService?)
 
         override suspend fun both(both: KotlinSuspendBoth?): KotlinSuspendBoth? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
-            return withContext(this.dispatcher) { native_both(this@CppProxy.nativeRef, both) }
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_both(this@CppProxy.nativeRef, both) }
         }
         private external fun native_both(_nativeRef: Long, both: KotlinSuspendBoth?): KotlinSuspendBoth?
+
+        override suspend fun echoUnit(value: Unit): Unit {
+            return withContext(kotlinx.coroutines.Dispatchers.IO) { native_echoUnit(this@CppProxy.nativeRef, value) }
+        }
+        private external fun native_echoUnit(_nativeRef: Long, value: Unit): Unit
+
+        override suspend fun loadUnit(): Unit {
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadUnit(this@CppProxy.nativeRef) }
+            return suspendCancellableCoroutine<Unit> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<Unit> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        kotlin.Result.failure(djinni_e.cause ?: djinni_e)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
+                    })
+                })
+            }
+        }
+        private external fun native_loadUnit(_nativeRef: Long): com.snapchat.djinni.Future<Unit>
+
+        override suspend fun loadFlags(): EnumSet<KotlinSuspendFlags> {
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadFlags(this@CppProxy.nativeRef) }
+            return suspendCancellableCoroutine<EnumSet<KotlinSuspendFlags>> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<EnumSet<KotlinSuspendFlags>> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        kotlin.Result.failure(djinni_e.cause ?: djinni_e)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
+                    })
+                })
+            }
+        }
+        private external fun native_loadFlags(_nativeRef: Long): com.snapchat.djinni.Future<EnumSet<KotlinSuspendFlags>>
+
+        override suspend fun loadOptionalFlags(): EnumSet<KotlinSuspendFlags>? {
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadOptionalFlags(this@CppProxy.nativeRef) }
+            return suspendCancellableCoroutine<EnumSet<KotlinSuspendFlags>?> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<EnumSet<KotlinSuspendFlags>?> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        kotlin.Result.failure(djinni_e.cause ?: djinni_e)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
+                    })
+                })
+            }
+        }
+        private external fun native_loadOptionalFlags(_nativeRef: Long): com.snapchat.djinni.Future<EnumSet<KotlinSuspendFlags>?>
+
+        override suspend fun loadFlagsList(): ArrayList<EnumSet<KotlinSuspendFlags>> {
+            val djinni_future = withContext(kotlinx.coroutines.Dispatchers.IO) { native_loadFlagsList(this@CppProxy.nativeRef) }
+            return suspendCancellableCoroutine<ArrayList<EnumSet<KotlinSuspendFlags>>> { djinni_continuation ->
+                val djinni_target = AtomicReference(djinni_continuation)
+                djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
+                djinni_future.then(Future.FutureHandler<ArrayList<EnumSet<KotlinSuspendFlags>>> { djinni_result ->
+                    val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
+                    djinni_waiting.resumeWith(try {
+                        kotlin.Result.success(djinni_result.get())
+                    } catch (djinni_e: ExecutionException) {
+                        kotlin.Result.failure(djinni_e.cause ?: djinni_e)
+                    } catch (djinni_e: Throwable) {
+                        kotlin.Result.failure(djinni_e)
+                    })
+                })
+            }
+        }
+        private external fun native_loadFlagsList(_nativeRef: Long): com.snapchat.djinni.Future<ArrayList<EnumSet<KotlinSuspendFlags>>>
 
         companion object {
             @JvmStatic external fun nativeDestroy(nativeRef: Long)

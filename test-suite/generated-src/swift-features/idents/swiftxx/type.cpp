@@ -4,7 +4,7 @@
 #include "type.hpp"  // my header
 #include "swift_kind.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue Type::fromCpp(const ::testsuite::Type& c) {
     auto ret = std::make_shared<djinni::swift::CompositeValue>();
@@ -13,12 +13,12 @@ djinni::swift::AnyValue Type::fromCpp(const ::testsuite::Type& c) {
     ret->addValue(::djinni::swift::Optional<std::optional, ::djinni::swift::String>::fromCpp(c.protocol));
     ret->addValue(::djinni::swift::I32::fromCpp(c.self));
     ret->addValue(::djinni::swift::I32::fromCpp(c.inout));
-    ret->addValue(::djinni_generated::SwiftKind::fromCpp(c.kind));
+    ret->addValue(::djinni_generated_swift::SwiftKind::fromCpp(c.kind));
     return {ret};
 }
 ::testsuite::Type Type::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::Type(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni::swift::Bool::toCpp(p->getValue(1)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(2)), ::djinni::swift::I32::toCpp(p->getValue(3)), ::djinni::swift::I32::toCpp(p->getValue(4)), ::djinni_generated::SwiftKind::toCpp(p->getValue(5)));
+    return ::testsuite::Type(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni::swift::Bool::toCpp(p->getValue(1)), ::djinni::swift::Optional<std::optional, ::djinni::swift::String>::toCpp(p->getValue(2)), ::djinni::swift::I32::toCpp(p->getValue(3)), ::djinni::swift::I32::toCpp(p->getValue(4)), ::djinni_generated_swift::SwiftKind::toCpp(p->getValue(5)));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

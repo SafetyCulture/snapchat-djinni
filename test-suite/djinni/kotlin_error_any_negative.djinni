@@ -1,0 +1,6 @@
+# --kotlin-error-type: a static method with the name of a member of Any hides it in the companion object, so the
+# generation fails.
+
+kotlin_error_any_static = interface +c {
+  static hash_code(): i32;
+}

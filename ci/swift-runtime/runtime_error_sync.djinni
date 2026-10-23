@@ -1,0 +1,16 @@
+@extern "../../support-lib/outcome.yaml"
+
+# Generated with --swift-error-type SyncError and without --swift-async-wrap: the protocol methods throw the error type.
+sync_error = record {
+  message: string;
+  code: i32;
+}
+
+sync_error_service = interface +c {
+  static create(): sync_error_service;
+  static fail_static(): outcome<i32, sync_error>;
+  divide(a: i32, b: i32): outcome<i32, sync_error>;
+  add(a: i32, b: i32): i32;
+  fail(): i32;
+  fail_void();
+}

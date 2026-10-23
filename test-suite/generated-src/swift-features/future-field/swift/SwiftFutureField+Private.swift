@@ -10,13 +10,13 @@ public enum SwiftFutureFieldMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftFutureField
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let value = try DjinniSupport.FutureMarshaller<I32Marshaller>.fromCpp(djinni.swift.getMember(p, 0))
+            let value = try DjinniSupport.FutureMarshaller<I32Marshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(value: value)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.FutureMarshaller<I32Marshaller>.toCpp(s.value))
+        try DjinniSupport.addMember(&ret, DjinniSupport.FutureMarshaller<I32Marshaller>.toCpp(s.value))
         return ret
     }
 }

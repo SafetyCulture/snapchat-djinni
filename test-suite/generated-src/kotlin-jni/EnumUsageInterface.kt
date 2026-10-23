@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class EnumUsageInterface {
     abstract fun e(e: Color): Color
@@ -18,39 +17,32 @@ abstract class EnumUsageInterface {
     abstract fun m(m: HashMap<Color, Color>): HashMap<Color, Color>
 
     class CppProxy private constructor(private val nativeRef: Long) : EnumUsageInterface() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun e(e: Color): Color {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_e(this.nativeRef, e)
         }
         private external fun native_e(_nativeRef: Long, e: Color): Color
 
         override fun o(o: Color?): Color? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_o(this.nativeRef, o)
         }
         private external fun native_o(_nativeRef: Long, o: Color?): Color?
 
         override fun l(l: ArrayList<Color>): ArrayList<Color> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_l(this.nativeRef, l)
         }
         private external fun native_l(_nativeRef: Long, l: ArrayList<Color>): ArrayList<Color>
 
         override fun s(s: HashSet<Color>): HashSet<Color> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_s(this.nativeRef, s)
         }
         private external fun native_s(_nativeRef: Long, s: HashSet<Color>): HashSet<Color>
 
         override fun m(m: HashMap<Color, Color>): HashMap<Color, Color> {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_m(this.nativeRef, m)
         }
         private external fun native_m(_nativeRef: Long, m: HashMap<Color, Color>): HashMap<Color, Color>

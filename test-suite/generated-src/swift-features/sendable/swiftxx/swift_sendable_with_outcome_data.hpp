@@ -6,7 +6,7 @@
 #include "../cpp/swift_sendable_with_outcome_data.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 struct SwiftSendableWithOutcomeData {
     using CppType = ::testsuite::SwiftSendableWithOutcomeData;
@@ -14,4 +14,4 @@ struct SwiftSendableWithOutcomeData {
     static CppType toCpp(const djinni::swift::AnyValue& s);
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

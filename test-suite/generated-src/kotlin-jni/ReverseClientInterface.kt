@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class ReverseClientInterface {
     abstract fun returnStr(): String
@@ -19,27 +18,22 @@ abstract class ReverseClientInterface {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : ReverseClientInterface() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun returnStr(): String {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_returnStr(this.nativeRef)
         }
         private external fun native_returnStr(_nativeRef: Long): String
 
         override fun methTakingInterface(i: ReverseClientInterface?): String {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_methTakingInterface(this.nativeRef, i)
         }
         private external fun native_methTakingInterface(_nativeRef: Long, i: ReverseClientInterface?): String
 
         override fun methTakingOptionalInterface(i: ReverseClientInterface?): String {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_methTakingOptionalInterface(this.nativeRef, i)
         }
         private external fun native_methTakingOptionalInterface(_nativeRef: Long, i: ReverseClientInterface?): String

@@ -14,7 +14,7 @@ object KotlinJniExtern {
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     // The Kotlin classes alone do not need the JNI keys.
     val jniProblems = if (spec.jniOutFolder.isDefined) keyProblems(idl, spec) else Seq()
-    val all = jniProblems ++ parcelerProblems(idl, spec)
+    val all = jniProblems ++ ordProblems(idl) ++ parcelerProblems(idl, spec)
     if (all.isEmpty) None else Some(all.mkString("\n"))
   }
 
@@ -39,7 +39,28 @@ object KotlinJniExtern {
         s"but these extern types have Kotlin keys: ${keyed.map(_.ident.name).mkString(", ")}. " +
         "Run the generator twice: --java-out with --jni-out, and --kotlin-jni-out with --jni-out.")
     } else Seq()
-    incomplete ++ both
+    // The JNI code looks the class up by kotlin.jniTypename's signature, so the two must name one class.
+    val mismatched = keyed.filter(e => keys.forall(has(e, _))).flatMap { e =>
+      for {
+        signature <- value(e, "jni.kotlinTypeSignature")
+        name <- value(e, "kotlin.jniTypename")
+        if signatureToTypename(signature) != name
+      } yield s"extern type ${e.ident.name}: jni.kotlinTypeSignature $signature names the class ${signatureToTypename(signature)}, but kotlin.jniTypename is $name. The JNI code and the Kotlin classes must use one class."
+    }
+    incomplete ++ both ++ mismatched
+  }
+
+  // "Lcom/example/Outer$Inner;" is the class com.example.Outer.Inner
+  private def signatureToTypename(signature: String): String =
+    signature.stripPrefix("L").stripSuffix(";").replace('/', '.').replace('$', '.')
+
+  // The Kotlin class of an extern type with Kotlin keys is a message class. Its messages have no order, so the
+  // compareTo of a record cannot call compareTo on it. Java lite messages are not Comparable either.
+  private def ordProblems(idl: Seq[TypeDecl]): Seq[String] = idl.collect {
+    case InternTypeDecl(ident, _, r: Record, _, _) if r.derivingTypes.contains(DerivingType.Ord) => (ident, r)
+  }.flatMap { case (ident, r) =>
+    r.fields.flatMap(f => keyedExterns(f.ty.resolved).map(cls =>
+      s"record ${ident.name}, field ${f.ident.name}: deriving(ord) needs a Comparable class, but the Kotlin class $cls of an extern type has no order. Remove ord from the record."))
   }
 
   // Two Kotlin classes with the same simple name get the same Parceler name, and an IDL type can
@@ -59,6 +80,14 @@ object KotlinJniExtern {
         s"The Parceler name $name collides with an IDL type of the same name."
     }
     duplicate ++ collision
+  }
+
+  private def value(e: ExternTypeDecl, key: String): Option[String] = {
+    val Array(block, name) = key.split('.')
+    e.properties.get(block) match {
+      case Some(map: java.util.Map[_, _]) => Option(map.get(name)).map(_.toString)
+      case _ => None
+    }
   }
 
   // key is "<block>.<name>"

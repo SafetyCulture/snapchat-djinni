@@ -6,7 +6,7 @@
 #include "../cpp/swift_types_service.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftTypesService = djinni::swift::Interface<::testsuite::SwiftTypesService>;
 
@@ -28,4 +28,4 @@ public:
     std::vector<uint8_t> send_view(const ::djinni::DataView & view) override;
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

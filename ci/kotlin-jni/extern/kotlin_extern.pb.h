@@ -17,12 +17,15 @@ public:
         std::memcpy(data, bytes_.data(), static_cast<size_t>(size));
         return true;
     }
-    // The translator of the Kotlin class uses the string form and the type name in its errors.
+    // The translator of the Kotlin class uses the string form, the type name and the initialization state.
     bool SerializeToString(std::string* out) const {
         out->assign(bytes_);
         return true;
     }
     std::string GetTypeName() const { return "kotlin_extern.KotlinMessage"; }
+    // The golden translator checks that the message is initialized before it serializes it.
+    bool IsInitialized() const { return true; }
+    std::string InitializationErrorString() const { return ""; }
     bool operator==(const KotlinMessage& other) const { return bytes_ == other.bytes_; }
 
 private:

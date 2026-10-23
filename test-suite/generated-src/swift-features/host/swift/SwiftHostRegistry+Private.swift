@@ -13,14 +13,14 @@ final class SwiftHostRegistryCppProxy: DjinniSupport.CppProxy, TestSuite.SwiftHo
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try SwiftHostListenerMarshaller.toCpp(listener))
-        var ret = djinni_generated.SwiftHostRegistry_registerListener(&_params)
+        var ret = djinni_generated_swift.SwiftHostRegistry_registerListener(&_params)
         try handleCppErrors(&ret)
     }
     func notifyValue(_ value: Int32) throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try I32Marshaller.toCpp(value))
-        var ret = djinni_generated.SwiftHostRegistry_notifyValue(&_params)
+        var ret = djinni_generated_swift.SwiftHostRegistry_notifyValue(&_params)
         try handleCppErrors(&ret)
     }
 }
@@ -36,7 +36,7 @@ public enum SwiftHostRegistryMarshaller: DjinniSupport.Marshaller {
 public class SwiftHostRegistry_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftHostRegistry {
         var _params = djinni.swift.ParameterList()
-        var ret = djinni_generated.SwiftHostRegistry_create(&_params)
+        var ret = djinni_generated_swift.SwiftHostRegistry_create(&_params)
         try handleCppErrors(&ret)
         return try SwiftHostRegistryMarshaller.fromCpp(ret)
     }

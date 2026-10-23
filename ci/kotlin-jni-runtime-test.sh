@@ -3,10 +3,12 @@
 #
 # The test calls C++ from the generated Kotlin classes, and C++ calls a Kotlin object back. It checks
 # records, outcomes, futures, C++ exceptions and many threads. A watchdog fails the run when it deadlocks.
-# The script runs two programs: one against the classes without --kotlin-suspend-wrap, and one against the
-# suspend functions that the flag makes. The script skips with exit code 77 and a message when something is
-# missing: javac, java, kotlinc, clang++ (CXX), jni.h in JAVA_HOME, kotlin-stdlib.jar, kotlinx-coroutines,
-# or a supported system (macOS, Linux). With CI or
+# The script runs these programs: one against the classes without --kotlin-suspend-wrap, and one against the
+# suspend functions that the flag makes. The second program runs with the default dispatcher and with
+# --kotlin-suspend-dispatcher. Two more programs check --kotlin-error-type: with blocking functions
+# (runtime_sync.djinni, which has no future) and with suspend functions (runtime.djinni). The script skips with
+# exit code 77 and a message when something is missing: javac, java, kotlinc, clang++ (CXX), jni.h in JAVA_HOME,
+# kotlin-stdlib.jar, kotlinx-coroutines, or a supported system (macOS, Linux). With CI or
 # KOTLIN_JNI_RUNTIME_REQUIRED set, a missing part is an error (exit code 2).
 #
 # Environment:
@@ -68,51 +70,73 @@ else
 fi
 
 out="$work/out"
-generate() { # <kotlin out> [generator flags]
-  local kotlin_out=$1
-  shift
+generate() { # <idl> <C++ and JNI out> <kotlin out> [generator flags]
+  local idl=$1 gen_out=$2 kotlin_out=$3
+  shift 3
   (cd "$src" && java -jar "$jar" \
-    --cpp-out "$out/cpp" --cpp-namespace kj \
-    --jni-out "$out/jni" --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+    --cpp-out "$gen_out/cpp" --cpp-namespace kj \
+    --jni-out "$gen_out/jni" --jni-use-on-load-initializer false --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
     --java-package rt.kj --ident-java-field mFooBar \
     --kotlin-jni-out "$kotlin_out" "$@" \
-    --idl runtime.djinni)
+    --idl "$idl")
 }
-generate "$out/kotlin"
+generate runtime.djinni "$out" "$out/kotlin"
+# The IDL without futures, for --kotlin-error-type without --kotlin-suspend-wrap
+out_sync="$work/out-sync"
+generate runtime_sync.djinni "$out_sync" "$out_sync/kotlin" --kotlin-error-type rt.kj.KjsException
 
-# The JNI library: the support library, the generated JNI code and the C++ implementation.
-echo "== ${CXX:-clang++} ($(ls "$out"/jni/*.cpp | wc -l | tr -d ' ') generated JNI files)"
-mkdir -p "$work/objs"
+# The JNI libraries: the support library, the generated JNI code and the C++ implementation.
 cxxflags=(-std=c++17 -fPIC -Wno-deprecated-declarations -DDATAREF_JNI=1 -I "$jni_include" -I "$jni_platform"
-  -I "$out/cpp" -I "$out/jni" -I "$repo_root/support-lib/jni" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib"
+  -I "$repo_root/support-lib/jni" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib"
   -I "$repo_root/ci/kotlin-jni/extern")
-for f in "$repo_root"/support-lib/jni/*.cpp "$out"/jni/*.cpp "$src/kj_service_impl.cpp"; do
+compile() { # <generated dir> <source> <object>
   # shellcheck disable=SC2086
-  "${CXX:-clang++}" "${cxxflags[@]}" ${CXXFLAGS:-} -c "$f" -o "$work/objs/$(basename "$f").o"
+  "${CXX:-clang++}" "${cxxflags[@]}" -I "$1/cpp" -I "$1/jni" ${CXXFLAGS:-} -c "$2" -o "$3"
+}
+mkdir -p "$work/objs/support"
+for f in "$repo_root"/support-lib/jni/*.cpp; do
+  compile "$out" "$f" "$work/objs/support/$(basename "$f").o"
 done
+build_lib() { # <library file> <generated dir> <C++ implementation>
+  local lib_file=$1 gen=$2 impl=$3 objs
+  objs="$work/objs/$(basename "$lib_file")"
+  echo "== ${CXX:-clang++} $(basename "$lib_file") ($(ls "$gen"/jni/*.cpp | wc -l | tr -d ' ') generated JNI files)"
+  mkdir -p "$objs"
+  for f in "$gen"/jni/*.cpp "$impl"; do
+    compile "$gen" "$f" "$objs/$(basename "$f").o"
+  done
+  "${CXX:-clang++}" -shared -o "$lib_file" "$work"/objs/support/*.o "$objs"/*.o
+}
 lib="$work/libkj.$lib_ext"
-"${CXX:-clang++}" -shared -o "$lib" "$work"/objs/*.o
+build_lib "$lib" "$out" "$src/kj_service_impl.cpp"
+lib_sync="$work/libkjs.$lib_ext"
+build_lib "$lib_sync" "$out_sync" "$src/kjs_service_impl.cpp"
 
 echo "== javac"
 mkdir -p "$work/java-classes"
 # shellcheck disable=SC2046
 javac -Werror -Xlint:all -d "$work/java-classes" $(find "$repo_root/support-lib/java" -name '*.java')
 
-# run_mode <name> <kotlin dir> <main file> <class path of the libraries> : compile the Kotlin and run it
+# run_mode <name> <JNI library> <kotlin dir> <main file> <class path of the libraries> <Kotlin files, ':' separated>
+#   [<program arguments>...] : compile the Kotlin and run it
 run_mode() {
-  local name=$1 kotlin_dir=$2 main=$3 libs=$4
+  local name=$1 native=$2 kotlin_dir=$3 main=$4 libs=$5 extra
+  IFS=: read -r -a extra <<<"$6"
+  shift 6
   mkdir -p "$work/classes-$name"
   echo "== kotlinc and run: $name"
-  kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main" \
-    "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt" "$repo_root/ci/kotlin-jni/runtime/KjExtendedSub.kt"
-  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib" 2>&1 | tee "$work/java-$name.log"
+  kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main" "${extra[@]}"
+  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$native" "$@" 2>&1 | tee "$work/java-$name.log"
   if grep -q "WARNING in native method" "$work/java-$name.log"; then
     echo "FAIL: -Xcheck:jni reported a warning in $name" >&2
     exit 1
   fi
 }
 stdlib="$kotlin_lib/kotlin-stdlib.jar"
-run_mode sync "$out/kotlin" Main.kt "$stdlib"
+runtime_kotlin="$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt:$src/KjExtendedSub.kt"
+run_mode sync "$lib" "$out/kotlin" Main.kt "$stdlib" "$runtime_kotlin"
+# The error type of the application with blocking functions.
+run_mode typed "$lib_sync" "$out_sync/kotlin" MainTyped.kt "$stdlib" "$src/KjsException.kt"
 
 # The suspend functions need kotlinx-coroutines.
 coroutines="${KOTLINX_COROUTINES_JAR:-}"
@@ -125,5 +149,11 @@ if [ -z "$coroutines" ]; then
 fi
 [ -n "$coroutines" ] && [ -f "$coroutines" ] || skip "kotlinx-coroutines-core-jvm.jar is not found (set KOTLINX_COROUTINES_JAR)"
 echo "== coroutines: $coroutines"
-generate "$out/kotlin-suspend" --kotlin-suspend-wrap
-run_mode suspend "$out/kotlin-suspend" MainSuspend.kt "$stdlib:$coroutines"
+generate runtime.djinni "$out" "$out/kotlin-suspend" --kotlin-suspend-wrap
+run_mode suspend "$lib" "$out/kotlin-suspend" MainSuspend.kt "$stdlib:$coroutines" "$runtime_kotlin"
+# The same program with the dispatcher of the application: the C++ calls run on its threads.
+generate runtime.djinni "$out" "$out/kotlin-suspend-dispatcher" --kotlin-suspend-wrap --kotlin-suspend-dispatcher rt.kj.TestDispatchers.blocking
+run_mode suspend-dispatcher "$lib" "$out/kotlin-suspend-dispatcher" MainSuspend.kt "$stdlib:$coroutines" "$runtime_kotlin" kj-blocking
+# The error type of the application with suspend functions.
+generate runtime.djinni "$out" "$out/kotlin-typed-suspend" --kotlin-suspend-wrap --kotlin-error-type rt.kj.KjException
+run_mode typed-suspend "$lib" "$out/kotlin-typed-suspend" MainTypedSuspend.kt "$stdlib:$coroutines" "$runtime_kotlin:$src/KjException.kt"

@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Proves that the Kotlin classes of --kotlin-jni-out bind to the JNI code that goes with the Java classes.
 #
-# For two IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
+# For several IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
 # and the Kotlin on the JVM, and compares the class files with `javap -p -s` (ci/kotlin_jni_compare.py):
-# the Crux assets IDL with the flags of crux/tools/generate_code.sh, and the test-suite IDL.
+# the Crux assets IDL with the flags of crux/tools/generate_code.sh, the whole Crux IDL with --kotlin-error-type
+# and --kotlin-suspend-wrap, and the test-suite IDL.
 #
 # Needs javac, javap and kotlinc. The Kotlin compiler needs its Parcelize plugin (parcelize-compiler.jar).
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
-#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux assets IDL (pass 1), which needs MITTI_MOBILE_ROOT
+#   KOTLIN_JNI_CHECK_CRUX  set to 0 to skip the Crux IDL (passes 1 and 1b), which needs MITTI_MOBILE_ROOT
 #   KOTLIN_LIB         directory of kotlinc with parcelize-compiler.jar (default: derived from kotlinc)
 #   KOTLINX_COROUTINES_JAR  kotlinx-coroutines-core-jvm.jar for --kotlin-suspend-wrap (default: search ~/.gradle and ~/.m2)
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
@@ -82,10 +83,27 @@ compile_and_compare() {
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package" "$@"
 }
 
+# strip_kotlin_keys <extern dir>: removes the Kotlin keys (jni.kotlin*, kotlin.jniTypename) from the yaml files.
+# The Crux passes generate Java, Kotlin and JNI in one run, which binds one class for each extern type, and the
+# committed s12 asset yaml has the Kotlin keys; pass 4 checks the extern types with the Kotlin keys.
+strip_kotlin_keys() {
+  python3 - "$1" <<'EOF'
+import glob, os, re, sys
+for path in glob.glob(os.path.join(sys.argv[1], "**", "*.yaml"), recursive=True):
+    text = open(path).read()
+    stripped = re.sub(r"^  (kotlinTranslator|kotlinHeader|kotlinTypeSignature|jniTypename): .*\n", "", text, flags=re.M)
+    # A kotlin block that had only jniTypename is now empty
+    stripped = re.sub(r"^kotlin:\n(?!  )", "", stripped, flags=re.M)
+    if stripped != text:
+        open(path, "w").write(stripped)
+EOF
+}
+
 # 1. Crux assets IDL, with the flags of crux/tools/generate_code.sh. The names of the fields are the Java names (mFooBar).
 if [ "$check_crux" != 0 ]; then
   package=com.safetyculture.crux.domain
   python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx" "$repo_root" "common.djinni,media.djinni,assets.djinni"
+  strip_kotlin_keys "$work/fx/extern"
   (cd "$work/fx" && java -jar "$jar" \
     --java-out "$work/crux/java" --java-package "$package" --ident-java-field mFooBar \
     --cpp-out "$work/crux/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
@@ -102,6 +120,30 @@ if [ "$check_crux" != 0 ]; then
     exit 1
   fi
   echo "record field: Kotlin 'val mAsset' and JNI GetFieldID \"mAsset\""
+
+  # 1b. The whole Crux IDL (main.djinni) with the error type of the application and suspend functions. Crux has no
+  # error record, so the pass adds the record crux_error for the constructor (error: E) of the class.
+  python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-main" "$repo_root" "main.djinni"
+  strip_kotlin_keys "$work/fx-main/extern"
+  printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-main/crux/djinni/domain/crux_error.djinni"
+  printf '@import "crux_error.djinni"\n' >>"$work/fx-main/crux/djinni/domain/swift_fixture.djinni"
+  (cd "$work/fx-main" && java -jar "$jar" \
+    --java-out "$work/crux-error/java" --java-package "$package" --ident-java-field mFooBar \
+    --cpp-out "$work/crux-error/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h \
+    --java-nonnull-annotation androidx.annotation.NonNull \
+    --jni-out "$work/crux-error/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar --ident-cpp-method FooBar \
+    --jni-include-cpp-prefix generated/ --java-implement-android-os-parcelable true \
+    --kotlin-jni-out "$work/crux-error/kotlin" --kotlin-jni-package "$package" \
+    --kotlin-suspend-wrap --kotlin-error-type "$package.CruxException" \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
+  compile_and_compare crux-error "$package" "$work/fx-main/extern" "$repo_root/ci/kotlin-jni/crux"
+  # The flag must change the Crux output: a static method throws the class, and a future is a suspend function.
+  if ! grep -q "throw $package.CruxException(djinni_e)" "$work/crux-error/kotlin/CruxAPI.kt" ||
+     ! grep -q "suspend fun downloadAsset(groupId: String, remoteUrl: String): String?" "$work/crux-error/kotlin/TrainingOfflineAssetManager.kt"; then
+    echo "FAIL: --kotlin-error-type did not change the Crux output" >&2
+    exit 1
+  fi
+  echo "crux error type: $(grep -l "$package.CruxException" "$work/crux-error/kotlin"/*.kt | wc -l | tr -d ' ') Kotlin files throw CruxException"
 fi
 
 # 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh. The second run registers the natives in JNI_OnLoad.
@@ -136,6 +178,78 @@ for mode in suspend:false suspend-onload:true; do
   compile_and_compare "$name" "$package" ""
 done
 
+# A record named unit is not Unit. A future<unit> returns the record, and only a future<void> has no value.
+suspend_kt="$work/suspend/kotlin/KotlinSuspendService.kt"
+if ! grep -qF "abstract suspend fun loadUnit(): Unit" "$suspend_kt" || ! grep -qF "abstract suspend fun flush()" "$suspend_kt" ||
+   grep -F "abstract suspend fun flush()" "$suspend_kt" | grep -q ": "; then
+  echo "FAIL: a future<unit> of a record named unit loses its value, or a future<void> has a value" >&2
+  exit 1
+fi
+echo "suspend functions: future<unit> returns the record, future<void> returns nothing"
+
+# expect_rejected <name> <IDL> <generator flags> <message>... : the generator exits 1 with each message and writes no file
+expect_rejected() {
+  local name=$1 idl=$2 flags=$3 status message
+  shift 3
+  mkdir -p "$work/$name"
+  set +e
+  # shellcheck disable=SC2086
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --kotlin-jni-out "$work/$name/kotlin" $flags --java-package "$package" --idl "$idl") >"$work/$name/out.log" 2>&1
+  status=$?
+  set -e
+  for message in "$@"; do
+    if [ "$status" -ne 1 ] || [ -e "$work/$name/kotlin" ] || ! grep -qF -- "$message" "$work/$name/out.log"; then
+      echo "FAIL: $name: the generator did not reject $idl with \"$message\", or wrote files (exit $status)" >&2
+      cat "$work/$name/out.log" >&2
+      exit 1
+    fi
+  done
+}
+
+# A Kotlin method named toString or hashCode without parameters must override the member of Any. A suspend function,
+# a static function of the companion object, or another return type cannot, with or without the flag.
+expect_rejected suspend-any-names djinni/kotlin_suspend_any_names.djinni --kotlin-suspend-wrap \
+  "interface kotlin_suspend_any_names, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method."
+expect_rejected any-names-return djinni/kotlin_jni_any_names_return.djinni "" \
+  "interface kotlin_jni_any_names_return, method to_string: the Kotlin method toString() overrides toString of Any, so it must return string. Rename the method or change its return type." \
+  "interface kotlin_jni_any_names_return_listener, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type."
+expect_rejected any-names-return-suspend djinni/kotlin_jni_any_names_return.djinni --kotlin-suspend-wrap \
+  "interface kotlin_jni_any_names_return, method to_string: --kotlin-suspend-wrap makes a suspend function, which cannot override toString of Any. Rename the method." \
+  "interface kotlin_jni_any_names_return_listener, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type."
+expect_rejected any-names-static djinni/kotlin_jni_any_names_static.djinni "" \
+  "interface kotlin_jni_any_names_static, method to_string: the static method toString() is a member of the companion object, where it hides toString of Any. Rename the method." \
+  "interface kotlin_jni_any_names_static, method hash_code: the Kotlin method hashCode() overrides hashCode of Any, so it must return i32. Rename the method or change its return type."
+expect_rejected any-names-static-suspend djinni/kotlin_jni_any_names_static.djinni --kotlin-suspend-wrap \
+  "interface kotlin_jni_any_names_static, method to_string: the static method toString() is a member of the companion object, where it hides toString of Any. Rename the method." \
+  "interface kotlin_jni_any_names_static, method hash_code: --kotlin-suspend-wrap makes a suspend function, which cannot override hashCode of Any. Rename the method."
+echo "Kotlin methods: a method with the name of a member of Any that cannot override it is rejected"
+
+# 3b. The error type of the application, with blocking functions and with suspend functions. The natives, the
+# lookups and the fields must not change. The JNI code binds by name in the first run and in JNI_OnLoad in the second.
+for mode in error-sync:kotlin_error_sync::false error-suspend:kotlin_error_async:--kotlin-suspend-wrap:true; do
+  IFS=: read -r name idl suspend onload <<<"$mode"
+  mkdir -p "$work/$name"
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --java-out "$work/$name/java" --jni-out "$work/$name/jni" --kotlin-jni-out "$work/$name/kotlin" ${suspend:+"$suspend"} \
+    --kotlin-error-type com.dropbox.djinni.test.KotlinErrorException \
+    --java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull \
+    --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar \
+    --cpp-out "$work/$name/cpp" --cpp-namespace testsuite \
+    --jni-use-on-load-initializer "$onload" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar \
+    --idl "djinni/$idl.djinni")
+  compile_and_compare "$name" "$package" "" "$repo_root/ci/kotlin-jni/error"
+done
+
+# Kotlin classes without a package, with the registration in JNI_OnLoad: the module initializer must find the
+# module class. The support-lib classes come from the suite pass.
+name=module
+mkdir -p "$work/$name/classes"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --jni-use-on-load-initializer true --idl djinni/kotlin_jni_module.djinni)
+kotlinc -Werror -d "$work/$name/classes" -cp "$work/suite/java-classes" "$work/$name/kotlin" "$repo_root/ci/kotlin-jni/module/ModuleProbe.kt"
+java -cp "$work/$name/classes:$work/suite/java-classes:$kotlin_lib/kotlin-stdlib.jar" ModuleProbeKt
+
 # 4. Extern records with the Kotlin keys. The JNI code binds one class for each extern type, so Java and Kotlin
 # are generated apart. The Java classes are the reference: the Kotlin class of the extern type replaces its
 # Java class in their descriptors. The header of the translator is a copy of the form that the Crux plugin writes.
@@ -161,4 +275,71 @@ if ! grep -q "com.dropbox.djinni.testextern.ExternKotlinMessage" "$work/$name/ko
 fi
 compile_and_compare "$name" "$package" "$work/$name/yaml" "$repo_root/ci/kotlin-jni/extern" com.dropbox.djinni.testextern \
   "Lcom/dropbox/djinni/testextern/ExternJavaMessage;=Lcom/dropbox/djinni/testextern/ExternKotlinMessage;"
+# The generated Parceler throws a typed exception for a Parcel without a byte array.
+mkdir -p "$work/$name/probe-classes"
+kotlinc -Werror -d "$work/$name/probe-classes" -cp "$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/parcelize-runtime.jar" \
+  "$repo_root/ci/kotlin-jni/parceler/ParcelerProbe.kt"
+java -cp "$work/$name/probe-classes:$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/parcelize-runtime.jar:$kotlin_lib/kotlin-stdlib.jar" \
+  com.dropbox.djinni.test.ParcelerProbeKt
+
+# 5. array<extern>: an extern with a Java primitive is a primitive array, and kotlin.jniTypename wins over the Java
+# primitive. The Java class uses the Java primitive for both fields, so the reference is the JNI code alone.
+name=extern-array
+mkdir -p "$work/$name/java"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --jni-out "$work/$name/jni" --java-package "$package" \
+  --idl djinni/kotlin_extern_array.djinni --idl-include-path djinni/vendor)
+compile_and_compare "$name" "$package" "" "$repo_root/ci/kotlin-jni/extern-array" com.dropbox.djinni.testextern
+# The compare tool must reject a JNI lookup that it cannot parse, so a change in the shape of the generated C++
+# cannot turn a lookup into a silent skip. The mutant has one lookup split over two lines.
+mutant="$work/compare-mutant"
+mkdir -p "$mutant"
+cp -R "$work/suite/jni" "$mutant/jni"
+python3 - "$mutant/jni" <<'PY'
+import glob, sys
+for path in sorted(glob.glob(sys.argv[1] + "/*")):
+    text = open(path).read()
+    if "jniGetFieldID(clazz.get(), " in text:
+        open(path, "w").write(text.replace("jniGetFieldID(clazz.get(), ", "jniGetFieldID(\n    clazz.get(), ", 1))
+        break
+else:
+    sys.exit("no jniGetFieldID lookup to mutate")
+PY
+if python3 "$repo_root/ci/kotlin_jni_compare.py" "$work/suite/java-classes" "$work/suite/kotlin-classes" "$mutant/jni" "$package" >"$mutant/out.log" 2>&1; then
+  echo "FAIL: the compare tool accepted a JNI lookup that it cannot parse" >&2
+  cat "$mutant/out.log" >&2
+  exit 1
+fi
+if ! grep -qF "JNI lookups are not parsed" "$mutant/out.log"; then
+  echo "FAIL: the compare tool failed for another reason than the unparsed lookup" >&2
+  cat "$mutant/out.log" >&2
+  exit 1
+fi
+echo "compare tool: an unparsed JNI lookup is rejected"
+
+# A lookup with white space before the parenthesis is still a lookup: the tool must count it as the same one.
+spaced="$work/compare-spaced"
+mkdir -p "$spaced"
+cp -R "$work/suite/jni" "$spaced/jni"
+python3 - "$spaced/jni" <<'PY'
+import glob, re, sys
+changed = 0
+for path in sorted(glob.glob(sys.argv[1] + "/*")):
+    text = open(path).read()
+    new = re.sub(r"\b(jni(?:GetFieldID|GetMethodID|GetStaticMethodID))\(", r"\1 (", text)
+    if new != text:
+        open(path, "w").write(new)
+        changed += 1
+if not changed:
+    sys.exit("no lookup to change")
+PY
+plain_count="$(python3 "$repo_root/ci/kotlin_jni_compare.py" "$work/suite/java-classes" "$work/suite/kotlin-classes" "$work/suite/jni" "$package" | grep '^4\. JNI lookups')"
+spaced_count="$(python3 "$repo_root/ci/kotlin_jni_compare.py" "$work/suite/java-classes" "$work/suite/kotlin-classes" "$spaced/jni" "$package" | grep '^4\. JNI lookups')"
+if [ -z "$plain_count" ] || [ "$plain_count" != "$spaced_count" ]; then
+  echo "FAIL: the compare tool counts a different number of lookups when there is white space before the parenthesis" >&2
+  echo "plain:  $plain_count" >&2
+  echo "spaced: $spaced_count" >&2
+  exit 1
+fi
+echo "compare tool: a lookup with white space before the parenthesis is counted ($plain_count)"
 echo "KOTLIN JNI CHECK OK"

@@ -1,0 +1,44 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# IDL names that the generated Swift and C++ code also uses for locals. They must not break the generated code.
+
+swift_naming_error = record {
+  message: string;
+} deriving(eq, error)
+
+# Fields with the names of the locals of the record marshaller.
+swift_naming_fields = record {
+  p: i32;
+  djinni: string;
+  c: i32;
+  ret: i32;
+  s: i32;
+  inst: i32;
+  params: i32;
+} deriving(eq)
+
+# Parameters with the names of the locals of the proxies and the glue.
+swift_naming_service = interface +c {
+  static create(): swift_naming_service;
+  static make(params: i32, ret: i32, inst: i32): i32;
+  params(params: i32, ret: i32, inst: i32, p: i32, djinni: i32): i32;
+  fields(fields: swift_naming_fields): swift_naming_fields;
+  outcome(ret: i32, params: i32): outcome<i32, swift_naming_error>;
+  load(ret: i32, inst: i32): future<i32>;
+  nothing(inst: i32);
+}
+
+# Swift implements this one. The C++ proxy has a local parameter list.
+swift_naming_listener = interface +j +sw {
+  on_event(params: i32, ret: i32, inst: i32, p: i32, djinni: i32);
+  on_fields(fields: swift_naming_fields, params: swift_naming_fields): swift_naming_fields;
+}
+
+# Swift hosts this one and C++ implements the statics. The statics and the constants are also for Swift.
+swift_naming_static_host = interface +sw {
+  const limit: i32 = 5;
+  static make_default(): i32;
+  static echo_fields(fields: swift_naming_fields): swift_naming_fields;
+  on_value(value: i32);
+}

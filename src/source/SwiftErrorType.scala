@@ -4,7 +4,8 @@ import djinni.ast._
 import djinni.generatorTools._
 import djinni.meta._
 
-// Checks --swift-error-type: every instance method of a C++ interface returns outcome<T, E>.
+// Checks --swift-error-type. Every method that Swift calls into C++ throws the error type: the instance methods of an
+// interface with +c and without +sw, and the static methods of an interface with +c.
 object SwiftErrorType {
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
     val name = spec.swiftErrorType.get
@@ -13,13 +14,17 @@ object SwiftErrorType {
       td <- idl
       i <- td.body match { case i: Interface => Seq(i); case _ => Seq() }
       if i.ext.cpp
-      m <- i.methods if !m.static
-      problem <- methodProblem(marshal, td.ident.name, m, name)
+      m <- i.methods if affected(i, m)
+      problem <- methodProblem(marshal, spec, td.ident.name, m, name)
     } yield problem
     val missing = if (idl.exists(td => isErrorRecord(spec, td, name))) Seq() else Seq(s"--swift-error-type $name: no record has this Swift name")
     val all = missing ++ problems
     if (all.isEmpty) None else Some(all.mkString("\n"))
   }
+
+  // The host implements the protocol of an interface with +sw, so its instance methods keep the untyped form.
+  def affected(i: Interface, m: Interface.Method): Boolean =
+    i.ext.cpp && (if (m.static) m.lang.swift else !i.ext.swift)
 
   private def isErrorRecord(spec: Spec, td: TypeDecl, name: String): Boolean = td match {
     case _: InternTypeDecl => td.body.isInstanceOf[Record] && spec.swiftIdentStyle.ty(td.ident.name) == name
@@ -38,23 +43,22 @@ object SwiftErrorType {
     case _ => marshal.typename(tm)
   }
 
-  private def methodProblem(marshal: SwiftMarshal, interface: String, m: Interface.Method, name: String): Option[String] = {
+  private def outcomeProblem(marshal: SwiftMarshal, where: String, o: MExpr, name: String): Option[String] = {
+    if (marshal.isErrorRecord(o.args(1), name)) None
+    else if (marshal.hasErrorName(o.args(1), name)) Some(s"$where: the error type $name is not a record")
+    else Some(s"$where: the error type of the outcome is ${found(marshal, o.args(1))}, but --swift-error-type is $name")
+  }
+
+  private def methodProblem(marshal: SwiftMarshal, spec: Spec, interface: String, m: Interface.Method, name: String): Seq[String] = {
     val where = s"interface $interface, method ${m.ident.name}"
     m.ret.map(_.resolved) match {
-      // A future of an outcome has two error channels and no place for a cancellation; reject it
-      case Some(tm) if marshal.isFuture(tm) && marshal.isOutcome(tm.args.head) =>
-        Some(s"$where: --swift-error-type does not support a return type future<outcome<T, ${found(marshal, tm.args.head.args(1))}>>")
-      case Some(tm) =>
-        val outcome = if (marshal.isOutcome(tm)) Some(tm) else None
-        outcome match {
-          case None => Some(s"$where: --swift-error-type needs a return type outcome<T, $name>")
-          case Some(o) if marshal.isErrorRecord(o.args(1), name) => None
-          case Some(o) if marshal.hasErrorName(o.args(1), name) =>
-            Some(s"$where: the error type $name is not a record")
-          case Some(o) =>
-            Some(s"$where: the error type of the outcome is ${found(marshal, o.args(1))}, but --swift-error-type is $name")
-        }
-      case None => Some(s"$where: --swift-error-type needs a return type outcome<T, $name>")
+      case Some(tm) if marshal.isFuture(tm) =>
+        // The async form of a future needs the queue and the cancellation of the async wrapper
+        val wrap = if (spec.swiftAsyncWrap.isEmpty) Seq(s"$where: --swift-error-type needs --swift-async-wrap for a return type future<>") else Seq()
+        val inner = if (marshal.isOutcome(tm.args.head)) outcomeProblem(marshal, where, tm.args.head, name).toSeq else Seq()
+        wrap ++ inner
+      case Some(tm) if marshal.isOutcome(tm) => outcomeProblem(marshal, where, tm, name).toSeq
+      case _ => Seq()
     }
   }
 }

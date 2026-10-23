@@ -1,0 +1,18 @@
+@extern "../../support-lib/outcome.yaml"
+
+# --kotlin-error-type has one constructor (error: E), so two error types fail the generation.
+
+kotlin_error_first = record {
+  message: string;
+}
+
+kotlin_error_second = record {
+  code: i32;
+}
+
+kotlin_error_mixed = interface +c {
+  first(): outcome<i32, kotlin_error_first>;
+  second(): outcome<i32, kotlin_error_second>;
+  # The same error type again is not a third type.
+  again(): outcome<string, kotlin_error_first>;
+}

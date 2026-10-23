@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class TestDuration {
     companion object {
@@ -51,8 +50,6 @@ abstract class TestDuration {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : TestDuration() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)

@@ -1,0 +1,4 @@
+# A suspend function cannot override toString of Any, so --kotlin-suspend-wrap rejects this interface.
+kotlin_suspend_any_names = interface +c {
+  to_string(): string;
+}

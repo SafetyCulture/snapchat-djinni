@@ -19,7 +19,7 @@ The script runs `javap -p -s` on both class trees and checks:
      methods of the Kotlin classes (name and descriptor).
 
 A lookup of a class that the Java tree does not have, such as the hand-written subclass of a record with +j,
-is skipped.
+is skipped. A Java tree without classes of the package checks the Kotlin classes against the JNI code alone.
 """
 import glob
 import os
@@ -42,6 +42,9 @@ def class_names(root: str, package: str) -> list[str]:
 
 def javap(root: str, names: list[str], substitutions=()) -> dict[str, dict]:
     """Returns {class: {"fields": set, "methods": set}}, where a member is (name, descriptor, flags)."""
+    # A case without Java classes checks the Kotlin classes against the JNI code alone.
+    if not names:
+        return {}
     out = subprocess.run(["javap", "-p", "-s", "-cp", root] + names, capture_output=True, text=True, check=True).stdout
     classes, current, pending = {}, None, None
     for line in out.splitlines():
@@ -82,22 +85,29 @@ def jni_name(cls: str, method: str) -> str:
     return "Java_" + mangle(cls) + "_" + mangle(method)
 
 
-def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]]]:
-    """Returns the exported function names and the lookups: (class, kind, name, descriptor)."""
-    exported, lookups = set(), set()
+def jni_lookups(jni_dir: str) -> tuple[set[str], set[tuple[str, str, str, str]], list[str]]:
+    """Returns the exported function names, the lookups (class, kind, name, descriptor) and the unparsed lookups.
+
+    A line that calls jniGetFieldID, jniGetMethodID or jniGetStaticMethodID counts as one lookup. Every one of
+    them must match the parser and follow a jniFindClass, so a change in the shape of the generated C++ cannot
+    turn a lookup into a silent skip."""
+    exported, lookups, unparsed = set(), set(), []
+    call = re.compile(r"\bjni(?:GetFieldID|GetMethodID|GetStaticMethodID)\s*\(")
     for path in sorted(glob.glob(os.path.join(jni_dir, "*"))):
         if not path.endswith((".cc", ".cpp", ".h", ".hpp")):
             continue
         current = None
-        for line in open(path):
+        for number, line in enumerate(open(path), 1):
             exported.update(re.findall(r"JNICALL (Java_\w+)\(", line))
             m = re.search(r'jniFindClass\("([^"]+)"\)', line)
             if m:
                 current = m.group(1).replace("/", ".")
-            m = re.search(r'jni(GetFieldID|GetMethodID|GetStaticMethodID)\(clazz\.get\(\), "([^"]+)", "([^"]+)"\)', line)
+            m = re.search(r'jni(GetFieldID|GetMethodID|GetStaticMethodID)\s*\(\s*clazz\.get\(\)\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)', line)
             if m and current:
                 lookups.add((current, m.group(1), m.group(2), m.group(3)))
-    return exported, lookups
+            elif call.search(line):
+                unparsed.append(f"{os.path.basename(path)}:{number}: {line.strip()}")
+    return exported, lookups, unparsed
 
 
 def native_tables(jni_dir: str) -> tuple[dict[str, set[tuple[str, str]]], list[str]]:
@@ -150,15 +160,18 @@ def main() -> None:
         native_count += len(j)
         if j != k:
             failures.append(f"native methods differ in {name}: Java only {sorted(j - k)[:3]}, Kotlin only {sorted(k - j)[:3]}")
-    extra = [n for n in kotlin if n not in java and natives(kotlin[n])]
+    # Without Java classes, check 3 compares the Kotlin natives with the JNI functions alone.
+    extra = [n for n in kotlin if n not in java and natives(kotlin[n])] if java_names else []
     if extra:
         failures.append(f"natives in classes that Java does not have: {extra}")
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")
 
-    exported, lookups = jni_lookups(jni_dir)
+    exported, lookups, unparsed = jni_lookups(jni_dir)
     # With no parsed lookups, checks 4-6 check nothing
     if not lookups:
         failures.append("no JNI field or method lookups found in the generated C++")
+    if unparsed:
+        failures.append(f"{len(unparsed)} JNI lookups are not parsed, for example {unparsed[:3]}")
     registrations, table_problems = native_tables(jni_dir)
     failures.extend(table_problems)
     derived = {jni_name(n, m) for n in kotlin for (m, _, _) in natives(kotlin[n])}

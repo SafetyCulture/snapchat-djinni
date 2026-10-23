@@ -3,7 +3,7 @@
 
 #include "swift_async_shared.hpp"  // my header
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftAsyncShared_value(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftAsyncShared::toCpp(params->getValue(0));
@@ -16,12 +16,20 @@ catch (const std::exception& e) {
 catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
-djinni::swift::AnyValue SwiftAsyncSharedSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
+djinni::swift::AnyValue SwiftAsyncSharedSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftAsyncSharedSwiftProxy>(instance, dispatcher)};
+}
+catch (const std::exception& e) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 int32_t SwiftAsyncSharedSwiftProxy::value() {
     djinni::swift::ParameterList params;
     return ::djinni::swift::I32::toCpp(callProtocol(0, &params));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

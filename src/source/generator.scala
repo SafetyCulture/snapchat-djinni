@@ -124,10 +124,13 @@ package object generatorTools {
                    swiftxxBaseLibIncludePrefix: String,
                    swiftLegacyRecords: Boolean,
                    swiftAsyncWrap: Option[String],
+                   swiftAsyncQueue: Option[String],
                    swiftErrorType: Option[String],
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],
                    kotlinSuspendWrap: Boolean,
+                   kotlinSuspendDispatcher: Option[String],
+                   kotlinErrorType: Option[String],
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
@@ -297,6 +300,7 @@ package object generatorTools {
     try {
       if (spec.swiftOutFolder.isDefined || spec.swiftxxOutFolder.isDefined) {
         SwiftProtobuf.check(idl, spec).foreach(message => throw GenerateException(message))
+        SwiftChecks.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       // Check before any generator writes a file.
       if (spec.swiftOutFolder.isDefined && spec.swiftErrorType.isDefined) {
@@ -304,6 +308,10 @@ package object generatorTools {
       }
       if (spec.kotlinJniOutFolder.isDefined) {
         KotlinJniExtern.check(idl, spec).foreach(message => throw GenerateException(message))
+        KotlinJniIdent.check(idl, spec).foreach(message => throw GenerateException(message))
+      }
+      if (spec.kotlinJniOutFolder.isDefined && spec.kotlinErrorType.isDefined) {
+        KotlinErrorType.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       if (spec.cppOutFolder.isDefined) {
         if (!spec.skipGeneration) {

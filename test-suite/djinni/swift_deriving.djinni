@@ -1,0 +1,51 @@
+# deriving(codable), deriving(eq) as Hashable and deriving(error) in Swift. This case has no C++ glue, because a C++
+# map key needs a std::hash that the IDL does not give.
+
+swift_deriving_kind = enum {
+  first;
+  second;
+}
+
+swift_deriving_flags = flags {
+  alpha;
+  beta;
+}
+
+# Enums and flags are Codable, so a record with them can derive codable.
+swift_deriving_codable = record {
+  kind: swift_deriving_kind;
+  flags: swift_deriving_flags;
+  optional_kind: optional<swift_deriving_kind>;
+  kinds: list<swift_deriving_kind>;
+  when: date;
+  bytes: binary;
+  name: string;
+  count: i32;
+  ratio: f64;
+} deriving(codable, eq)
+
+swift_deriving_outer = record {
+  inner: swift_deriving_codable;
+  inners: map<string, swift_deriving_codable>;
+} deriving(codable)
+
+# deriving(eq) makes a record Hashable, so it can be in a set and a map key.
+swift_deriving_key = record {
+  id: string;
+  kind: swift_deriving_kind;
+} deriving(eq)
+
+swift_deriving_keys = record {
+  keys: set<swift_deriving_key>;
+  by_key: map<swift_deriving_key, i32>;
+} deriving(eq)
+
+# deriving(error) needs no deriving on the record that it holds: Error has no members to compare or copy.
+swift_deriving_detail = record {
+  code: i32;
+}
+
+swift_deriving_error = record {
+  message: string;
+  detail: swift_deriving_detail;
+} deriving(error)

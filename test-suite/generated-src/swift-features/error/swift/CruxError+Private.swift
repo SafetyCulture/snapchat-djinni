@@ -10,15 +10,15 @@ public enum CruxErrorMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.CruxError
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let message = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let code = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 1))
+            let message = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let code = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
             return SwiftType(message: message, code: code)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.message))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.code))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.message))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.code))
         return ret
     }
 }

@@ -11,21 +11,21 @@ public enum SwiftPayloadMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftPayload
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let data = try DjinniSupport.DataRefMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let bytes = try BinaryMarshaller.fromCpp(djinni.swift.getMember(p, 1))
-            let when = try DateMarshaller.fromCpp(djinni.swift.getMember(p, 2))
-            let note = try OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 3))
-            let tags = try ListMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 4))
+            let data = try DjinniSupport.DataRefMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let bytes = try BinaryMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
+            let when = try DateMarshaller.fromCpp(DjinniSupport.compositeMember(p, 2))
+            let note = try OptionalMarshaller<StringMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 3))
+            let tags = try ListMarshaller<StringMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 4))
             return SwiftType(data: data, bytes: bytes, when: when, note: note, tags: tags)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.DataRefMarshaller.toCpp(s.data))
-        djinni.swift.addMember(&ret, try BinaryMarshaller.toCpp(s.bytes))
-        djinni.swift.addMember(&ret, try DateMarshaller.toCpp(s.when))
-        djinni.swift.addMember(&ret, try OptionalMarshaller<StringMarshaller>.toCpp(s.note))
-        djinni.swift.addMember(&ret, try ListMarshaller<StringMarshaller>.toCpp(s.tags))
+        try DjinniSupport.addMember(&ret, DjinniSupport.DataRefMarshaller.toCpp(s.data))
+        try DjinniSupport.addMember(&ret, BinaryMarshaller.toCpp(s.bytes))
+        try DjinniSupport.addMember(&ret, DateMarshaller.toCpp(s.when))
+        try DjinniSupport.addMember(&ret, OptionalMarshaller<StringMarshaller>.toCpp(s.note))
+        try DjinniSupport.addMember(&ret, ListMarshaller<StringMarshaller>.toCpp(s.tags))
         return ret
     }
 }

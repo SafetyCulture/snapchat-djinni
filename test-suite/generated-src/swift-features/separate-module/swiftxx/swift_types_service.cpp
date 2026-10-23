@@ -8,13 +8,13 @@
 #include "swift_error.hpp"
 #include "swift_payload.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 djinni::swift::AnyValue SwiftTypesService_compute(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
     auto _value = ::djinni::swift::I32::toCpp(params->getValue(1));
     auto ret = inst->compute(std::move(_value));
-    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated::SwiftError>::fromCpp(ret);
+    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated_swift::SwiftError>::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -26,7 +26,7 @@ djinni::swift::AnyValue SwiftTypesService_load(const djinni::swift::ParameterLis
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
     auto _id = ::djinni::swift::String::toCpp(params->getValue(1));
     auto ret = inst->load(std::move(_id));
-    return ::djinni::swift::FutureAdaptor<::djinni_generated::SwiftPayload>::fromCpp(std::move(ret));
+    return ::djinni::swift::FutureAdaptor<::djinni_generated_swift::SwiftPayload>::fromCpp(std::move(ret));
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -48,7 +48,7 @@ catch (...) {
 djinni::swift::AnyValue SwiftTypesService_getPayload(const djinni::swift::ParameterList* params) try {
     auto inst = SwiftTypesService::toCpp(params->getValue(0));
     auto ret = inst->get_payload();
-    return ::djinni_generated::SwiftPayload::fromCpp(ret);
+    return ::djinni_generated_swift::SwiftPayload::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -70,7 +70,7 @@ catch (...) {
 }
 djinni::swift::AnyValue SwiftTypesService_create(const djinni::swift::ParameterList* params) try {
     auto ret = ::testsuite::SwiftTypesService::create();
-    return ::djinni_generated::SwiftTypesService::fromCpp(ret);
+    return ::djinni_generated_swift::SwiftTypesService::fromCpp(ret);
 }
 catch (const std::exception& e) {
     return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
@@ -78,18 +78,26 @@ catch (const std::exception& e) {
 catch (...) {
     return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
-djinni::swift::AnyValue SwiftTypesServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) {
+djinni::swift::AnyValue SwiftTypesServiceSwiftProxy::make(void* instance, djinni::swift::DispatchFunc dispatcher) try {
     return {std::make_shared<SwiftTypesServiceSwiftProxy>(instance, dispatcher)};
+}
+catch (const std::exception& e) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};
+}
+catch (...) {
+    dispatcher(instance, -1, nullptr, nullptr);
+    return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};
 }
 djinni::expected<int32_t, ::testsuite::SwiftError> SwiftTypesServiceSwiftProxy::compute(int32_t value) {
     djinni::swift::ParameterList params;
     params.addValue(::djinni::swift::I32::fromCpp(value));
-    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated::SwiftError>::toCpp(callProtocol(0, &params));
+    return ::djinni::swift::OutcomeAdaptor<::djinni::swift::I32, ::djinni_generated_swift::SwiftError>::toCpp(callProtocol(0, &params));
 }
 ::djinni::Future<::testsuite::SwiftPayload> SwiftTypesServiceSwiftProxy::load(const std::string & id) {
     djinni::swift::ParameterList params;
     params.addValue(::djinni::swift::String::fromCpp(id));
-    return ::djinni::swift::FutureAdaptor<::djinni_generated::SwiftPayload>::toCpp(callProtocol(1, &params));
+    return ::djinni::swift::FutureAdaptor<::djinni_generated_swift::SwiftPayload>::toCpp(callProtocol(1, &params));
 }
 ::djinni::Future<void> SwiftTypesServiceSwiftProxy::reset() {
     djinni::swift::ParameterList params;
@@ -97,7 +105,7 @@ djinni::expected<int32_t, ::testsuite::SwiftError> SwiftTypesServiceSwiftProxy::
 }
 ::testsuite::SwiftPayload SwiftTypesServiceSwiftProxy::get_payload() {
     djinni::swift::ParameterList params;
-    return ::djinni_generated::SwiftPayload::toCpp(callProtocol(3, &params));
+    return ::djinni_generated_swift::SwiftPayload::toCpp(callProtocol(3, &params));
 }
 std::vector<uint8_t> SwiftTypesServiceSwiftProxy::send_view(const ::djinni::DataView & view) {
     djinni::swift::ParameterList params;
@@ -105,4 +113,4 @@ std::vector<uint8_t> SwiftTypesServiceSwiftProxy::send_view(const ::djinni::Data
     return ::djinni::swift::Binary::toCpp(callProtocol(4, &params));
 }
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

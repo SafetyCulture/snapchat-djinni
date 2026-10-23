@@ -114,7 +114,7 @@ object Main {
     var swiftPrivateInSameModule: Boolean = false
     var swiftIdentStyle = IdentStyle.swiftDefault
     var swiftxxOutFolder: Option[File] = None
-    var swiftxxNamespace: String = "djinni_generated"
+    var swiftxxNamespace: String = "djinni_generated_swift"
     var swiftxxIncludePrefix: String = ""
     var swiftxxBaseLibModule: String = "DjinniSupportCxx"
     var swiftxxClassIdentStyleOptional: Option[IdentConverter] = None
@@ -123,10 +123,13 @@ object Main {
     var swiftxxBaseLibIncludePrefix: String = ""
     var swiftLegacyRecords: Boolean = false
     var swiftAsyncWrap: Option[String] = None
+    var swiftAsyncQueue: Option[String] = None
     var swiftErrorType: Option[String] = None
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
     var kotlinSuspendWrap: Boolean = false
+    var kotlinSuspendDispatcher: Option[String] = None
+    var kotlinErrorType: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -293,20 +296,28 @@ object Main {
       opt[Unit]("swift-legacy-records").foreach(_ => swiftLegacyRecords = true)
         .text("Generate Swift records with `var` fields. The default is `let` fields.")
       opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
-        .validate(x => if (x.matches("[A-Za-z0-9_.-]+")) success else failure("--swift-async-wrap accepts only letters, digits, dot, underscore and hyphen."))
-        .text("Wrap the interfaces that C++ implements in a Swift class with async methods. Each wrapper has a serial queue labelled <label-prefix>.<interface>. Needs --swift-private-in-same-module.")
+        .text("Wrap the interfaces that C++ implements in a Swift class with async methods. The generator ignores the value. Needs --swift-private-in-same-module.")
+      opt[String]("swift-async-queue").valueName("<expression>").foreach(x => swiftAsyncQueue = Some(x))
+        .validate(x => if (x.trim.nonEmpty && !x.exists(c => c == '\n' || c == '\r') && !x.contains("*/")) success else failure("--swift-async-queue needs a Swift expression on one line."))
+        .text("With --swift-async-wrap, the DispatchQueue of the blocking C++ calls, as a Swift expression (default: DispatchQueue.global(qos: .userInitiated)).")
       opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
-        .text("The Swift name of the error record. Each instance method of an interface with +c must return outcome<T, E> with this E; future<outcome<T, E>> is rejected. The record conforms to Error.")
+        .text("The Swift name of the error record. The methods that Swift calls into C++ throw it: the instance methods of an interface with +c and without +sw, and the static methods of an interface with +c. An outcome<T, E> needs this E. A future<> needs --swift-async-wrap. The record conforms to Error.")
       opt[File]("kotlin-jni-out").valueName("<out-folder>").foreach(x => kotlinJniOutFolder = Some(x))
         .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
         .text("The package of the Kotlin JNI classes (default: the value of --java-package). It must equal --java-package when the JNI code binds the classes.")
       opt[Unit]("kotlin-suspend-wrap").foreach(_ => kotlinSuspendWrap = true)
-        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. Each C++ object runs one call at a time.")
+        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. The blocking C++ calls run on the dispatcher of --kotlin-suspend-dispatcher.")
+      opt[String]("kotlin-suspend-dispatcher").valueName("<expression>").foreach(x => kotlinSuspendDispatcher = Some(x))
+        .validate(x => if (x.trim.nonEmpty && !x.exists(c => c == '\n' || c == '\r') && !x.contains("*/")) success else failure("--kotlin-suspend-dispatcher needs a Kotlin expression on one line."))
+        .text("With --kotlin-suspend-wrap, the CoroutineDispatcher of the blocking C++ calls, as a Kotlin expression with qualified names (default: Dispatchers.IO).")
+      opt[String]("kotlin-error-type").valueName("<qualified class>").foreach(x => kotlinErrorType = Some(x))
+        .validate(x => if (x.matches("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*")) success else failure("--kotlin-error-type needs a qualified Kotlin class name."))
+        .text("With --kotlin-jni-out, the Exception class that each Kotlin call into C++ throws: the instance methods of the interfaces with +c and without +j, and the static methods. outcome<T, E> returns T and throws the class with the constructor (error: E); a C++ exception throws it with the constructor (cause: DjinniCppException). A future<T> or future<outcome<T, E>> method needs --kotlin-suspend-wrap.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
-        .text("The C++ namespace for Swift/C++ interop files (default: \"djinni_generated\").")
+        .text("The C++ namespace for Swift/C++ interop files (default: \"djinni_generated_swift\"). It must differ from --objcpp-namespace when both outputs are on.")
       opt[String]("swiftxx-include-prefix").valueName("<prefix>").foreach(swiftxxIncludePrefix = _)
         .text("The prefix for #includes of Swift C++ header files.")
       opt[String]("swiftxx-include-cpp-prefix").valueName("<prefix>").foreach(swiftxxIncludeCppPrefix = _)
@@ -413,6 +424,11 @@ object Main {
       System.exit(1); return
     }
 
+    if (swiftAsyncQueue.isDefined && swiftAsyncWrap.isEmpty) {
+      System.err.println("Error: --swift-async-queue needs --swift-async-wrap.")
+      System.exit(1); return
+    }
+
     if (kotlinSuspendWrap && kotlinJniOutFolder.isEmpty) {
       System.err.println("Error: --kotlin-suspend-wrap needs --kotlin-jni-out.")
       System.exit(1); return
@@ -421,6 +437,21 @@ object Main {
     // The JNI code binds the classes of one package; a different Kotlin package breaks the binding
     if (kotlinJniOutFolder.isDefined && jniOutFolder.isDefined && kotlinJniPackage.exists(p => !javaPackage.contains(p))) {
       System.err.println("Error: --kotlin-jni-package must equal --java-package when the JNI code binds the classes.")
+      System.exit(1); return
+    }
+
+    if (swiftxxOutFolder.isDefined && objcppOutFolder.isDefined && swiftxxNamespace == objcppNamespace) {
+      System.err.println("Error: --swiftxx-namespace and --objcpp-namespace are both \"" + swiftxxNamespace + "\". The two glue sets would define the same symbols. Set one of them to another namespace.")
+      System.exit(1); return
+    }
+
+    if (kotlinSuspendDispatcher.isDefined && !kotlinSuspendWrap) {
+      System.err.println("Error: --kotlin-suspend-dispatcher needs --kotlin-suspend-wrap.")
+      System.exit(1); return
+    }
+
+    if (kotlinErrorType.isDefined && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-error-type needs --kotlin-jni-out.")
       System.exit(1); return
     }
 
@@ -546,10 +577,13 @@ object Main {
       swiftxxBaseLibIncludePrefix,
       swiftLegacyRecords,
       swiftAsyncWrap,
+      swiftAsyncQueue,
       swiftErrorType,
       kotlinJniOutFolder,
       kotlinJniPackage,
       kotlinSuspendWrap,
+      kotlinSuspendDispatcher,
+      kotlinErrorType,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

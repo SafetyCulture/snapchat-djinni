@@ -12,6 +12,35 @@ object KotlinJniIdent {
     "when", "while")
 
   def escape(ident: String): String = if (keywords.contains(ident)) "`" + ident + "`" else ident
+
+  // A method with the name and the signature of a member of Any overrides it. Java compiles such a method too.
+  def overridesAny(name: String, m: Interface.Method): Boolean =
+    !m.static && m.params.isEmpty && (m.ret.map(_.resolved.base) match {
+      case Some(MString) => name == "toString"
+      case Some(p: MPrimitive) => name == "hashCode" && p.idlName == "i32"
+      case _ => false
+    })
+
+  private val anyMembers = Map("toString" -> "string", "hashCode" -> "i32")
+
+  // A Kotlin method with the name of a member of Any and no parameters must override it. A static method of the
+  // companion object cannot, and a suspend function cannot, because the member is not a suspend function.
+  def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
+    val problems = idl.collect {
+      case InternTypeDecl(ident, _, i: Interface, _, _) => (ident, i)
+    }.flatMap { case (ident, i) =>
+      val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
+      i.methods.filter(_.params.isEmpty).map(m => (m, spec.javaIdentStyle.method(m.ident.name))).collect {
+        case (m, name) if m.static && m.lang.java && anyMembers.contains(name) =>
+          s"interface ${ident.name}, method ${m.ident.name}: the static method $name() is a member of the companion object, where it hides $name of Any. Rename the method."
+        case (m, name) if !m.static && suspendWrap && anyMembers.contains(name) =>
+          s"interface ${ident.name}, method ${m.ident.name}: --kotlin-suspend-wrap makes a suspend function, which cannot override $name of Any. Rename the method."
+        case (m, name) if !m.static && anyMembers.contains(name) && !overridesAny(name, m) =>
+          s"interface ${ident.name}, method ${m.ident.name}: the Kotlin method $name() overrides $name of Any, so it must return ${anyMembers(name)}. Rename the method or change its return type."
+      }
+    }
+    if (problems.isEmpty) None else Some(problems.mkString("\n"))
+  }
 }
 
 // Kotlin types for the classes that the JNI code of JNIGenerator binds. The JVM signatures equal the Java ones.
@@ -55,12 +84,37 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
   private def javaPrimitiveArrayName(e: MExtern): Option[String] =
     javaPrimitiveArrays.get(e.java.typename)
 
+  // The Kotlin type that stands for a future<void>. It is qualified: an IDL record named unit is a class Unit in the package.
+  val voidFutureValue = "kotlin.Unit"
+
   // The Kotlin type of the value of a future<T>, if the type is a future.
   def futureValueType(ty: TypeRef): Option[String] = ty.resolved.base match {
     case e: MExtern if e.name == "future" && ty.resolved.args.size == 1 =>
       val arg = ty.resolved.args.head
-      Some(if (arg.base == MVoid) "Unit" else valueType(arg, None))
+      Some(if (arg.base == MVoid) voidFutureValue else valueType(arg, None))
     case _ => None
+  }
+
+  // The argument of a future<T>, if the type is a future.
+  def futureArg(tm: MExpr): Option[MExpr] = tm.base match {
+    case e: MExtern if e.name == "future" && tm.args.size == 1 => Some(tm.args.head)
+    case _ => None
+  }
+
+  // The Kotlin types of the value and the error of an outcome<T, E>, if the type is an outcome. The value of
+  // outcome<void, E> is voidFutureValue.
+  def outcomeTypes(tm: MExpr): Option[(String, String)] = tm.base match {
+    case e: MExtern if e.name == "outcome" && tm.args.size == 2 =>
+      Some((if (tm.args.head.base == MVoid) voidFutureValue else valueType(tm.args.head, None), valueType(tm.args(1), None)))
+    case _ => None
+  }
+
+  // The type T that a method of --kotlin-error-type returns for T, outcome<T, E>, future<T> and future<outcome<T, E>>.
+  def typedValue(ret: Option[TypeRef]): String = ret.map(_.resolved) match {
+    case None => voidFutureValue
+    case Some(tm) =>
+      val inner = futureArg(tm).getOrElse(tm)
+      outcomeTypes(inner).map(_._1).getOrElse(if (inner.base == MVoid) voidFutureValue else valueType(inner, None))
   }
 
   private def isInterface(tm: MExpr): Boolean = tm.base match {
@@ -88,7 +142,12 @@ class KotlinJniMarshal(spec: Spec) extends Marshal(spec) {
   private def externName(name: String) = javaToKotlin.getOrElse(name, name)
 
   private def toKotlinType(tm: MExpr, pkg: Option[String]): String = {
-    def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(f(_, true)).mkString("<", ", ", ">")
+    // A flags type is an EnumSet at run time, also as a type argument.
+    def arg(a: MExpr): String = {
+      val name = f(a, true)
+      if (javaMarshal.isEnumFlags(a)) s"EnumSet<${stripNullable(name)}>" + (if (name.endsWith("?")) "?" else "") else name
+    }
+    def args(tm: MExpr) = if (tm.args.isEmpty) "" else tm.args.map(arg).mkString("<", ", ", ">")
     def f(tm: MExpr, needRef: Boolean): String = {
       tm.base match {
         case MOptional =>

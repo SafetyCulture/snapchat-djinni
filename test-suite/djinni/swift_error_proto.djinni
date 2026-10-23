@@ -1,0 +1,7 @@
+@protobuf "vendor/third-party/proto_swift.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# The error type of an outcome is a protobuf message. A message is not an Error record.
+swift_error_proto_service = interface +c {
+  fetch(): outcome<i32, Person>;
+}

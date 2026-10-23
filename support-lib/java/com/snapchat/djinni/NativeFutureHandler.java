@@ -31,6 +31,9 @@ public class NativeFutureHandler<T> implements Future.FutureHandler<T> {
         Throwable ex = null;
         try {
             res = future.get();
+        } catch (java.util.concurrent.ExecutionException e) {
+            // C++ reads the message of the failure itself, not of the wrapper that Future.get() adds
+            ex = e.getCause() != null ? e.getCause() : e;
         } catch (Throwable e) {
             ex = e;
         }

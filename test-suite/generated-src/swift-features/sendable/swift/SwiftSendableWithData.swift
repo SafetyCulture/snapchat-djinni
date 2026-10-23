@@ -3,8 +3,8 @@
 
 import Foundation
 
-/** A DataRef field: the generator trusts the conformance. */
-public struct SwiftSendableWithData: @unchecked Sendable {
+/** A DataRef field holds shared, mutable memory, so the record is not Sendable. */
+public struct SwiftSendableWithData {
     public let data: Foundation.NSData
 
     public init(data: Foundation.NSData)

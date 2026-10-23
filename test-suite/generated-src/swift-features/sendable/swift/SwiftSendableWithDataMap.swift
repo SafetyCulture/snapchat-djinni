@@ -3,7 +3,7 @@
 
 import Foundation
 
-public struct SwiftSendableWithDataMap: @unchecked Sendable {
+public struct SwiftSendableWithDataMap {
     public let byId: Dictionary<String, Foundation.NSData>
 
     public init(byId: Dictionary<String, Foundation.NSData>)

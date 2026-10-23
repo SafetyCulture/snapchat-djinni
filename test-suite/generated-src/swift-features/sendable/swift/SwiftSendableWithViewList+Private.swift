@@ -10,13 +10,13 @@ public enum SwiftSendableWithViewListMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithViewList
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let views = try ListMarshaller<DjinniSupport.DataViewMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
+            let views = try ListMarshaller<DjinniSupport.DataViewMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(views: views)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try ListMarshaller<DjinniSupport.DataViewMarshaller>.toCpp(s.views))
+        try DjinniSupport.addMember(&ret, ListMarshaller<DjinniSupport.DataViewMarshaller>.toCpp(s.views))
         return ret
     }
 }

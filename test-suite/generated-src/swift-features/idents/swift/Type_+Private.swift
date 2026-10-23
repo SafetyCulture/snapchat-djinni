@@ -10,23 +10,23 @@ public enum Type_Marshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.Type_
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let type = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let `in` = try BoolMarshaller.fromCpp(djinni.swift.getMember(p, 1))
-            let `protocol` = try OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 2))
-            let self_ = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 3))
-            let `inout` = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 4))
-            let kind = try SwiftKindMarshaller.fromCpp(djinni.swift.getMember(p, 5))
+            let type = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let `in` = try BoolMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
+            let `protocol` = try OptionalMarshaller<StringMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 2))
+            let self_ = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 3))
+            let `inout` = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 4))
+            let kind = try SwiftKindMarshaller.fromCpp(DjinniSupport.compositeMember(p, 5))
             return SwiftType(type: type, in: `in`, protocol: `protocol`, self_: self_, `inout`: `inout`, kind: kind)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try StringMarshaller.toCpp(s.type))
-        djinni.swift.addMember(&ret, try BoolMarshaller.toCpp(s.`in`))
-        djinni.swift.addMember(&ret, try OptionalMarshaller<StringMarshaller>.toCpp(s.`protocol`))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.self_))
-        djinni.swift.addMember(&ret, try I32Marshaller.toCpp(s.`inout`))
-        djinni.swift.addMember(&ret, try SwiftKindMarshaller.toCpp(s.kind))
+        try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.type))
+        try DjinniSupport.addMember(&ret, BoolMarshaller.toCpp(s.`in`))
+        try DjinniSupport.addMember(&ret, OptionalMarshaller<StringMarshaller>.toCpp(s.`protocol`))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.self_))
+        try DjinniSupport.addMember(&ret, I32Marshaller.toCpp(s.`inout`))
+        try DjinniSupport.addMember(&ret, SwiftKindMarshaller.toCpp(s.kind))
         return ret
     }
 }

@@ -12,13 +12,13 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
     func ping() throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncService_ping(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_ping(&_params)
         try handleCppErrors(&ret)
     }
     func count() throws -> Int32 {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncService_count(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_count(&_params)
         try handleCppErrors(&ret)
         return try I32Marshaller.fromCpp(ret)
     }
@@ -27,22 +27,22 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         _params.addValue(inst)
         _params.addValue(try StringMarshaller.toCpp(id))
         _params.addValue(try OptionalMarshaller<I32Marshaller>.toCpp(limit))
-        var ret = djinni_generated.SwiftAsyncService_find(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_find(&_params)
         try handleCppErrors(&ret)
         return try SwiftAsyncItemMarshaller.fromCpp(ret)
     }
-    func fetch(_ id: String) throws -> Result<TestSuite.SwiftAsyncItem, TestSuite.SwiftAsyncError> {
+    func fetch(_ id: String) throws -> Swift.Result<TestSuite.SwiftAsyncItem, TestSuite.SwiftAsyncError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try StringMarshaller.toCpp(id))
-        var ret = djinni_generated.SwiftAsyncService_fetch(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_fetch(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<SwiftAsyncItemMarshaller, SwiftAsyncErrorMarshaller>.fromCpp(ret)
     }
-    func stopWatching() throws -> Result<Int32, TestSuite.SwiftAsyncError> {
+    func stopWatching() throws -> Swift.Result<Int32, TestSuite.SwiftAsyncError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncService_stopWatching(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_stopWatching(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftAsyncErrorMarshaller>.fromCpp(ret)
     }
@@ -50,40 +50,47 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try StringMarshaller.toCpp(id))
-        var ret = djinni_generated.SwiftAsyncService_load(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_load(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.FutureMarshaller<SwiftAsyncItemMarshaller>.fromCpp(ret)
     }
     func flush() throws -> DjinniSupport.DJFuture<Void> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncService_flush(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_flush(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.FutureMarshaller<Void_Marshaller>.fromCpp(ret)
+    }
+    func loadData() throws -> DjinniSupport.DJFuture<Foundation.NSData> {
+        var _params = djinni.swift.ParameterList()
+        _params.addValue(inst)
+        var ret = djinni_generated_swift.SwiftAsyncService_loadData(&_params)
+        try handleCppErrors(&ret)
+        return try DjinniSupport.FutureMarshaller<DjinniSupport.DataRefMarshaller>.fromCpp(ret)
     }
     func send(_ data: Foundation.NSData, tags: Array<String>) throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try DjinniSupport.DataRefMarshaller.toCpp(data))
         _params.addValue(try ListMarshaller<StringMarshaller>.toCpp(tags))
-        var ret = djinni_generated.SwiftAsyncService_send(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_send(&_params)
         try handleCppErrors(&ret)
     }
     func watch(_ observer: TestSuite.SwiftAsyncObserver) throws -> Void {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try SwiftAsyncObserverMarshaller.toCpp(observer))
-        var ret = djinni_generated.SwiftAsyncService_watch(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_watch(&_params)
         try handleCppErrors(&ret)
     }
     func child() throws -> TestSuite.SwiftAsyncChild {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
-        var ret = djinni_generated.SwiftAsyncService_child(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_child(&_params)
         try handleCppErrors(&ret)
         return try SwiftAsyncChildMarshaller.fromCpp(ret)
     }
-    func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) throws -> Result<Int32, TestSuite.SwiftAsyncError> {
+    func names(_ proxy: Int32, queue: Int32, continuation: Int32, result: Int32, future: Int32) throws -> Swift.Result<Int32, TestSuite.SwiftAsyncError> {
         var _params = djinni.swift.ParameterList()
         _params.addValue(inst)
         _params.addValue(try I32Marshaller.toCpp(proxy))
@@ -91,7 +98,7 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         _params.addValue(try I32Marshaller.toCpp(continuation))
         _params.addValue(try I32Marshaller.toCpp(result))
         _params.addValue(try I32Marshaller.toCpp(future))
-        var ret = djinni_generated.SwiftAsyncService_names(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_names(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.OutcomeMarshaller<I32Marshaller, SwiftAsyncErrorMarshaller>.fromCpp(ret)
     }
@@ -100,7 +107,7 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         _params.addValue(inst)
         _params.addValue(try I32Marshaller.toCpp(future))
         _params.addValue(try I32Marshaller.toCpp(result))
-        var ret = djinni_generated.SwiftAsyncService_futureNames(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_futureNames(&_params)
         try handleCppErrors(&ret)
         return try DjinniSupport.FutureMarshaller<I32Marshaller>.fromCpp(ret)
     }
@@ -109,7 +116,7 @@ final class SwiftAsyncServiceCppProxy: DjinniSupport.CppProxy, @unchecked Sendab
         _params.addValue(inst)
         _params.addValue(try SwiftAsyncChildMarshaller.toCpp(child))
         _params.addValue(try OptionalMarshaller<SwiftAsyncServiceMarshaller>.toCpp(parent))
-        var ret = djinni_generated.SwiftAsyncService_attach(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_attach(&_params)
         try handleCppErrors(&ret)
     }
 }
@@ -125,7 +132,7 @@ public enum SwiftAsyncServiceMarshaller: DjinniSupport.Marshaller {
 public class SwiftAsyncService_statics: @unchecked Sendable {
     public static func create() throws -> TestSuite.SwiftAsyncService {
         var _params = djinni.swift.ParameterList()
-        var ret = djinni_generated.SwiftAsyncService_create(&_params)
+        var ret = djinni_generated_swift.SwiftAsyncService_create(&_params)
         try handleCppErrors(&ret)
         return try SwiftAsyncServiceMarshaller.fromCpp(ret)
     }

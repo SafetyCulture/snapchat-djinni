@@ -1,0 +1,18 @@
+@protobuf "vendor/third-party/proto_swift.yaml"
+
+swift_codable_service = interface +c +sw {
+  ping();
+}
+
+# Swift cannot synthesize Codable for these fields. The resolver already stops a field of an extern type, such as a
+# DataRef, a future or an outcome, because their yaml files have no codable.
+swift_codable_bad = record {
+  service: optional<swift_codable_service>;
+  services: list<swift_codable_service>;
+  person: Person;
+} deriving(codable)
+
+# This one is fine.
+swift_codable_good = record {
+  name: string;
+} deriving(codable)

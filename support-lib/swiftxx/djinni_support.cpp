@@ -15,35 +15,60 @@ AnyValue makeRangeValue(const void* bytes, size_t size) {
     return RangeValue{bytes, size};
 }
 
-RangeValue getBinaryRange(const AnyValue& v) {
-    if (std::holds_alternative<StringValue>(v)) {
-        const auto& s = std::get<StringValue>(v);
-        return {s.data(), s.size()};
-    } else if (std::holds_alternative<BinaryValue>(v)) {
-        const auto& b = std::get<BinaryValue>(v);
-        return {b.data(), b.size()};
-    } else {
-        return std::get<RangeValue>(v);
+BinaryRangeResult getBinaryRange(const AnyValue& v) noexcept {
+    if (const auto* s = std::get_if<StringValue>(&v)) {
+        return {s->data(), s->size(), true};
+    } else if (const auto* b = std::get_if<BinaryValue>(&v)) {
+        return {b->data(), b->size(), true};
+    } else if (const auto* r = std::get_if<RangeValue>(&v)) {
+        return {r->bytes, r->size, true};
     }
+    return {nullptr, 0, false};
 }
 
-size_t getSize(const AnyValue* v) {
-    auto composite = std::get<CompositeValuePtr>(*v);
-    return composite->getSize();
+SizeResult getSize(const AnyValue* v) noexcept {
+    if (v != nullptr) {
+        if (const auto* composite = std::get_if<CompositeValuePtr>(v); composite != nullptr && *composite) {
+            return {(*composite)->getSize(), true};
+        }
+    }
+    return {0, false};
 }
 
-AnyValue getMember(const AnyValue* v, size_t i) {
-    auto composite = std::get<CompositeValuePtr>(*v);
-    return composite->getValue(i);
+namespace {
+
+AnyValue memberOf(const CompositeValue* composite, size_t i) noexcept {
+    if (composite == nullptr) {
+        return ErrorValue("the value is not a composite");
+    }
+    if (i >= composite->_elems.size()) {
+        return ErrorValue("the composite has no member " + std::to_string(i) + ", it has " + std::to_string(composite->_elems.size()));
+    }
+    return composite->_elems[i];
 }
 
-AnyValue getMember(const ParameterList* v, size_t i) {
-    return v->getValue(i);
+} // namespace
+
+AnyValue getMember(const AnyValue* v, size_t i) noexcept {
+    const auto* composite = v != nullptr ? std::get_if<CompositeValuePtr>(v) : nullptr;
+    return memberOf(composite != nullptr ? composite->get() : nullptr, i);
 }
 
-void addMember(AnyValue* c, const AnyValue& v) {
-    auto composite = std::get<CompositeValuePtr>(*c);
-    composite->addValue(v);
+AnyValue getMember(const ParameterList* v, size_t i) noexcept {
+    return memberOf(v, i);
+}
+
+bool addMember(AnyValue* c, const AnyValue& v) noexcept {
+    auto* composite = c != nullptr ? std::get_if<CompositeValuePtr>(c) : nullptr;
+    if (composite == nullptr || !*composite) {
+        return false;
+    }
+    try {
+        (*composite)->addValue(v);
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 void setReturnValue(AnyValue* ret, const AnyValue& v) {
@@ -58,22 +83,29 @@ void setErrorMessage(AnyValue* ret, const std::string& s) {
     *ret = ErrorValue{s};
 }
 
-WeakSwiftProxy weakify(const AnyValue& v) {
-    auto i = std::get<InterfaceValue>(v);
-    return {i.ptr, i.sptr};
+WeakSwiftProxy weakify(const AnyValue& v) noexcept {
+    // Swift calls this function, so a value that is not an interface gives an empty weak proxy, not an exception
+    const auto* i = std::get_if<InterfaceValue>(&v);
+    if (i == nullptr) {
+        return {};
+    }
+    return {i->ptr, i->sptr};
 }
 
-AnyValue strongify(const WeakSwiftProxy& v) {
+AnyValue strongify(const WeakSwiftProxy& v) noexcept {
     return {InterfaceValue{v.ptr.lock(), v.sptr.lock()}};
 }
 
-bool isExpired(const WeakSwiftProxy& v) {
+bool isExpired(const WeakSwiftProxy& v) noexcept {
     return v.sptr.expired();
 }
 
-InterfaceInfo getInterfaceInfo(const AnyValue* v) {
-    auto i = std::get<InterfaceValue>(*v);
-    return {i.ptr.get(), i.sptr ? i.sptr->ctx() : nullptr };
+InterfaceInfo getInterfaceInfo(const AnyValue* v) noexcept {
+    const auto* i = v != nullptr ? std::get_if<InterfaceValue>(v) : nullptr;
+    if (i == nullptr) {
+        return {nullptr, nullptr, false};
+    }
+    return {i->ptr.get(), i->sptr ? i->sptr->ctx() : nullptr, true};
 }
 
 AnyValue makeVoidValue() {
@@ -93,8 +125,24 @@ bool isError(const AnyValue* ret) {
     return std::holds_alternative<ErrorValue>(*ret);
 }
 
-ErrorValue getError(const AnyValue* ret) {
-    return std::get<ErrorValue>(*ret);
+I32Result getI32Value(const AnyValue& v) noexcept {
+    const auto* i = std::get_if<I32Value>(&v);
+    return i != nullptr ? I32Result{*i, true} : I32Result{0, false};
+}
+
+I64Result getI64Value(const AnyValue& v) noexcept {
+    const auto* i = std::get_if<I64Value>(&v);
+    return i != nullptr ? I64Result{*i, true} : I64Result{0, false};
+}
+
+DoubleResult getDoubleValue(const AnyValue& v) noexcept {
+    const auto* d = std::get_if<DoubleValue>(&v);
+    return d != nullptr ? DoubleResult{*d, true} : DoubleResult{0, false};
+}
+
+ErrorValue getError(const AnyValue* ret) noexcept {
+    const auto* e = ret != nullptr ? std::get_if<ErrorValue>(ret) : nullptr;
+    return e != nullptr ? *e : ErrorValue("the value is not an error");
 }
 
 ProtocolWrapper::ProtocolWrapper(void* ctx, DispatchFunc dispatcher):
@@ -119,37 +167,6 @@ AnyValue ProtocolWrapper::callProtocol(int idx, const ParameterList* params) con
         }
     }
     return ret;
-}
-
-// -------- Provider bridge (callable from Swift as callProviderFunction / makeProviderFunction)
-AnyValue callProviderFunction(const AnyValue& providerValue) {
-    auto ptr = std::get<OpaqueValuePtr>(providerValue);
-    auto* callable = dynamic_cast<CallableProvider*>(ptr.get());
-    if (!callable) {
-        throw ErrorValue("callProviderFunction: value is not a provider");
-    }
-    return callable->call();
-}
-
-namespace {
-struct CallbackProviderHolder : CallableProvider {
-    AnyValue (*callback)(void*);
-    void* context;
-    void (*releaseContext)(void*);
-    CallbackProviderHolder(AnyValue (*cb)(void*), void* ctx, void (*release)(void*) = nullptr)
-        : callback(cb), context(ctx), releaseContext(release) {}
-    ~CallbackProviderHolder() override {
-        if (releaseContext && context) {
-            releaseContext(context);
-        }
-    }
-    AnyValue call() override { return callback(context); }
-};
-}
-
-AnyValue makeProviderFunction(AnyValue (*callback)(void*), void* context, void (*releaseContext)(void*)) {
-    auto holder = std::make_shared<CallbackProviderHolder>(callback, context, releaseContext);
-    return AnyValue{OpaqueValuePtr(holder)};
 }
 
 }

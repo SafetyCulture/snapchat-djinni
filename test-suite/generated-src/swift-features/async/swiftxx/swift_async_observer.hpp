@@ -6,7 +6,7 @@
 #include "../cpp/swift_async_observer.hpp"
 #include "djinni_support.hpp"
 
-namespace djinni_generated {
+namespace djinni_generated_swift {
 
 using SwiftAsyncObserver = djinni::swift::Interface<::testsuite::SwiftAsyncObserver>;
 
@@ -17,4 +17,4 @@ public:
     void on_item(const ::testsuite::SwiftAsyncItem & item) override;
 };
 
-} // namespace djinni_generated
+} // namespace djinni_generated_swift

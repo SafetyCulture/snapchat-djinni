@@ -3,8 +3,8 @@
 
 import Foundation
 
-/** A record that holds a trusted record is Sendable, because that record conforms. */
-public struct SwiftSendableOuter: Sendable {
+/** A record that holds such a record is not Sendable either. */
+public struct SwiftSendableOuter {
     public let inner: TestSuite.SwiftSendableWithData
 
     public init(inner: TestSuite.SwiftSendableWithData)

@@ -8,7 +8,7 @@
 
 namespace testsuite {
 
-/** A DataRef field: the generator trusts the conformance. */
+/** A DataRef field holds shared, mutable memory, so the record is not Sendable. */
 struct SwiftSendableWithData final {
     ::djinni::DataRef data;
 

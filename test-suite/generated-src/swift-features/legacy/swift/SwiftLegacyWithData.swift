@@ -4,7 +4,7 @@
 import Foundation
 
 /** The conformance rules do not change with the flag. */
-public struct SwiftLegacyWithData: @unchecked Sendable {
+public struct SwiftLegacyWithData {
     public var data: Foundation.NSData
 
     public init(data: Foundation.NSData)

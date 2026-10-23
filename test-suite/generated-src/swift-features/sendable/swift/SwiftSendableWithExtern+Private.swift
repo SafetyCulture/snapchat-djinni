@@ -10,13 +10,13 @@ public enum SwiftSendableWithExternMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftSendableWithExtern
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let createdAt = try DjinniSupport.DateMarshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let createdAt = try DjinniSupport.DateMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(createdAt: createdAt)
         }
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         var ret = djinni.swift.makeCompositeValue()
-        djinni.swift.addMember(&ret, try DjinniSupport.DateMarshaller.toCpp(s.createdAt))
+        try DjinniSupport.addMember(&ret, DjinniSupport.DateMarshaller.toCpp(s.createdAt))
         return ret
     }
 }

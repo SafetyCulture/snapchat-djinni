@@ -1,0 +1,26 @@
+# Parameters, fields and methods named inout, var and let. Swift needs backticks for the declaration of a parameter name
+# and for inout as an argument label. The test pins the form that compiles without a warning on the pinned toolchain.
+
+swift_labels_record = record {
+  inout: i32;
+  var: i32;
+  let: i32;
+} deriving(eq)
+
+# Swift implements this one: C++ calls it, and the host class has the labels.
+swift_labels_listener = interface +j +sw {
+  on_event(a: i32, inout: i32, var: i32, let: i32);
+  on_inout(inout: i32);
+  on_var(var: i32);
+  on_let(let: i32);
+}
+
+# C++ implements this one: the proxy and the call sites use the labels.
+swift_labels_service = interface +c {
+  static create(): swift_labels_service;
+  call(a: i32, inout: i32, var: i32, let: i32): i32;
+  first_inout(inout: i32): i32;
+  first_var(var: i32): i32;
+  first_let(let: i32): i32;
+  echo(value: swift_labels_record): swift_labels_record;
+}
