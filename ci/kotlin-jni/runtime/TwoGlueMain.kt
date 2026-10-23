@@ -39,6 +39,7 @@ private fun exercise(a: rt.two.a.TwoGlueService?, b: rt.two.b.TwoGlueService?) {
     // A Kotlin object of each leg goes through C++.
     check(a.callListener(AListener(), 1) == 2, "A listener")
     check(b.callListener(BListener(), 1) == 3, "B listener")
+    check(rt.two.a.TwoGlueService.listenerProxies() == 0, "the listener proxies are released")
 
     val aRecord = rt.two.a.TwoGlueRecord(7, "seven")
     val echoedA = a.echo(aRecord)

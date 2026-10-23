@@ -74,4 +74,15 @@ int32_t TwoGlueService::cached_a() { return countServiceEntries("glue_a"); }
 
 int32_t TwoGlueService::cached_b() { return countServiceEntries("glue_b"); }
 
+int32_t TwoGlueService::listener_proxies() {
+    int32_t count = 0;
+    for (const auto &entry : djinni::JavaProxyCache::stats()) {
+        const std::string name(entry.first);
+        if (name.find("NativeTwoGlueListener") != std::string::npos) {
+            count += static_cast<int32_t>(entry.second);
+        }
+    }
+    return count;
+}
+
 } // namespace tg
