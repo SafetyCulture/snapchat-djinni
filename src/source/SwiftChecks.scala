@@ -12,7 +12,7 @@ object SwiftChecks {
     val interns = idl.collect { case d: InternTypeDecl => d }
     val swiftxx = if (spec.swiftxxOutFolder.isDefined) futureFieldProblems(interns) ++ fileNameProblems(interns, spec) else Seq()
     val swift = if (spec.swiftOutFolder.isDefined) {
-      moduleNameProblems(interns, spec) ++ outcomeErrorProblems(interns, spec) ++ codableProblems(interns) ++ reservedNameProblems(interns, spec) ++ constantProblems(interns)
+      moduleNameProblems(interns, spec) ++ outcomeErrorProblems(interns, spec) ++ codableProblems(interns) ++ reservedNameProblems(interns, spec) ++ constantProblems(interns) ++ errorBufferProblems(interns, spec)
     } else Seq()
     val all = swiftxx ++ swift
     if (all.isEmpty) None else Some(all.mkString("\n"))
@@ -128,6 +128,18 @@ object SwiftChecks {
         m.params.map(p => ("parameter", p.ident.name, spec.swiftIdentStyle.local(p.ident.name)))
       if reserved.pattern.matcher(SwiftIdent.plain(swiftName)).matches
     } yield s"interface ${td.ident.name}, method ${m.ident.name}: the $kind name $name is $swiftName in Swift. --swift-async-wrap uses names that start with djinni and a capital letter inside the wrapper, so rename it."
+  }
+
+  // Swift's Error refines Sendable. A record that conforms to Error (deriving(error), or the record of --swift-error-type)
+  // cannot hold a DataRef or a DataView, which are not Sendable: Swift 6 rejects the conformance.
+  private def errorBufferProblems(interns: Seq[InternTypeDecl], spec: Spec): Seq[String] = {
+    val marshal = new SwiftMarshal(spec)
+    for {
+      td <- interns
+      r <- Seq(td.body).collect { case r: Record => r }
+      if r.derivingTypes.contains(DerivingType.Error) || spec.swiftErrorType.contains(spec.swiftIdentStyle.ty(td.ident.name))
+      f <- r.fields if marshal.holdsBuffer(f.ty.resolved)
+    } yield s"record ${td.ident.name}, field ${f.ident.name}: the record conforms to Error in Swift, and Error is Sendable, but the field holds a DataRef or a DataView, which is not Sendable. Use binary for the field, or remove deriving(error)."
   }
 
   // A Swift string literal has other escapes than a Java one.
