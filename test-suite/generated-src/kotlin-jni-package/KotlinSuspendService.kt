@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
+private val djinni_dispatcher: kotlin.coroutines.CoroutineContext = com.dropbox.djinni.test.kt.TestDispatchers.blocking
+
 /** C++ implements this one. Its methods cover each kind of return type. */
 abstract class KotlinSuspendService {
     abstract suspend fun ping()
@@ -57,7 +59,7 @@ abstract class KotlinSuspendService {
     }
 
     /**
-     * Each suspend method runs its blocking C++ call on `com.dropbox.djinni.test.kt.TestDispatchers.blocking`. Calls to one object can run at the same time.
+     * Each suspend method runs its blocking C++ call on `com.dropbox.djinni.test.kt.TestDispatchers.blocking`, which this file evaluates once. Calls to one object can run at the same time.
      * A coroutine that is cancelled before the call does not call C++. A coroutine that waits for a C++ future
      * resumes once, with the result or with CancellationException. The C++ future is not cancelled; its late result is dropped.
      */
@@ -68,27 +70,27 @@ abstract class KotlinSuspendService {
         }
 
         override suspend fun ping() {
-            withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_ping(this@CppProxy.nativeRef) }
+            withContext(djinni_dispatcher) { native_ping(this@CppProxy.nativeRef) }
         }
         private external fun native_ping(_nativeRef: Long)
 
         override suspend fun count(): Int {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_count(this@CppProxy.nativeRef) }
+            return withContext(djinni_dispatcher) { native_count(this@CppProxy.nativeRef) }
         }
         private external fun native_count(_nativeRef: Long): Int
 
         override suspend fun find(id: String, limit: Int?): KotlinSuspendItem? {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_find(this@CppProxy.nativeRef, id, limit) }
+            return withContext(djinni_dispatcher) { native_find(this@CppProxy.nativeRef, id, limit) }
         }
         private external fun native_find(_nativeRef: Long, id: String, limit: Int?): KotlinSuspendItem?
 
         override suspend fun fetch(id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError> {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_fetch(this@CppProxy.nativeRef, id) }
+            return withContext(djinni_dispatcher) { native_fetch(this@CppProxy.nativeRef, id) }
         }
         private external fun native_fetch(_nativeRef: Long, id: String): com.snapchat.djinni.Outcome<KotlinSuspendItem, KotlinSuspendError>
 
         override suspend fun load(id: String): KotlinSuspendItem {
-            val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_load(this@CppProxy.nativeRef, id) }
+            val djinni_future = withContext(djinni_dispatcher) { native_load(this@CppProxy.nativeRef, id) }
             return suspendCancellableCoroutine<KotlinSuspendItem> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -107,7 +109,7 @@ abstract class KotlinSuspendService {
         private external fun native_load(_nativeRef: Long, id: String): com.snapchat.djinni.Future<KotlinSuspendItem>
 
         override suspend fun flush() {
-            val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_flush(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(djinni_dispatcher) { native_flush(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<kotlin.Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -127,47 +129,47 @@ abstract class KotlinSuspendService {
         private external fun native_flush(_nativeRef: Long): com.snapchat.djinni.Future<Void>
 
         override suspend fun names(`in`: Int, `val`: Int): ArrayList<String> {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_names(this@CppProxy.nativeRef, `in`, `val`) }
+            return withContext(djinni_dispatcher) { native_names(this@CppProxy.nativeRef, `in`, `val`) }
         }
         private external fun native_names(_nativeRef: Long, `in`: Int, `val`: Int): ArrayList<String>
 
         override suspend fun mark(destroyed: Boolean): Boolean {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_mark(this@CppProxy.nativeRef, destroyed) }
+            return withContext(djinni_dispatcher) { native_mark(this@CppProxy.nativeRef, destroyed) }
         }
         private external fun native_mark(_nativeRef: Long, destroyed: Boolean): Boolean
 
         override suspend fun send(data: java.nio.ByteBuffer, tags: ArrayList<String>) {
-            withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_send(this@CppProxy.nativeRef, data, tags) }
+            withContext(djinni_dispatcher) { native_send(this@CppProxy.nativeRef, data, tags) }
         }
         private external fun native_send(_nativeRef: Long, data: java.nio.ByteBuffer, tags: ArrayList<String>)
 
         override suspend fun watch(observer: KotlinSuspendObserver?) {
-            withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_watch(this@CppProxy.nativeRef, observer) }
+            withContext(djinni_dispatcher) { native_watch(this@CppProxy.nativeRef, observer) }
         }
         private external fun native_watch(_nativeRef: Long, observer: KotlinSuspendObserver?)
 
         override suspend fun child(): KotlinSuspendChild? {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_child(this@CppProxy.nativeRef) }
+            return withContext(djinni_dispatcher) { native_child(this@CppProxy.nativeRef) }
         }
         private external fun native_child(_nativeRef: Long): KotlinSuspendChild?
 
         override suspend fun attach(child: KotlinSuspendChild?, parent: KotlinSuspendService?) {
-            withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_attach(this@CppProxy.nativeRef, child, parent) }
+            withContext(djinni_dispatcher) { native_attach(this@CppProxy.nativeRef, child, parent) }
         }
         private external fun native_attach(_nativeRef: Long, child: KotlinSuspendChild?, parent: KotlinSuspendService?)
 
         override suspend fun both(both: KotlinSuspendBoth?): KotlinSuspendBoth? {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_both(this@CppProxy.nativeRef, both) }
+            return withContext(djinni_dispatcher) { native_both(this@CppProxy.nativeRef, both) }
         }
         private external fun native_both(_nativeRef: Long, both: KotlinSuspendBoth?): KotlinSuspendBoth?
 
         override suspend fun echoUnit(value: Unit): Unit {
-            return withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_echoUnit(this@CppProxy.nativeRef, value) }
+            return withContext(djinni_dispatcher) { native_echoUnit(this@CppProxy.nativeRef, value) }
         }
         private external fun native_echoUnit(_nativeRef: Long, value: Unit): Unit
 
         override suspend fun loadUnit(): Unit {
-            val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_loadUnit(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(djinni_dispatcher) { native_loadUnit(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -186,7 +188,7 @@ abstract class KotlinSuspendService {
         private external fun native_loadUnit(_nativeRef: Long): com.snapchat.djinni.Future<Unit>
 
         override suspend fun loadFlags(): EnumSet<KotlinSuspendFlags> {
-            val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_loadFlags(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(djinni_dispatcher) { native_loadFlags(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<EnumSet<KotlinSuspendFlags>> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -205,7 +207,7 @@ abstract class KotlinSuspendService {
         private external fun native_loadFlags(_nativeRef: Long): com.snapchat.djinni.Future<EnumSet<KotlinSuspendFlags>>
 
         override suspend fun loadOptionalFlags(): EnumSet<KotlinSuspendFlags>? {
-            val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_loadOptionalFlags(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(djinni_dispatcher) { native_loadOptionalFlags(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<EnumSet<KotlinSuspendFlags>?> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
@@ -224,7 +226,7 @@ abstract class KotlinSuspendService {
         private external fun native_loadOptionalFlags(_nativeRef: Long): com.snapchat.djinni.Future<EnumSet<KotlinSuspendFlags>?>
 
         override suspend fun loadFlagsList(): ArrayList<EnumSet<KotlinSuspendFlags>> {
-            val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_loadFlagsList(this@CppProxy.nativeRef) }
+            val djinni_future = withContext(djinni_dispatcher) { native_loadFlagsList(this@CppProxy.nativeRef) }
             return suspendCancellableCoroutine<ArrayList<EnumSet<KotlinSuspendFlags>>> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
