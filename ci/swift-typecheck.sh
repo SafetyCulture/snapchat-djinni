@@ -79,6 +79,7 @@ mkdir -p "$mods"
 python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12ProtosStubs.swift"
 # The real s12 Swift messages of the assets protos come with the checkout; the other yamls keep stubs
 cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxCxx.hpp" "$out/swiftxx"
 
 # Test-suite cases: the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
