@@ -72,6 +72,8 @@ kotlin_java_bridge_listener = interface +j {
   self(): kotlin_java_bridge_listener;
   listeners(items: list<kotlin_java_bridge_listener>): list<kotlin_java_bridge_listener>;
   maybe_listener(value: optional<kotlin_java_bridge_listener>): optional<kotlin_java_bridge_listener>;
+  take_future(value: future<kotlin_java_bridge_leaf>): future<string>;
+  take_outcome(value: outcome<kotlin_java_bridge_leaf, kotlin_java_bridge_error>): string;
 }
 
 # C++ and Kotlin can implement this one.

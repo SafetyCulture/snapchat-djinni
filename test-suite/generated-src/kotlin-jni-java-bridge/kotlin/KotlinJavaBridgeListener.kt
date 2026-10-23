@@ -27,4 +27,8 @@ abstract class KotlinJavaBridgeListener {
     abstract fun listeners(items: ArrayList<KotlinJavaBridgeListener>): ArrayList<KotlinJavaBridgeListener>
 
     abstract fun maybeListener(value: KotlinJavaBridgeListener?): KotlinJavaBridgeListener?
+
+    abstract fun takeFuture(value: com.snapchat.djinni.Future<KotlinJavaBridgeLeaf>): com.snapchat.djinni.Future<String>
+
+    abstract fun takeOutcome(value: com.snapchat.djinni.Outcome<KotlinJavaBridgeLeaf, KotlinJavaBridgeError>): String
 }
