@@ -134,6 +134,8 @@ single_case_mods() { # <module dir> <case>
 }
 single_case_mods "$work/error-legacy-mods" error-legacy
 single_case_mods "$work/separate-mods" separate-module
+# The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
+SWIFTXX_NAMESPACE='djinni_options::nested' single_case_mods "$work/nested-mods" nested-ns
 
 # The application declares how its error type holds a C++ exception, so the stub stands in for it.
 error_conformance="$work/CruxErrorConformance.swift"
@@ -195,6 +197,10 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
   echo "TEST-SUITE ERROR-LEGACY SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite nested-ns (--swiftxx-namespace djinni_options::nested)"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/nested-mods" "$cases/nested-ns"/swift/*.swift
+  echo "TEST-SUITE NESTED-NS SWIFT TYPECHECK OK [$flags]"
   # Without --swift-private-in-same-module the public files and the private files are two modules.
   echo "== [$flags] TestSuite separate-module"
   local sm="$build/separate" public=() private=() f
@@ -246,13 +252,13 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-for c in error-legacy separate-module; do
+for c in error-legacy separate-module nested-ns; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
-echo "TEST-SUITE ERROR-LEGACY AND SEPARATE-MODULE C++ GLUE SYNTAX OK"
+echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE AND NESTED-NS C++ GLUE SYNTAX OK"
 
 # An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
 # The other languages must still compile next to the Swift files.

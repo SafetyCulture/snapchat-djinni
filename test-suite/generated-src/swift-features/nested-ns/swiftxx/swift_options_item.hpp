@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "../cpp/swift_options_item.hpp"
 #include "djinni_support.hpp"
-#include "swift_options_item.hpp"
 
 namespace djinni_options::nested {
 

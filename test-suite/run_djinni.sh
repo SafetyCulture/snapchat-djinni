@@ -562,6 +562,7 @@ fi
     --swift-private-in-same-module \
     --swiftxx-out "$temp_out_relative/swift-features/nested-ns/swiftxx" \
     --swiftxx-namespace "djinni_options::nested" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
     \
     --idl "$swift_options_relative" \
 )

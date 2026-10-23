@@ -9,7 +9,7 @@ All 19 `.pb.swift` files come from `internal/swift/testdata/golden/` at `b225647
 `s12_assets_v1_{action,asset,assets,field,location,maintenance,type,user}.pb.swift`,
 `s12_common_{expiry_status,geo_position,measurement_unit,media,money,rpc_status,sorting}.pb.swift`,
 `s12_common_v1_status_badge_color.pb.swift`, `s12_subscriptions_v1_common.pb.swift`,
-`s12_typefield_v1_{domain,field}.pb.swift`. Swift typenames use the `S12ASSETS…` prefixes.
+`s12_typefield_v1_{domain,field}.pb.swift`. Swift typenames use the Crux prefix of the package: `S12ASSETS…` (`s12_assets_v1_*`), `S12COM…` (`s12_common_*`), `S12SUBSCRIPTIONS…` and `S12TFD…` (`s12_typefield_v1_*`).
 
 `asset.djinni.yaml` and `asset.djinni.swiftxx.h` are the real #176/#177 yaml and Swift/C++
 translator header for APISchema `protos/s12/assets/v1/asset.proto`. The yaml carries `swift:`,
