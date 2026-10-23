@@ -65,13 +65,6 @@ using AnyValue = std::variant<VoidValue, I32Value, I64Value, DoubleValue,
     StringValue, BinaryValue, DateValue, ErrorValue, OpaqueValuePtr, RangeValue,
     InterfaceValue, CompositeValuePtr>;
 
-// Base for opaque values that can be invoked as a provider (returns AnyValue).
-// Used by callProviderFunction so Swift can call into C++/Swift provider holders.
-struct CallableProvider : OpaqueValue {
-    virtual AnyValue call() = 0;
-};
-using CallableProviderPtr = std::shared_ptr<CallableProvider>;
-
 struct CompositeValue {
     virtual ~CompositeValue() = default;
     std::vector<AnyValue> _elems;
@@ -119,10 +112,6 @@ bool isError(const AnyValue* ret);
 // The error of an error value, or an error that says the value is not an error
 ErrorValue getError(const AnyValue* ret) noexcept;
 
-// Provider bridge: call a provider held in AnyValue (C++ or Swift), or create one from a callback.
-AnyValue callProviderFunction(const AnyValue& providerValue);
-AnyValue makeProviderFunction(AnyValue (*callback)(void*), void* context, void (*releaseContext)(void*) = nullptr);
-
 struct InterfaceInfo {
     void* cppPointer;
     void* ctxPointer;
@@ -136,9 +125,9 @@ struct WeakSwiftProxy {
     std::weak_ptr<void> ptr;
     std::weak_ptr<ProtocolWrapper> sptr;
 };
-WeakSwiftProxy weakify(const AnyValue& v);
-AnyValue strongify(const WeakSwiftProxy& v);
-bool isExpired(const WeakSwiftProxy& v);
+WeakSwiftProxy weakify(const AnyValue& v) noexcept;
+AnyValue strongify(const WeakSwiftProxy& v) noexcept;
+bool isExpired(const WeakSwiftProxy& v) noexcept;
 
 // -------- Swift protocol trampoline
 typedef void (*DispatchFunc)(void* ctx, int idx /* -1 for cleanup*/, const ParameterList* params, AnyValue* ret);

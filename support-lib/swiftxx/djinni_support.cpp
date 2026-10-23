@@ -75,16 +75,20 @@ void setErrorMessage(AnyValue* ret, const std::string& s) {
     *ret = ErrorValue{s};
 }
 
-WeakSwiftProxy weakify(const AnyValue& v) {
-    auto i = std::get<InterfaceValue>(v);
-    return {i.ptr, i.sptr};
+WeakSwiftProxy weakify(const AnyValue& v) noexcept {
+    // Swift calls this function, so a value that is not an interface gives an empty weak proxy, not an exception
+    const auto* i = std::get_if<InterfaceValue>(&v);
+    if (i == nullptr) {
+        return {};
+    }
+    return {i->ptr, i->sptr};
 }
 
-AnyValue strongify(const WeakSwiftProxy& v) {
+AnyValue strongify(const WeakSwiftProxy& v) noexcept {
     return {InterfaceValue{v.ptr.lock(), v.sptr.lock()}};
 }
 
-bool isExpired(const WeakSwiftProxy& v) {
+bool isExpired(const WeakSwiftProxy& v) noexcept {
     return v.sptr.expired();
 }
 
@@ -140,37 +144,6 @@ AnyValue ProtocolWrapper::callProtocol(int idx, const ParameterList* params) con
         }
     }
     return ret;
-}
-
-// -------- Provider bridge (callable from Swift as callProviderFunction / makeProviderFunction)
-AnyValue callProviderFunction(const AnyValue& providerValue) {
-    auto ptr = std::get<OpaqueValuePtr>(providerValue);
-    auto* callable = dynamic_cast<CallableProvider*>(ptr.get());
-    if (!callable) {
-        throw ErrorValue("callProviderFunction: value is not a provider");
-    }
-    return callable->call();
-}
-
-namespace {
-struct CallbackProviderHolder : CallableProvider {
-    AnyValue (*callback)(void*);
-    void* context;
-    void (*releaseContext)(void*);
-    CallbackProviderHolder(AnyValue (*cb)(void*), void* ctx, void (*release)(void*) = nullptr)
-        : callback(cb), context(ctx), releaseContext(release) {}
-    ~CallbackProviderHolder() override {
-        if (releaseContext && context) {
-            releaseContext(context);
-        }
-    }
-    AnyValue call() override { return callback(context); }
-};
-}
-
-AnyValue makeProviderFunction(AnyValue (*callback)(void*), void* context, void (*releaseContext)(void*)) {
-    auto holder = std::make_shared<CallbackProviderHolder>(callback, context, releaseContext);
-    return AnyValue{OpaqueValuePtr(holder)};
 }
 
 }
