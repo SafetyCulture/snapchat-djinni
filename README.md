@@ -361,7 +361,7 @@ Swift 6 defaults:
   an extern type without a known `Sendable` mapping. This also applies inside
   `optional<>`, `list<>`, `set<>` and `map<>`.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
-  Every generated class and every class of `DjinniSupport` is `@unchecked Sendable`.
+  Every generated proxy class and the shared classes of `DjinniSupport` are `@unchecked Sendable`.
 - A host class that implements a `+sw` interface must be `Sendable`. Make it a
   `final` class with immutable state, or mark it `@unchecked Sendable`.
 - `deriving(sendable)` adds no Swift conformance. The resolver still requires it
@@ -389,11 +389,20 @@ Async wrappers (`--swift-async-wrap`):
   also throws `DjinniError`.
 - Any other method is `async throws -> T`, or `async throws` for a method with no
   return value. It throws `DjinniError` when C++ throws.
-- A C++ object has one wrapper, so its calls run one after another on one queue.
-  Two values from C++ that name the same object are the same Swift object.
+- A C++ object has one wrapper, so its calls run one after another on one queue
+  (first in, first out). Two values from C++ that name the same object are the
+  same Swift object. The callback of a future runs on the queue of the wrapper
+  that started the call, not on the actor of the caller. A cancelled task stops
+  waiting at once, but a C++ call that already runs on the queue cannot be
+  stopped: the queue slot is occupied until C++ returns.
 - Static methods stay synchronous, in `<Interface>_statics`.
 - The wrapper needs `--swift-private-in-same-module`. The generator stops with an
   error without it.
+- A host object that implements a generated protocol must be `Sendable` (the
+  protocols are `AnyObject, Sendable`). A host object that lives on the main
+  actor conforms with `@MainActor` on the class and `nonisolated` on the
+  protocol methods that C++ calls from its own thread; the wrapper hops to the
+  main actor itself.
 
 Error type (`--swift-error-type <name>`):
 
@@ -472,6 +481,10 @@ swiftxx:
 ```
 
 Extra keys in the `swift:` block, such as `prefix`, are ignored.
+
+An extern yaml without the `swift:` and `swiftxx:` blocks stops the generator
+before it writes a file when `--swift-out` or `--swiftxx-out` is set. The
+error names the extern type.
 
 A Protobuf manifest also needs a `swift` block (`module` and `prefix`) when the IDL
 uses one of its messages with `--swift-out` or `--swiftxx-out`. If the block is
@@ -641,7 +654,7 @@ A fourth pass checks an extern record with the Kotlin keys (`kotlin_extern`).
 The script generates Java and the Kotlin classes apart. It compares the Java
 classes with the Kotlin classes, with the Kotlin class of the extern type in
 place of its Java class. The lookups of the translator of the extern type,
-`parseFrom`, `toByteArray` and `getSerializedSize`, must bind to the stub class
+`parseFrom` and `toByteArray`, must bind to the stub class
 `ci/kotlin-jni/extern/ExternKotlinMessage.kt`. The pass also compiles parcelable
 records with the extern type, alone, in a list, as an optional and in a map,
 with the Parcelize plugin.
