@@ -625,6 +625,17 @@ func runTypedErrorTests() async throws {
     let startedAfter = try await errors.pendingStarted()
     check(startedAfter == startedBefore, "a cancelled task called C++: \(startedBefore) -> \(startedAfter)")
 
+    // A method without a future that is cancelled before the call throws init(cancellation:) and does not call C++.
+    let touchedBefore = try await errors.touchCount()
+    let earlyPlain = Task { () async throws(CruxError) -> Int32 in
+        while !Task.isCancelled { await Task.yield() }
+        return try await errors.touch()
+    }
+    earlyPlain.cancel()
+    await expectCruxError("cancellation before the call of a plain method", code: -2) { () async throws(CruxError) in _ = try await typedValue(earlyPlain) }
+    let touchedAfter = try await errors.touchCount()
+    check(touchedAfter == touchedBefore, "a cancelled task called C++ through a plain method: \(touchedBefore) -> \(touchedAfter)")
+
     // A task that is cancelled while it waits for a future throws init(cancellation:) once. The late value is dropped.
     let waiting = Task { () async throws(CruxError) -> Int32 in try await errors.pending() }
     while try await errors.pendingStarted() == startedAfter { await Task.yield() }

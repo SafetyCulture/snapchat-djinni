@@ -529,6 +529,14 @@ Three scripts check the Swift support. They read the Crux IDL from
   It also compiles the Java, the JNI C++ and the Objective-C++ output of the `+sw`
   host case (`javac`, `clang++ -fsyntax-only`), so the other languages still
   compile next to the Swift files.
+  - The `NonisolatedNonsendingByDefault` pass builds `DjinniSupport` without the
+    feature, because `DjinniSupport` is a package with its own settings and only
+    the modules that use the generated code turn the feature on. The test-suite
+    files of this pass include callers of the async wrappers on the main actor
+    and on an actor (`ci/swift-typecheck/AsyncCallers.swift`).
+  - One more pass generates the whole Crux IDL (`main.djinni`) with
+    `--swift-error-type CruxError` and `--swift-async-wrap`, with a `crux_error`
+    record that the fixture adds, and typechecks it with a conformance stub.
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces, and runs it in both Swift modes. The program checks
   calls in both directions, the identity of proxies and the release of host
@@ -536,6 +544,13 @@ Three scripts check the Swift support. They read the Crux IDL from
   wrapped methods, Swift errors that C++ catches, task cancellation, the queue of
   `--swift-async-queue`, calls to one object that run at the same time, and many
   threads. A watchdog fails the run when it deadlocks.
+  - The program runs twice: with `--swift-async-queue` and with the default
+    queue. Each run checks the label of the queue that runs the C++ calls.
+  - The typed errors come from two IDL files: `runtime_error.djinni` with
+    `--swift-error-type CruxError` and the async wrappers, and
+    `runtime_error_sync.djinni` with `--swift-error-type SyncError` and without
+    them, so the synchronous protocol and static methods throw the error type
+    too.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 

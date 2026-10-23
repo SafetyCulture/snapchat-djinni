@@ -85,8 +85,13 @@ public:
 
     int32_t pending_started() override { return _pendingStarted.load(); }
 
+    int32_t touch() override { return ++_touched; }
+
+    int32_t touch_count() override { return _touched.load(); }
+
 private:
     std::atomic<int32_t> _pendingStarted{0};
+    std::atomic<int32_t> _touched{0};
     std::mutex _mutex;
     std::unique_ptr<djinni::Promise<int32_t>> _pending;
 };
