@@ -555,20 +555,23 @@ kotlin:
   `jni.kotlinHeader` and `jni.kotlinTypeSignature` instead of `jni.translator`,
   `jni.header` and `jni.typeSignature`. The translator binds the Kotlin class, so
   the type signatures of the fields, the constructors and the methods name it.
-- The four keys go together. The generator reports an extern type that has only
-  some of them.
-- The JNI code binds one class for each extern type. So the generator refuses
-  `--java-out`, `--kotlin-jni-out` and `--jni-out` together when an extern type
-  has the Kotlin keys. Run it twice: once with `--java-out`, and once with
-  `--kotlin-jni-out`. The exit code is 1.
+- The four keys go together. With `--jni-out`, the generator reports an extern
+  type that has only some of them, and names the missing keys. With
+  `--kotlin-jni-out` alone, no JNI code is written, so it does not check them.
+- The JNI code binds one class for each extern type. A `--jni-out` run binds the
+  Kotlin class only when the same run has `--kotlin-jni-out`. Otherwise it binds
+  the Java class. So the generator refuses `--java-out`, `--kotlin-jni-out` and
+  `--jni-out` together when an extern type has the Kotlin keys. Run it twice:
+  `--java-out` with `--jni-out`, and `--kotlin-jni-out` with `--jni-out`.
+  The exit code is 1.
 - With `--java-implement-android-os-parcelable`, Parcelize cannot write the Kotlin
   class. For a parcelable record with a field of such a type (also in an
   `optional<>`, a `list<>` or a `map<>`), the generator writes the object
   `<Class>Parceler` and the annotation `@TypeParceler<Class, <Class>Parceler>()`
   on the record. The Parceler writes `toByteArray()` and reads
   `parseFrom(ByteArray)`, the same methods as the JNI translator. Two classes
-  with the same simple name need different Parceler names, so the generator
-  reports them. The Java output does not change.
+  with the same simple name need different Parceler names. The generator
+  reports them before it writes a file. The Java output does not change.
 - `deriving(ord)` on a record with such a field needs a Kotlin class that is
   `Comparable`, as the Java class must be.
 - A yaml without the keys gives the same output as before.
@@ -640,7 +643,8 @@ with the Parcelize plugin.
 
 `ci/kotlin-jni-runtime-test.sh` runs the classes. It builds the generated JNI
 C++ and a C++ implementation into a library, and runs Kotlin against it on the
-JVM with `-Xcheck:jni`. The first program checks these items:
+JVM with `-Xcheck:jni`. The script fails when `-Xcheck:jni` prints a warning.
+The first program checks these items:
 
 - calls from Kotlin to C++ and from C++ to a Kotlin object
 - records, enums, outcomes, futures and C++ exceptions
@@ -694,8 +698,10 @@ changes.
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
 `--swift-private-in-same-module`, `--swift-error-type` with a method that has no
-`outcome<>`, `--kotlin-suspend-wrap` without `--kotlin-jni-out`, and `--java-out`
-with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys. It checks
+`outcome<>`, `--kotlin-suspend-wrap` without `--kotlin-jni-out`, `--java-out`
+with `--kotlin-jni-out` and `--jni-out` for an extern type with the Kotlin keys,
+two Kotlin classes with one simple name in a parcelable record, and a Protobuf
+message without a `swift` block with `--swift-out` or `--swiftxx-out`. It checks
 that the options case imports `--swiftxx-base-lib-module`.
 
 These combinations have no test beyond the checked-in output:
@@ -706,6 +712,9 @@ These combinations have no test beyond the checked-in output:
   check runs, the run-time test does not.
 - The separate-module case and `--swift-error-type` without `--swift-async-wrap`
   are not run at run time.
+- The Parceler of a Kotlin class of an extern type: the `Parcel` of the check is a
+  stub that returns null, so no program writes and reads a record. The check
+  compiles the generated Kotlin with the Parcelize plugin.
 - The typecheck of the options case does not prove `--swiftxx-include-prefix`
   and `--swiftxx-base-lib-module`, because the module map of the case also has
   `DjinniSupportCxx`. The `grep` for the import and the checked-in output cover
