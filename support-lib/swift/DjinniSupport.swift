@@ -272,6 +272,24 @@ public func parameter(_ p: UnsafePointer<djinni.swift.ParameterList>?, _ index: 
     return try checkedValue(djinni.swift.getMember(p, index))
 }
 
+public func int32Value(_ v: djinni.swift.AnyValue) throws -> Int32 {
+    let result = djinni.swift.getI32Value(v)
+    guard result.valid else { throw DjinniError("the value is not a 32-bit integer") }
+    return result.value
+}
+
+public func int64Value(_ v: djinni.swift.AnyValue) throws -> Int64 {
+    let result = djinni.swift.getI64Value(v)
+    guard result.valid else { throw DjinniError("the value is not a 64-bit integer") }
+    return result.value
+}
+
+public func doubleValue(_ v: djinni.swift.AnyValue) throws -> Double {
+    let result = djinni.swift.getDoubleValue(v)
+    guard result.valid else { throw DjinniError("the value is not a floating point number") }
+    return result.value
+}
+
 public func binaryRange(_ v: djinni.swift.AnyValue) throws -> djinni.swift.BinaryRangeResult {
     let range = djinni.swift.getBinaryRange(v)
     guard range.valid else { throw DjinniError("the value is not a string, a binary or a range") }

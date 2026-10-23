@@ -111,6 +111,23 @@ AnyValue makeCompositeValue();
 bool isError(const AnyValue* ret);
 // The error of an error value, or an error that says the value is not an error
 ErrorValue getError(const AnyValue* ret) noexcept;
+// The scalar of a value, or valid == false when the value has another kind. Swift calls these functions, and not
+// Number<>::toCpp, whose std::get throws.
+struct I32Result {
+    I32Value value;
+    bool valid;
+};
+struct I64Result {
+    I64Value value;
+    bool valid;
+};
+struct DoubleResult {
+    DoubleValue value;
+    bool valid;
+};
+I32Result getI32Value(const AnyValue& v) noexcept;
+I64Result getI64Value(const AnyValue& v) noexcept;
+DoubleResult getDoubleValue(const AnyValue& v) noexcept;
 
 struct InterfaceInfo {
     void* cppPointer;

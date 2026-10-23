@@ -117,6 +117,21 @@ bool isError(const AnyValue* ret) {
     return std::holds_alternative<ErrorValue>(*ret);
 }
 
+I32Result getI32Value(const AnyValue& v) noexcept {
+    const auto* i = std::get_if<I32Value>(&v);
+    return i != nullptr ? I32Result{*i, true} : I32Result{0, false};
+}
+
+I64Result getI64Value(const AnyValue& v) noexcept {
+    const auto* i = std::get_if<I64Value>(&v);
+    return i != nullptr ? I64Result{*i, true} : I64Result{0, false};
+}
+
+DoubleResult getDoubleValue(const AnyValue& v) noexcept {
+    const auto* d = std::get_if<DoubleValue>(&v);
+    return d != nullptr ? DoubleResult{*d, true} : DoubleResult{0, false};
+}
+
 ErrorValue getError(const AnyValue* ret) noexcept {
     const auto* e = ret != nullptr ? std::get_if<ErrorValue>(ret) : nullptr;
     return e != nullptr ? *e : ErrorValue("the value is not an error");

@@ -12,7 +12,7 @@ public protocol Marshaller {
 public enum EnumMarshaller<T: RawRepresentable>: Marshaller where T.RawValue == Int32 {
     public typealias SwiftType = T
     public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        let raw = djinni.swift.I32.toCpp(v)
+        let raw = try int32Value(v)
         guard let value = SwiftType(rawValue: raw) else {
             throw DjinniError("unknown \(SwiftType.self) value \(raw)")
         }
@@ -26,7 +26,7 @@ public enum EnumMarshaller<T: RawRepresentable>: Marshaller where T.RawValue == 
 public enum SmallIntMarshaller<T: BinaryInteger>: Marshaller {
     public typealias SwiftType = T
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        let raw = djinni.swift.I32.toCpp(v)
+        let raw = try int32Value(v)
         guard let value = SwiftType(exactly: raw) else {
             throw DjinniError("\(SwiftType.self) value out of range: \(raw)")
         }
@@ -40,7 +40,7 @@ public enum SmallIntMarshaller<T: BinaryInteger>: Marshaller {
 public enum I64Marshaller: Marshaller {
     public typealias SwiftType = Int64
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        let raw = djinni.swift.I64.toCpp(v)
+        let raw = try int64Value(v)
         guard let value = SwiftType(exactly: raw) else {
             throw DjinniError("\(SwiftType.self) value out of range: \(raw)")
         }
@@ -54,7 +54,7 @@ public enum I64Marshaller: Marshaller {
 public enum FloatMarshaller<T: BinaryFloatingPoint>: Marshaller {
     public typealias SwiftType = T
     public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        return T(djinni.swift.F64.toCpp(v))
+        return T(try doubleValue(v))
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.F64.fromCpp(Double(s))
@@ -64,7 +64,7 @@ public enum FloatMarshaller<T: BinaryFloatingPoint>: Marshaller {
 public enum BoolMarshaller: Marshaller {
     public typealias SwiftType = Bool
     public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        return djinni.swift.I32.toCpp(v) != 0
+        return try int32Value(v) != 0
     }
     public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         return djinni.swift.I32.fromCpp(s ? 1 : 0)

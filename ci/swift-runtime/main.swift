@@ -268,6 +268,13 @@ func runSafetyCases(_ service: RuntimeService) throws {
             check(String(djinni.swift.getError(p).msg).contains("not an error"), "the error of a value that is not an error")
         }
         do { _ = try binaryRange(scalar); check(false, "the range of a scalar must throw") } catch is DjinniError {} catch { check(false, "\(error)") }
+        // A scalar of the wrong kind is malformed too. Swift used to abort the process in std::get.
+        let text = djinni.swift.makeStringValue("x", 1)
+        do { _ = try I32Marshaller.fromCpp(text); check(false, "a string is not an i32") } catch is DjinniError {} catch { check(false, "\(error)") }
+        do { _ = try I64Marshaller.fromCpp(scalar); check(false, "an i32 value is not an i64") } catch is DjinniError {} catch { check(false, "\(error)") }
+        do { _ = try F64Marshaller.fromCpp(text); check(false, "a string is not a double") } catch is DjinniError {} catch { check(false, "\(error)") }
+        do { _ = try BoolMarshaller.fromCpp(text); check(false, "a string is not a bool") } catch is DjinniError {} catch { check(false, "\(error)") }
+        do { _ = try EnumMarshaller<RuntimeColor>.fromCpp(text); check(false, "a string is not an enum") } catch is DjinniError {} catch { check(false, "\(error)") }
         // An outcome with no members is malformed. Swift used to abort the process here.
         do {
             _ = try OutcomeMarshaller<I32Marshaller, RuntimeErrorMarshaller>.fromCpp(djinni.swift.makeCompositeValue())
