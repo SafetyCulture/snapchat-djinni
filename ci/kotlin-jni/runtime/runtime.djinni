@@ -46,6 +46,18 @@ kj_item = record {
   note: optional<string>;
 } deriving(eq)
 
+# Float fields compare as in Java and C++: -0.0 equals 0.0, and NaN equals nothing.
+kj_floats = record {
+  f: f32;
+  d: f64;
+  opt: optional<f64>;
+} deriving(eq)
+
+kj_ordered_floats = record {
+  f: f32;
+  d: f64;
+} deriving(eq, ord)
+
 # The extern type has the Kotlin keys, so the JNI code binds its pure Kotlin class.
 kj_message_box = record {
   message: extern_kotlin_message;
