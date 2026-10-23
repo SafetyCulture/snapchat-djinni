@@ -128,6 +128,7 @@ package object generatorTools {
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],
                    kotlinSuspendWrap: Boolean,
+                   kotlinSuspendDispatcher: Option[String],
                    moduleName: String)
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol

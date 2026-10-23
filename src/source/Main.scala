@@ -127,6 +127,7 @@ object Main {
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
     var kotlinSuspendWrap: Boolean = false
+    var kotlinSuspendDispatcher: Option[String] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -302,7 +303,10 @@ object Main {
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
         .text("The package of the Kotlin JNI classes (default: the value of --java-package). It must equal --java-package when the JNI code binds the classes.")
       opt[Unit]("kotlin-suspend-wrap").foreach(_ => kotlinSuspendWrap = true)
-        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. Each C++ object runs one call at a time.")
+        .text("With --kotlin-jni-out, make the instance methods of the interfaces with +c and without +j suspend functions. The blocking C++ calls run on the dispatcher of --kotlin-suspend-dispatcher.")
+      opt[String]("kotlin-suspend-dispatcher").valueName("<expression>").foreach(x => kotlinSuspendDispatcher = Some(x))
+        .validate(x => if (x.trim.nonEmpty && !x.exists(c => c == '\n' || c == '\r') && !x.contains("*/")) success else failure("--kotlin-suspend-dispatcher needs a Kotlin expression on one line."))
+        .text("With --kotlin-suspend-wrap, the CoroutineDispatcher of the blocking C++ calls, as a Kotlin expression with qualified names (default: Dispatchers.IO).")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -421,6 +425,11 @@ object Main {
     // The JNI code binds the classes of one package; a different Kotlin package breaks the binding
     if (kotlinJniOutFolder.isDefined && jniOutFolder.isDefined && kotlinJniPackage.exists(p => !javaPackage.contains(p))) {
       System.err.println("Error: --kotlin-jni-package must equal --java-package when the JNI code binds the classes.")
+      System.exit(1); return
+    }
+
+    if (kotlinSuspendDispatcher.isDefined && !kotlinSuspendWrap) {
+      System.err.println("Error: --kotlin-suspend-dispatcher needs --kotlin-suspend-wrap.")
       System.exit(1); return
     }
 
@@ -550,6 +559,7 @@ object Main {
       kotlinJniOutFolder,
       kotlinJniPackage,
       kotlinSuspendWrap,
+      kotlinSuspendDispatcher,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

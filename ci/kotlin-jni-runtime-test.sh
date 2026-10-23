@@ -4,7 +4,8 @@
 # The test calls C++ from the generated Kotlin classes, and C++ calls a Kotlin object back. It checks
 # records, outcomes, futures, C++ exceptions and many threads. A watchdog fails the run when it deadlocks.
 # The script runs two programs: one against the classes without --kotlin-suspend-wrap, and one against the
-# suspend functions that the flag makes. The script skips with exit code 77 and a message when something is
+# suspend functions that the flag makes. The second program runs with the default dispatcher and with
+# --kotlin-suspend-dispatcher. The script skips with exit code 77 and a message when something is
 # missing: javac, java, kotlinc, clang++ (CXX), jni.h in JAVA_HOME, kotlin-stdlib.jar, kotlinx-coroutines,
 # or a supported system (macOS, Linux). With CI or
 # KOTLIN_JNI_RUNTIME_REQUIRED set, a missing part is an error (exit code 2).
@@ -98,14 +99,15 @@ mkdir -p "$work/java-classes"
 # shellcheck disable=SC2046
 javac -Werror -Xlint:all -d "$work/java-classes" $(find "$repo_root/support-lib/java" -name '*.java')
 
-# run_mode <name> <kotlin dir> <main file> <class path of the libraries> : compile the Kotlin and run it
+# run_mode <name> <kotlin dir> <main file> <class path of the libraries> [<program arguments>...] : compile the Kotlin and run it
 run_mode() {
   local name=$1 kotlin_dir=$2 main=$3 libs=$4
+  shift 4
   mkdir -p "$work/classes-$name"
   echo "== kotlinc and run: $name"
   kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main" \
     "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt" "$repo_root/ci/kotlin-jni/runtime/KjExtendedSub.kt"
-  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib" 2>&1 | tee "$work/java-$name.log"
+  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$lib" "$@" 2>&1 | tee "$work/java-$name.log"
   if grep -q "WARNING in native method" "$work/java-$name.log"; then
     echo "FAIL: -Xcheck:jni reported a warning in $name" >&2
     exit 1
@@ -127,3 +129,6 @@ fi
 echo "== coroutines: $coroutines"
 generate "$out/kotlin-suspend" --kotlin-suspend-wrap
 run_mode suspend "$out/kotlin-suspend" MainSuspend.kt "$stdlib:$coroutines"
+# The same program with the dispatcher of the application: the C++ calls run on its threads.
+generate "$out/kotlin-suspend-dispatcher" --kotlin-suspend-wrap --kotlin-suspend-dispatcher rt.kj.TestDispatchers.blocking
+run_mode suspend-dispatcher "$out/kotlin-suspend-dispatcher" MainSuspend.kt "$stdlib:$coroutines" kj-blocking

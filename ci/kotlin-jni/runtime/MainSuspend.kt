@@ -2,6 +2,8 @@ package rt.kj
 
 import com.snapchat.djinni.DjinniCppException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -15,10 +17,22 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import java.lang.ref.WeakReference
+import java.util.concurrent.Executors
 import kotlin.coroutines.coroutineContext
 
+// The dispatcher of --kotlin-suspend-dispatcher in the second run of this program.
+object TestDispatchers {
+    val blocking: ExecutorCoroutineDispatcher = Executors.newCachedThreadPool { task ->
+        Thread(task, "kj-blocking").apply { isDaemon = true }
+    }.asCoroutineDispatcher()
+}
+
 class Doubler : KjListener() {
-    override fun onValue(value: Int): Int = value * 2
+    @Volatile var thread: String = ""
+    override fun onValue(value: Int): Int {
+        thread = Thread.currentThread().name
+        return value * 2
+    }
 }
 
 fun check(condition: Boolean, message: String) {
@@ -30,6 +44,8 @@ fun check(condition: Boolean, message: String) {
 
 fun main(args: Array<String>) {
     System.load(args[0])
+    // The thread name of the dispatcher that runs the C++ calls.
+    val expectedThread = args.getOrElse(1) { "DefaultDispatcher-worker" }
     // A watchdog fails the run when the runtime deadlocks.
     val watchdog = Thread {
         Thread.sleep(120_000)
@@ -51,7 +67,9 @@ fun main(args: Array<String>) {
         check(service.divide(1, 0).errorOrNull()?.mCode == 7, "outcome error")
 
         // C++ calls a Kotlin object from the thread of the dispatcher.
-        check(service.callListener(Doubler(), 21) == 42, "call into Kotlin")
+        val doubler = Doubler()
+        check(service.callListener(doubler, 21) == 42, "call into Kotlin")
+        check(doubler.thread.startsWith(expectedThread), "the C++ call runs on $expectedThread, not ${doubler.thread}")
 
         // A future is a suspend function that returns the value.
         check(service.delayed(7, 50) == 7, "future")
@@ -177,11 +195,18 @@ fun main(args: Array<String>) {
         }
         service.completePending(3)
 
-        // One C++ object runs one call at a time.
+        // Calls to one C++ object run at the same time.
         coroutineScope {
-            (0 until 40).map { async(Dispatchers.Default) { service.busy(5) } }.awaitAll()
+            (0 until 40).map { async(Dispatchers.Default) { service.busy(20) } }.awaitAll()
         }
-        check(service.maxConcurrent() == 1, "calls to one C++ object interleave: ${service.maxConcurrent()}")
+        check(service.maxConcurrent() > 1, "calls to one C++ object run one at a time: ${service.maxConcurrent()}")
+
+        // A call to an object does not wait for a blocking call on the same object, as cancel() must not.
+        val blocking = launch(Dispatchers.Default) { service.busy(3000) }
+        delay(200)
+        val quick = withTimeoutOrNull(1500) { service.add(1, 1) }
+        check(quick == 2, "a call waits for a blocking call on the same object")
+        blocking.join()
 
         // Many coroutines use one object.
         val sum = coroutineScope {

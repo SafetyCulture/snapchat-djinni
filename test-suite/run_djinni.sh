@@ -627,6 +627,26 @@ if ! grep -qF -- "Error: --kotlin-suspend-wrap needs --kotlin-jni-out." "$suspen
     exit 1
 fi
 
+# The dispatcher flag needs the suspend functions.
+dispatcher_log="$temp_out/dispatcher-without-suspend.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-dispatcher" \
+    --kotlin-suspend-dispatcher "Dispatchers.Default" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_suspend.djinni") >"$dispatcher_log" 2>&1; then
+    echo "The generator accepted --kotlin-suspend-dispatcher without --kotlin-suspend-wrap." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --kotlin-suspend-dispatcher needs --kotlin-suspend-wrap." "$dispatcher_log"; then
+    echo "Missing error message for --kotlin-suspend-dispatcher." 1>&2
+    cat "$dispatcher_log" 1>&2
+    exit 1
+fi
+if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher" ]; then
+    echo "The generator wrote files for a rejected flag." 1>&2
+    exit 1
+fi
+
 # The async wrappers need the private files in the same module.
 async_log="$temp_out/async-without-module.log"
 if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
@@ -676,12 +696,13 @@ fi
     --idl "djinni/kotlin_suspend.djinni" \
 )
 
-# Kotlin classes in a package other than the Java package.
+# Kotlin classes in a package other than the Java package, with the dispatcher of the application.
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --kotlin-jni-out "$temp_out_relative/kotlin-jni-package" \
     --kotlin-jni-package "com.dropbox.djinni.test.kt" \
     --kotlin-suspend-wrap \
+    --kotlin-suspend-dispatcher "com.dropbox.djinni.test.kt.TestDispatchers.blocking" \
     --java-package $java_package \
     --ident-java-field mFooBar \
     --jni-use-on-load-initializer false \
