@@ -10,7 +10,7 @@ public enum ErrorMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.Error
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let reason = try StringMarshaller.fromCpp(djinni.swift.getMember(p, 0))
+            let reason = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(reason: reason)
         }
     }

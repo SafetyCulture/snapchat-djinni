@@ -10,7 +10,7 @@ public enum SwiftSendableWithOptionalServiceMarshaller: DjinniSupport.Marshaller
     public typealias SwiftType = TestSuite.SwiftSendableWithOptionalService
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let service = try OptionalMarshaller<SwiftSendableServiceMarshaller>.fromCpp(djinni.swift.getMember(p, 0))
+            let service = try OptionalMarshaller<SwiftSendableServiceMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 0))
             return SwiftType(service: service)
         }
     }

@@ -10,8 +10,8 @@ public enum SwiftLegacyPointMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftLegacyPoint
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let x = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let y = try I32Marshaller.fromCpp(djinni.swift.getMember(p, 1))
+            let x = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let y = try I32Marshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
             return SwiftType(x: x, y: y)
         }
     }

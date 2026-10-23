@@ -11,11 +11,11 @@ public enum SwiftPayloadMarshaller: DjinniSupport.Marshaller {
     public typealias SwiftType = TestSuite.SwiftPayload
     public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType {
         return try withUnsafePointer(to: c) { p in
-            let data = try DjinniSupport.DataRefMarshaller.fromCpp(djinni.swift.getMember(p, 0))
-            let bytes = try BinaryMarshaller.fromCpp(djinni.swift.getMember(p, 1))
-            let when = try DateMarshaller.fromCpp(djinni.swift.getMember(p, 2))
-            let note = try OptionalMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 3))
-            let tags = try ListMarshaller<StringMarshaller>.fromCpp(djinni.swift.getMember(p, 4))
+            let data = try DjinniSupport.DataRefMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
+            let bytes = try BinaryMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
+            let when = try DateMarshaller.fromCpp(DjinniSupport.compositeMember(p, 2))
+            let note = try OptionalMarshaller<StringMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 3))
+            let tags = try ListMarshaller<StringMarshaller>.fromCpp(DjinniSupport.compositeMember(p, 4))
             return SwiftType(data: data, bytes: bytes, when: when, note: note, tags: tags)
         }
     }
