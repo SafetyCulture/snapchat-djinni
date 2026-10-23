@@ -87,23 +87,23 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   private case class TypedReturn(value: String, future: Option[MExpr], outcome: Boolean)
 
   private def typedReturn(ret: Option[TypeRef]): TypedReturn = ret.map(_.resolved) match {
-    case None => TypedReturn("Unit", None, outcome = false)
+    case None => TypedReturn(marshal.voidFutureValue, None, outcome = false)
     case Some(tm) =>
       val future = marshal.futureArg(tm)
       val inner = future.getOrElse(tm)
       marshal.outcomeTypes(inner) match {
         case Some((value, _)) => TypedReturn(value, future, outcome = true)
-        case None => TypedReturn(if (inner.base == MVoid) "Unit" else marshal.paramType(inner), future, outcome = false)
+        case None => TypedReturn(if (inner.base == MVoid) marshal.voidFutureValue else marshal.paramType(inner), future, outcome = false)
       }
   }
 
-  private def typedClause(t: TypedReturn): String = if (t.value == "Unit") "" else ": " + t.value
+  private def typedClause(t: TypedReturn): String = if (t.value == marshal.voidFutureValue) "" else ": " + t.value
 
   // Waits in a suspend function for the C++ future in djinni_future. The statement starts with `prefix`. With an
   // error type, a DjinniCppException fails the call with that class; other failures and cancellation stay as they are.
   private def writeFutureWait(w: IndentWriter, ret: TypeRef, value: String, prefix: String, errorType: Option[String]) {
-    // A future<void> has no value: both spellings of Unit mean it
-    val isVoid = value == "Unit" || value == marshal.voidFutureValue
+    // A future<void> has no value. A record named unit is a value, and its Kotlin class is named Unit
+    val isVoid = value == marshal.voidFutureValue
     w.wl(s"${prefix}suspendCancellableCoroutine<${if (isVoid) marshal.voidFutureValue else value}> { djinni_continuation ->").nested {
       w.wl("val djinni_target = AtomicReference(djinni_continuation)")
       w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
@@ -154,7 +154,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       }
     }
     def unwrap() {
-      if (t.value == "Unit") w.wl(s"djinni_outcome.match({ }, { throw $errorType(it) })")
+      if (t.value == marshal.voidFutureValue) w.wl(s"djinni_outcome.match({ }, { throw $errorType(it) })")
       else w.wl(s"return djinni_outcome.match({ it }, { throw $errorType(it) })")
     }
     (ret, t.future) match {
@@ -167,7 +167,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         native("val djinni_outcome = ")
         unwrap()
       case _ =>
-        native(if (t.value == "Unit") "" else "return ")
+        native(if (t.value == marshal.voidFutureValue) "" else "return ")
     }
   }
 
