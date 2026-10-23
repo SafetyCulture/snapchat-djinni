@@ -168,14 +168,13 @@ abstract class KotlinSuspendService {
 
         override suspend fun loadUnit(): Unit {
             val djinni_future = withContext(com.dropbox.djinni.test.kt.TestDispatchers.blocking) { native_loadUnit(this@CppProxy.nativeRef) }
-            return suspendCancellableCoroutine<kotlin.Unit> { djinni_continuation ->
+            return suspendCancellableCoroutine<Unit> { djinni_continuation ->
                 val djinni_target = AtomicReference(djinni_continuation)
                 djinni_continuation.invokeOnCancellation { djinni_target.set(null) }
                 djinni_future.then(Future.FutureHandler<Unit> { djinni_result ->
                     val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler
                     djinni_waiting.resumeWith(try {
-                        djinni_result.get()
-                        kotlin.Result.success(kotlin.Unit)
+                        kotlin.Result.success(djinni_result.get())
                     } catch (djinni_e: ExecutionException) {
                         kotlin.Result.failure(djinni_e.cause ?: djinni_e)
                     } catch (djinni_e: Throwable) {
