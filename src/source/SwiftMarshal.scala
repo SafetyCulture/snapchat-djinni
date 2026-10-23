@@ -36,8 +36,8 @@ object SwiftIdent {
     else if (keywords.contains(ident)) "`" + ident + "`"
     else ident
 
-  // An argument label at a call site does not need backticks, except for inout.
-  def label(ident: String): String = if (ident == "`inout`") ident else ident.replace("`", "")
+  // An argument label at a call site does not need backticks, except for inout, var and let.
+  def label(ident: String): String = if (Set("`inout`", "`var`", "`let`").contains(ident)) ident else ident.replace("`", "")
 
   // The name without escaping, for identifiers that are part of a longer name.
   def plain(ident: String): String = IdentStyle.camelLower(ident)
@@ -97,13 +97,14 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   def isSendable(tm: MExpr): Boolean = tm.base match {
     case _: MPrimitive | MString | MDate | MBinary | MVoid => true
     case MOptional | MList | MArray | MSet | MMap => tm.args.forall(isSendable)
-    case d: MDef => d.defType != DInterface
+    // Generated protocols are AnyObject, Sendable, so a record with an interface field stays checked
+    case d: MDef => true
     case _: MProtobuf => true
     case e: MExtern =>
       if (e.defType == DInterface) false
       else if (e.swift.translator.startsWith("ProtobufMarshaller")) true
       else if (e.swift.typename == "Result") tm.args.forall(isSendable)
-      else if (e.swift.typename == "DJFuture") true
+      else if (e.swift.typename == "DJFuture") tm.args.forall(isSendable)
       else false
     case _: MParam => false
   }

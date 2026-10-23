@@ -176,8 +176,9 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   }
 
   def generateConformance(deriving: Set[Record.DerivingType.Value], sendable: String, prefix: String) = {
+    // Equatable needs Hashable for a record in a set or as a map key
     val eq = if (deriving.contains(DerivingType.Eq)) "Equatable" else ""
-    val hashable = if (deriving.contains(DerivingType.Hashable)) "Hashable" else ""
+    val hashable = if (deriving.contains(DerivingType.Hashable) || deriving.contains(DerivingType.Eq)) "Hashable" else ""
     val codable = if (deriving.contains(DerivingType.Codable)) "Codable" else ""
     // Qualified so a record named Error does not shadow the protocol
     val error = if (deriving.contains(DerivingType.Error)) "Swift.Error" else ""
@@ -464,10 +465,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           }
         }
       }
-      // Define static method stubs
+      // Define static method stubs; the interface constants live on the same class
       val staticMethods = i.methods.filter(m => m.static && m.lang.swift)
-      if (!staticMethods.isEmpty) {
+      if (!staticMethods.isEmpty || !i.consts.isEmpty) {
         w.w(s"public class ${marshal.typename(ident, i)}_statics: @unchecked Sendable").braced {
+          generateSwiftConstants(w, i.consts)
           for (m <- staticMethods) {
             w.w(s"public static func ${idSwift.method(m.ident)}(")
             if (m.params.nonEmpty) { w.w("_ ") }
