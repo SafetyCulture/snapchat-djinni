@@ -105,7 +105,7 @@ ProtocolWrapper::~ProtocolWrapper() {
     _dispatcher(_ctx, -1, nullptr, nullptr);
 }
 
-AnyValue ProtocolWrapper::callProtocol(int idx, const ParameterList* params) {
+AnyValue ProtocolWrapper::callProtocol(int idx, const ParameterList* params) const {
     AnyValue ret = VoidValue(); // output parameter
     _dispatcher(_ctx, idx, params, &ret);
     if (std::holds_alternative<ErrorValue>(ret)) {
