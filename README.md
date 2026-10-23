@@ -718,7 +718,10 @@ check scripts select the newest cached jar, and CI pins 1.10.2
 - A suspend function cannot override `toString()` or `hashCode()` of `Any`. The
   generator stops with an error for a method `to_string(): string` or
   `hash_code(): i32` of such an interface. Without the flag, the method
-  overrides the member of `Any`, as in Java.
+  overrides the member of `Any`, as in Java. With or without the flag, the
+  generator stops with an error for an instance method `to_string()` or
+  `hash_code()` without parameters that returns another type, because the
+  Kotlin method cannot override the member of `Any`.
 
 `ci/kotlin-jni-check.sh` generates Java, JNI and Kotlin for the Crux assets IDL
 and for the test-suite IDL. It compiles both on the JVM, with `javac` and

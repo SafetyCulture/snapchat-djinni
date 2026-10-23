@@ -21,13 +21,19 @@ object KotlinJniIdent {
       case _ => false
     })
 
-  // A suspend function cannot override a member of Any, which is not a suspend function.
+  private val anyMembers = Map("toString" -> "string", "hashCode" -> "i32")
+
+  // A Kotlin method with the name of a member of Any and no parameters must override it. A suspend function cannot
+  // override it, because the member is not a suspend function.
   def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
-    val problems = if (!spec.kotlinSuspendWrap) Seq() else idl.collect {
-      case InternTypeDecl(ident, _, i: Interface, _, _) if i.ext.cpp && !i.ext.java => (ident, i)
+    val problems = idl.collect {
+      case InternTypeDecl(ident, _, i: Interface, _, _) => (ident, i)
     }.flatMap { case (ident, i) =>
-      i.methods.map(m => (m, spec.javaIdentStyle.method(m.ident.name))).collect {
-        case (m, name) if overridesAny(name, m) =>
+      val suspendWrap = spec.kotlinSuspendWrap && i.ext.cpp && !i.ext.java
+      i.methods.filter(m => !m.static && m.params.isEmpty).map(m => (m, spec.javaIdentStyle.method(m.ident.name))).collect {
+        case (m, name) if anyMembers.contains(name) && !overridesAny(name, m) =>
+          s"interface ${ident.name}, method ${m.ident.name}: the Kotlin method $name() overrides $name of Any, so it must return ${anyMembers(name)}. Rename the method or change its return type."
+        case (m, name) if suspendWrap && overridesAny(name, m) =>
           s"interface ${ident.name}, method ${m.ident.name}: --kotlin-suspend-wrap makes a suspend function, which cannot override $name of Any. Rename the method."
       }
     }

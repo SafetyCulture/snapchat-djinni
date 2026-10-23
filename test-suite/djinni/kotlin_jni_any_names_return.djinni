@@ -1,0 +1,9 @@
+# Methods with the names of the members of Any and other return types. Java compiles them; Kotlin cannot, so the
+# generator rejects them.
+kotlin_jni_any_names_return = interface +c {
+  to_string(): optional<string>;
+}
+
+kotlin_jni_any_names_return_listener = interface +j {
+  hash_code(): i64;
+}
