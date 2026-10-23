@@ -192,7 +192,11 @@ final class PromiseHolder<T: Marshaller>: AbstractPromiseHolder, @unchecked Send
     }
     func fulfillPromise(value: UnsafePointer<djinni.swift.AnyValue>) {
         if (!djinni.swift.isError(value)) {
-            promise(.success(T.fromCpp(value.pointee)))
+            do {
+                promise(.success(try T.fromCpp(value.pointee)))
+            } catch {
+                promise(.failure(DjinniError("\(error)")))
+            }
         } else {
             promise(.failure(DjinniError(djinni.swift.getError(value))))
         }
@@ -205,20 +209,22 @@ public func futureCb(
   ptr: UnsafeMutableRawPointer?,
   result: UnsafeMutablePointer<djinni.swift.AnyValue>?)
   -> Void {
-    let ctx = Unmanaged<AnyObject>.fromOpaque(ptr!).takeRetainedValue()
-    let promiseHolder = ctx as! AbstractPromiseHolder
-    promiseHolder.fulfillPromise(value:result!)
+    guard let ptr, let result else { return }
+    let ctx = Unmanaged<AnyObject>.fromOpaque(ptr).takeRetainedValue()
+    guard let promiseHolder = ctx as? AbstractPromiseHolder else { return }
+    promiseHolder.fulfillPromise(value: result)
 }
 
 // A C++ friendly function to release the subscription token stored with the C++
 // future value.
 public func cleanupCb(psubscription: UnsafeMutableRawPointer?) -> Void {
-    let _ = Unmanaged<Cancellable>.fromOpaque(psubscription!).takeRetainedValue()
+    guard let psubscription else { return }
+    let _ = Unmanaged<Cancellable>.fromOpaque(psubscription).takeRetainedValue()
 }
 
 public enum FutureMarshaller<T: Marshaller>: Marshaller {
     public typealias SwiftType = DJFuture<T.SwiftType>
-    public static func fromCpp(_ v: djinni.swift.AnyValue) -> SwiftType {
+    public static func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         return Future() { promise in
             // Allocate the Swift future wrapper
             let promiseHolder = PromiseHolder(marshaller: T.self, promise: promise)
@@ -229,15 +235,22 @@ public enum FutureMarshaller<T: Marshaller>: Marshaller {
             }
         }
     }
-    public static func toCpp(_ s: SwiftType) -> djinni.swift.AnyValue {
+    public static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         // Create a C++ future
         var futureValue = djinni.swift.makeFutureValue(cleanupCb)
         // Connect it with the Swift future
         let cancellable = s.getResult { result in
             switch result {
             case .success(let value):
-                var cppValue = T.toCpp(value)
-                djinni.swift.setFutureResult(&futureValue, &cppValue)
+                do {
+                    var cppValue = try T.toCpp(value)
+                    djinni.swift.setFutureResult(&futureValue, &cppValue)
+                } catch {
+                    // A failed conversion becomes the error of the C++ future
+                    var errorValue = djinni.swift.makeVoidValue()
+                    djinni.swift.setErrorValue(&errorValue, DjinniError("\(error)").wrapped)
+                    djinni.swift.setFutureResult(&futureValue, &errorValue)
+                }
             case .failure(let error):
                 var errorValue = djinni.swift.makeVoidValue()
                 djinni.swift.setErrorValue(&errorValue, error.wrapped)

@@ -56,7 +56,7 @@ public func dispatcherProtocalCall(
   ret: UnsafeMutablePointer<djinni.swift.AnyValue>?)  // Return value that will be passed back to C++
   -> Void {
     guard let pctx = ptr else { return }
-    let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as! GenericProtocolWrapperContext
+    guard let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as? GenericProtocolWrapperContext else { return }
     if (idx >= 0) {
         // Dynamic dispatch on the vtbl.  We use `takeUnretainedValue` here
         // because we want to keep the wrapper object alive inside the C++ side
@@ -179,15 +179,18 @@ public func cppInterfaceToSwift<I>(_ c: djinni.swift.AnyValue,
         let info = djinni.swift.getInterfaceInfo(p)
         // 1. Check the CppProxyCache
         if let s = CppProxyCache.shared.get(info.cppPointer) {
-            return s as! I
+            guard let proxy = s as? I else { return newProxyFunc() }
+            return proxy
         }
         // 2. Check if c++ ptr exists in SwiftProxyCache
         if let pctx = info.ctxPointer {
-            let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as! GenericProtocolWrapperContext
-            return ctx.getInst() as! I
+            guard let ctx = Unmanaged<AnyObject>.fromOpaque(pctx).takeUnretainedValue() as? GenericProtocolWrapperContext,
+                  let inst = ctx.getInst() as? I else { return newProxyFunc() }
+            return inst
         }
         // 3. Create new proxy and store a weak reference in CppProxyCache
-        return CppProxyCache.shared.getOrCreate(info.cppPointer) { newProxyFunc() as AnyObject } as! I
+        guard let proxy = CppProxyCache.shared.getOrCreate(info.cppPointer) { newProxyFunc() as AnyObject } as? I else { return newProxyFunc() }
+        return proxy
     }
 }
 
@@ -196,7 +199,8 @@ public func cppWrapperToSwift<W: AnyObject>(_ c: djinni.swift.AnyValue,
                                             _ newWrapper: () -> W) -> W {
     return withUnsafePointer(to: c) { p in
         let info = djinni.swift.getInterfaceInfo(p)
-        return CppProxyCache.shared.getOrCreate(info.cppPointer) { newWrapper() } as! W
+        guard let wrapper = CppProxyCache.shared.getOrCreate(info.cppPointer) { newWrapper() } as? W else { return newWrapper() }
+        return wrapper
     }
 }
 
