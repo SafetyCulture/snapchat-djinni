@@ -5,7 +5,7 @@ import DjinniSupport
 import Foundation
 
 /**
- * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .userInitiated)`. Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupport.djinniCallQueue()`). Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws CancellationError and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.
  */
@@ -15,22 +15,22 @@ public final class SwiftResultService: @unchecked Sendable {
     init(proxy: SwiftResultServiceCppProxy) { self.djinniProxy = proxy }
 
     @concurrent public func echo(_ value: TestSuite.Result) async throws -> TestSuite.Result {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.echo(value) }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.echo(value) }
     }
 
     @concurrent public func fetch(_ value: TestSuite.Result) async throws -> TestSuite.Result {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(value) }.get()
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.fetch(value) }.get()
     }
 
     @concurrent public func load() async throws -> TestSuite.Result {
-        return try await DjinniSupport.djinniCallFuture(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.load() }
+        return try await DjinniSupport.djinniCallFuture { [djinniProxy = self.djinniProxy] in try djinniProxy.load() }
     }
 
     @concurrent public func ping() async throws -> Void {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.ping() }
     }
 
     @concurrent public func plain() async throws -> Int32 {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.plain() }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.plain() }
     }
 }
