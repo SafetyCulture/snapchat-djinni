@@ -742,6 +742,23 @@ if [ -e "$base_dir/$temp_out_relative/kotlin-jni-extern-parceler" ]; then
     exit 1
 fi
 
+# An extern type with only some of the Kotlin keys is rejected before any file is written.
+partial_log="$temp_out/kotlin-jni-extern-partial.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-extern-partial/kotlin" \
+    --jni-out "$temp_out_relative/kotlin-jni-extern-partial/jni" \
+    --java-package $java_package \
+    --idl "djinni/kotlin_extern_partial.djinni" \
+    --idl-include-path "djinni/vendor") >"$partial_log" 2>&1; then
+    echo "The generator accepted an extern type with a partial set of Kotlin keys." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Set all four Kotlin keys or none." "$partial_log"; then
+    echo "Missing error message for a partial set of Kotlin keys." 1>&2
+    cat "$partial_log" 1>&2
+    exit 1
+fi
+
 # Copy changes from "$temp_out" to final dir.
 
 mirror() {

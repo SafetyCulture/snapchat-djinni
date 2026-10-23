@@ -1,0 +1,42 @@
+# An extern record with only two of the four Kotlin keys, for the negative test.
+---
+name: extern_kotlin_partial
+typedef: 'record deriving(eq)'
+params: []
+prefix: ''
+cpp:
+  typename: 'std::string'
+  header: '<string>'
+  byValue: true
+objc:
+  typename: 'NSString'
+  header: '<Foundation/Foundation.h>'
+  boxed: 'NSString'
+  pointer: true
+  hash: '(NSUInteger)%s.hash'
+objcpp:
+  translator: '::djinni::String'
+  header: '"DJIMarshal+Private.h"'
+java:
+  typename: 'java.lang.String'
+  boxed: 'java.lang.String'
+  reference: true
+  generic: true
+  hash: '%s.hashCode()'
+  writeToParcel: 'out.writeString(%s)'
+  readFromParcel: 'in.readString()'
+jni:
+  translator: '::djinni::String'
+  header: '"Marshal.hpp"'
+  typename: jstring
+  typeSignature: 'Ljava/lang/String;'
+  kotlinTranslator: '::djinni::String'
+wasm:
+  typename: 'std::string'
+  translator: '::djinni::String'
+  header: '"djinni_wasm.hpp"'
+ts:
+  typename: 'string'
+  module: ''
+kotlin:
+  jniTypename: 'com.dropbox.djinni.testextern.Partial'
