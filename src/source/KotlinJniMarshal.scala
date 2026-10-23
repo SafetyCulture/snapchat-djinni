@@ -12,6 +12,27 @@ object KotlinJniIdent {
     "when", "while")
 
   def escape(ident: String): String = if (keywords.contains(ident)) "`" + ident + "`" else ident
+
+  // A method with the name and the signature of a member of Any overrides it. Java compiles such a method too.
+  def overridesAny(name: String, m: Interface.Method): Boolean =
+    !m.static && m.params.isEmpty && (m.ret.map(_.resolved.base) match {
+      case Some(MString) => name == "toString"
+      case Some(p: MPrimitive) => name == "hashCode" && p.idlName == "i32"
+      case _ => false
+    })
+
+  // A suspend function cannot override a member of Any, which is not a suspend function.
+  def check(idl: Seq[TypeDecl], spec: Spec): Option[String] = {
+    val problems = if (!spec.kotlinSuspendWrap) Seq() else idl.collect {
+      case InternTypeDecl(ident, _, i: Interface, _, _) if i.ext.cpp && !i.ext.java => (ident, i)
+    }.flatMap { case (ident, i) =>
+      i.methods.map(m => (m, spec.javaIdentStyle.method(m.ident.name))).collect {
+        case (m, name) if overridesAny(name, m) =>
+          s"interface ${ident.name}, method ${m.ident.name}: --kotlin-suspend-wrap makes a suspend function, which cannot override $name of Any. Rename the method."
+      }
+    }
+    if (problems.isEmpty) None else Some(problems.mkString("\n"))
+  }
 }
 
 // Kotlin types for the classes that the JNI code of JNIGenerator binds. The JVM signatures equal the Java ones.

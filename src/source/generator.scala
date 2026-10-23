@@ -306,6 +306,7 @@ package object generatorTools {
       }
       if (spec.kotlinJniOutFolder.isDefined) {
         KotlinJniExtern.check(idl, spec).foreach(message => throw GenerateException(message))
+        KotlinJniIdent.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       if (spec.cppOutFolder.isDefined) {
         if (!spec.skipGeneration) {

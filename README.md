@@ -692,6 +692,10 @@ check scripts select the newest cached jar, and CI pins 1.10.2
   throws a `RuntimeException`, as the pending exception does.
   `--java-cpp-exception` only adds `@Throws`.
 - A static method stays a normal method.
+- A suspend function cannot override `toString()` or `hashCode()` of `Any`. The
+  generator stops with an error for a method `to_string(): string` or
+  `hash_code(): i32` of such an interface. Without the flag, the method
+  overrides the member of `Any`, as in Java.
 
 `ci/kotlin-jni-check.sh` generates Java, JNI and Kotlin for the Crux assets IDL
 and for the test-suite IDL. It compiles both on the JVM, with `javac` and

@@ -84,7 +84,8 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     val constTypes = Set("Int", "Long", "Short", "Byte", "Float", "Double", "Boolean", "String")
 
     def writeValue(ty: TypeRef, v: Any): Unit = v match {
-      case l: Long if marshal.fieldType(ty).stripSuffix("?") == "Long" => w.w(l.toString + "L")
+      // Kotlin negates the literal 9223372036854775808L, which is out of range
+      case l: Long if marshal.fieldType(ty).stripSuffix("?") == "Long" => w.w(if (l == Long.MinValue) "Long.MIN_VALUE" else l.toString + "L")
       // An IDL float constant written without a decimal point parses as Long; Kotlin rejects an Int for Float/Double
       case l: Long if Set("Float", "Double").contains(marshal.fieldType(ty).stripSuffix("?")) =>
         w.w(if (marshal.fieldType(ty).stripSuffix("?") == "Float") l.toString + ".0f" else l.toString + ".0")
@@ -93,7 +94,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       case d: Double => w.w(d.toString)
       case b: Boolean => w.w(if (b) "true" else "false")
       case s: String => w.w(s.replace("$", "\\$"))
-      case e: EnumValue => w.w(s"${marshal.typename(ty)}.${idJava.enum(e)}")
+      case e: EnumValue => w.w(s"${marshal.typename(ty).stripSuffix("?")}.${idJava.enum(e)}")
       case v: ConstRef => w.w(idJava.const(v))
       case z: Map[_, _] =>
         val record = ty.resolved.base.asInstanceOf[MDef].body.asInstanceOf[Record]
@@ -122,6 +123,11 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
       writeValue(c.ty, c.value)
       w.wl
     }
+  }
+
+  // Kotlin comments nest, so a /* in a doc comment would comment out the rest of the file.
+  override def writeDoc(w: IndentWriter, doc: Doc) {
+    super.writeDoc(w, Doc(doc.lines.map(_.replace("/*", "/\\*"))))
   }
 
   private def writeModuleInitializer(w: IndentWriter) {
@@ -212,7 +218,8 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           if (suspendWrap) {
             w.wl(s"abstract suspend fun ${kt(idJava.method(m.ident))}(${paramList(m)})${suspendReturnClause(m.ret)}")
           } else {
-            w.wl(s"${modifier}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
+            val anyOverride = if (KotlinJniIdent.overridesAny(idJava.method(m.ident), m)) "override " else ""
+            w.wl(s"$modifier${anyOverride}fun ${kt(idJava.method(m.ident))}(${paramList(m)})${returnClause(m.ret)}")
           }
         }
 
