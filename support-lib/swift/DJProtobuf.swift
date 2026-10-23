@@ -24,6 +24,6 @@ public enum ProtobufMarshaller<T: SwiftProtobuf.Message>: Marshaller {
         } catch {
             throw DjinniError("\(T.self): \(error)")
         }
-        return BinaryMarshaller.toCpp(bin)
+        return try BinaryMarshaller.toCpp(bin)
     }
 }
