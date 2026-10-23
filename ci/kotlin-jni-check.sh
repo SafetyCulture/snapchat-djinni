@@ -136,6 +136,15 @@ for mode in suspend:false suspend-onload:true; do
   compile_and_compare "$name" "$package" ""
 done
 
+# A record named unit is not Unit. A future<unit> returns the record, and only a future<void> has no value.
+suspend_kt="$work/suspend/kotlin/KotlinSuspendService.kt"
+if ! grep -qF "abstract suspend fun loadUnit(): Unit" "$suspend_kt" || ! grep -qF "abstract suspend fun flush()" "$suspend_kt" ||
+   grep -F "abstract suspend fun flush()" "$suspend_kt" | grep -q ": "; then
+  echo "FAIL: a future<unit> of a record named unit loses its value, or a future<void> has a value" >&2
+  exit 1
+fi
+echo "suspend functions: future<unit> returns the record, future<void> returns nothing"
+
 # 4. Extern records with the Kotlin keys. The JNI code binds one class for each extern type, so Java and Kotlin
 # are generated apart. The Java classes are the reference: the Kotlin class of the extern type replaces its
 # Java class in their descriptors. The header of the translator is a copy of the form that the Crux plugin writes.

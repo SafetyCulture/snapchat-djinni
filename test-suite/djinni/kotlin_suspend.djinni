@@ -6,6 +6,16 @@ kotlin_suspend_error = record {
   message: string;
 }
 
+# A record named unit is not Unit, and a flags type is an EnumSet in a future.
+unit = record {
+  value: i32;
+} deriving(eq)
+
+kotlin_suspend_flags = flags {
+  first;
+  second;
+}
+
 kotlin_suspend_item = record {
   id: string;
   count: i32;
@@ -41,4 +51,9 @@ kotlin_suspend_service = interface +c {
   child(): kotlin_suspend_child;
   attach(child: kotlin_suspend_child, parent: optional<kotlin_suspend_service>);
   both(both: kotlin_suspend_both): kotlin_suspend_both;
+  echo_unit(value: unit): unit;
+  load_unit(): future<unit>;
+  load_flags(): future<kotlin_suspend_flags>;
+  load_optional_flags(): future<optional<kotlin_suspend_flags>>;
+  load_flags_list(): future<list<kotlin_suspend_flags>>;
 }

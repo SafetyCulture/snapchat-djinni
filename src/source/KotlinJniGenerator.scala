@@ -65,7 +65,7 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
   // The type that a suspend function returns. A future<T> returns T.
   private def suspendReturnClause(ret: Option[TypeRef]): String = ret match {
     case Some(ty) => marshal.futureValueType(ty) match {
-      case Some("Unit") => ""
+      case Some(marshal.voidFutureValue) => ""
       case Some(value) => ": " + value
       case None => returnClause(ret)
     }
@@ -259,13 +259,13 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                     case Some((ret, value)) =>
                       // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
                       w.wl(s"val djinni_future = withContext(this.dispatcher) { native_$meth(this@CppProxy.nativeRef${preComma(args)}) }")
-                      w.wl(s"return suspendCancellableCoroutine<${if (value == "Unit") "kotlin.Unit" else value}> { djinni_continuation ->").nested {
+                      w.wl(s"return suspendCancellableCoroutine<$value> { djinni_continuation ->").nested {
                         w.wl("val djinni_target = AtomicReference(djinni_continuation)")
                         w.wl("djinni_continuation.invokeOnCancellation { djinni_target.set(null) }")
                         w.wl(s"djinni_future.then(Future.FutureHandler<${futureArg(ret)}> { djinni_result ->").nested {
                           w.wl("val djinni_waiting = djinni_target.getAndSet(null) ?: return@FutureHandler")
                           w.wl("djinni_waiting.resumeWith(try {").nested {
-                            if (value == "Unit") {
+                            if (value == marshal.voidFutureValue) {
                               w.wl("djinni_result.get()")
                               w.wl("kotlin.Result.success(kotlin.Unit)")
                             } else {
