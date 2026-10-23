@@ -106,11 +106,13 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
     })
     val helper = marshal.helperClass(ident)
     val proxy = idSwift.ty(ident) + "SwiftProxy"
+    // C++ implements the static methods of every interface. It implements the other methods of an interface with +c.
+    val glueMethods = i.methods.filter(m => if (m.static) m.lang.swift else i.ext.cpp)
     writeSwiftHppFile(ident, origin, refs.swiftHpp, Nil, w => {
       w.wl(s"using ${spec.swiftxxClassIdentStyle(ident)} = djinni::swift::Interface<${cppMarshal.fqTypename(ident, i)}>;")
-      if (i.ext.cpp) {
+      if (glueMethods.nonEmpty) {
         w.wl
-        i.methods.filter(m => !m.static || (m.static && m.lang.swift)).foreach(m => {
+        glueMethods.foreach(m => {
           w.wl(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${SwiftIdent.plain(m.ident)}(const djinni::swift::ParameterList* params);")
         })
       }
@@ -132,45 +134,43 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
       }
     })
     writeSwiftCppFile(ident, origin, refs.swiftCpp, w => {
-      if (i.ext.cpp) {
-        i.methods.filter(m => !m.static || (m.static && m.lang.swift)).foreach(m => {
-          w.w(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${SwiftIdent.plain(m.ident)}(const djinni::swift::ParameterList* params) try").braced {
-            // get self
-            if (!m.static) {
-              w.wl(s"auto inst = ${marshal.helperClass(ident)}::toCpp(params->getValue(0));")
-            }
-            // get args
-            val iOffset = if (m.static) 0 else 1
-            for ((p, i) <- m.params.view.zipWithIndex) {
-              val pi = s"params->getValue(${i + iOffset})"
-              w.wl(s"auto _${idCpp.local(p.ident)} = ${marshal.toCpp(p.ty, pi)};")
-            }
-            // make the call
-            if (!m.ret.isEmpty) {
-              w.w("auto ret = ")
-            }
-            if (m.static) {
-              w.w(s"${cppMarshal.fqTypename(ident, i)}::")
-            } else {
-              w.w("inst->")
-            }
-            val args = m.params.map(p => s"std::move(_${idCpp.local(p.ident)})").mkString(", ")
-            w.wl(s"${idCpp.method(m.ident)}($args);")
-            // return
-            if (m.ret.isEmpty) {
-              w.wl("return djinni::swift::makeVoidValue();")
-            } else {
-              w.wl("return " + marshal.fromCpp(m.ret.get, cppMarshal.maybeMove("ret", m.ret.get)) + ";")
-            }
+      glueMethods.foreach(m => {
+        w.w(s"djinni::swift::AnyValue ${idSwift.ty(ident)}_${SwiftIdent.plain(m.ident)}(const djinni::swift::ParameterList* params) try").braced {
+          // get self
+          if (!m.static) {
+            w.wl(s"auto inst = ${marshal.helperClass(ident)}::toCpp(params->getValue(0));")
           }
-          w.w("catch (const std::exception& e)").braced {
-            w.wl("return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};")
+          // get args
+          val iOffset = if (m.static) 0 else 1
+          for ((p, i) <- m.params.view.zipWithIndex) {
+            val pi = s"params->getValue(${i + iOffset})"
+            w.wl(s"auto _${idCpp.local(p.ident)} = ${marshal.toCpp(p.ty, pi)};")
           }
-          w.w("catch (...)").braced {
-            w.wl("""return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};""")
+          // make the call
+          if (!m.ret.isEmpty) {
+            w.w("auto ret = ")
           }
-        })
-      }
+          if (m.static) {
+            w.w(s"${cppMarshal.fqTypename(ident, i)}::")
+          } else {
+            w.w("inst->")
+          }
+          val args = m.params.map(p => s"std::move(_${idCpp.local(p.ident)})").mkString(", ")
+          w.wl(s"${idCpp.method(m.ident)}($args);")
+          // return
+          if (m.ret.isEmpty) {
+            w.wl("return djinni::swift::makeVoidValue();")
+          } else {
+            w.wl("return " + marshal.fromCpp(m.ret.get, cppMarshal.maybeMove("ret", m.ret.get)) + ";")
+          }
+        }
+        w.w("catch (const std::exception& e)").braced {
+          w.wl("return {djinni::swift::ErrorValue{ e.what(), std::current_exception()}};")
+        }
+        w.w("catch (...)").braced {
+          w.wl("""return {djinni::swift::ErrorValue{ "unknown C++ exception", std::current_exception()}};""")
+        }
+      })
       if (i.ext.swift) {
         // Swift calls make directly, so an exception here must not leave the C++ frame. The proxy owns the context of
         // Swift only after its constructor ran, so the handlers release the context themselves.
@@ -190,11 +190,13 @@ class SwiftxxGenerator(spec: Spec) extends Generator(spec) {
           val params = m.params.map(p => cppMarshal.fqParamType(p.ty) + " " + idCpp.local(p.ident))
           val constFlag = if (m.const) " const" else ""
           w.w(s"$ret $proxy::${idCpp.method(m.ident)}${params.mkString("(", ", ", ")")}$constFlag").braced {
-            w.wl("djinni::swift::ParameterList params;")
+            // An IDL parameter named params must not hide the parameter list
+            val list = SwiftIdent.fresh("params", m.params.map(p => idCpp.local(p.ident)).toSet)
+            w.wl(s"djinni::swift::ParameterList $list;")
             for (p <- m.params) {
-              w.wl(s"params.addValue(${marshal.fromCpp(p.ty, cppMarshal.maybeMove(idCpp.local(p.ident), p.ty))});")
+              w.wl(s"$list.addValue(${marshal.fromCpp(p.ty, cppMarshal.maybeMove(idCpp.local(p.ident), p.ty))});")
             }
-            val call = s"callProtocol($idx, &params)"
+            val call = s"callProtocol($idx, &$list)"
             if (m.ret.isEmpty) {
               w.wl(call + ";")
             } else {

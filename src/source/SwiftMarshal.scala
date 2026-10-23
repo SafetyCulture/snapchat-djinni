@@ -41,6 +41,17 @@ object SwiftIdent {
 
   // The name without escaping, for identifiers that are part of a longer name.
   def plain(ident: String): String = IdentStyle.camelLower(ident)
+
+  // Names that the generated marshaller of a record uses: the closure parameter and the C++ namespace.
+  val reservedLocals = Set("p", "djinni")
+
+  // A local name that differs from every name in `taken`. The base name stays when it is free, so the output
+  // of an IDL without the collision does not change.
+  def fresh(base: String, taken: Set[String]): String = {
+    var name = base
+    while (taken.contains(name)) name += "_"
+    name
+  }
 }
 
 class SwiftMarshal(spec: Spec) extends Marshal(spec) {

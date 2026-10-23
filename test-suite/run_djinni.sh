@@ -308,6 +308,7 @@ swift_error_enum_relative="djinni/swift_error_enum.djinni"
 swift_error_extern_relative="djinni/swift_error_extern.djinni"
 swift_options_relative="djinni/swift_options.djinni"
 swift_result_name_relative="djinni/swift_result_name.djinni"
+swift_naming_relative="djinni/swift_naming.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -482,7 +483,20 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/result-name/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_result_name_relative" \
+    --idl "$swift_result_name_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/naming/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/naming/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swiftxx-out "$temp_out_relative/swift-features/naming/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_naming_relative" \
 )
 # Every +Private.swift file of the options case must import the base library module.
 options_private=("$temp_out"/swift-features/options/swift/*+Private.swift)

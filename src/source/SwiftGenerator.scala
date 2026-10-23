@@ -217,12 +217,15 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.w(s"public enum ${marshal.typename(ident, r)}Marshaller: DjinniSupport.Marshaller").braced {
         w.wl(s"public typealias SwiftType = ${marshal.fqTypename(ident, r)}")
         w.w("public static func fromCpp(_ c: djinni.swift.AnyValue) throws -> SwiftType").braced {
+          // A field named p or djinni would hide the closure parameter or the C++ namespace in the closure
+          val fields = r.fields.map(f => idSwift.field(f.ident))
+          val locals = fields.map(name => if (SwiftIdent.reservedLocals.contains(name)) SwiftIdent.fresh(name, fields.toSet ++ SwiftIdent.reservedLocals) else name)
           w.wl("return try withUnsafePointer(to: c) { p in").nested {
-            for ((f, i) <- r.fields.view.zipWithIndex) {
+            for (((f, local), i) <- r.fields.zip(locals).zipWithIndex) {
               val swiftExp = s"DjinniSupport.compositeMember(p, $i)"
-              w.wl(s"let ${idSwift.field(f.ident)} = try ${marshal.fromCpp(f.ty, swiftExp)}")
+              w.wl(s"let $local = try ${marshal.fromCpp(f.ty, swiftExp)}")
             }
-            val members = r.fields.map(f => s"${SwiftIdent.label(idSwift.field(f.ident))}: ${idSwift.field(f.ident)}").mkString(", ")
+            val members = r.fields.zip(locals).map { case (f, local) => s"${SwiftIdent.label(idSwift.field(f.ident))}: $local" }.mkString(", ")
             w.wl(s"return SwiftType(${members})")
           }
           w.wl("}")
@@ -242,19 +245,52 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       }
     })
   }
+  // The name of a parameter inside the method. A parameter named djinni would hide the C++ namespace that the body
+  // uses, so it has another name inside the method and keeps its label.
+  private def internalName(m: Interface.Method, p: Field): String = {
+    val name = idSwift.local(p.ident)
+    if (name == "djinni") SwiftIdent.fresh(name, m.params.map(q => idSwift.local(q.ident)).toSet) else name
+  }
+
   private def paramList(m: Interface.Method): String = {
     // skip label for the first parameter
     val first = if (m.params.nonEmpty) "_ " else ""
-    first + m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", ")
+    first + m.params.zipWithIndex.map { case (p, index) =>
+      val label = idSwift.local(p.ident)
+      val internal = internalName(m, p)
+      val declared = if (index > 0 && internal != label) s"$label $internal" else internal
+      s"$declared: ${marshal.fqParamType(p.ty)}"
+    }.mkString(", ")
   }
 
   // The arguments of a call to the proxy, from a closure that runs on another queue.
   private def proxyArguments(m: Interface.Method): String = {
     m.params.view.zipWithIndex.map { case (p, index) =>
       val label = if (index == 0) "" else s"${SwiftIdent.label(idSwift.local(p.ident))}: "
-      val value = if (marshal.isSendableArgument(p.ty.resolved)) idSwift.local(p.ident) else s"_${SwiftIdent.plain(p.ident)}.value"
+      val value = if (marshal.isSendableArgument(p.ty.resolved)) internalName(m, p) else s"_${SwiftIdent.plain(p.ident)}.value"
       label + value
     }.mkString(", ")
+  }
+
+  // The body of a method that calls C++: the arguments go into a parameter list, the glue function runs, and a C++
+  // error throws. The locals take other names when an IDL parameter has the same name, and a parameter named inst
+  // does not hide the member that holds the C++ object.
+  private def writeCppCall(w: IndentWriter, glue: String, m: Interface.Method) {
+    val params = m.params.map(p => idSwift.local(p.ident)).toSet
+    val list = SwiftIdent.fresh("_params", params)
+    val ret = SwiftIdent.fresh("ret", params)
+    w.wl(s"var $list = djinni.swift.ParameterList()")
+    if (!m.static) {
+      w.wl(s"$list.addValue(${if (params.contains("inst")) "self.inst" else "inst"})")
+    }
+    for (p <- m.params) {
+      w.wl(s"$list.addValue(try ${marshal.toCpp(p.ty, internalName(m, p))})")
+    }
+    w.wl(s"var $ret = $glue(&$list)")
+    w.wl(s"try handleCppErrors(&$ret)")
+    if (!m.ret.isEmpty) {
+      w.wl(s"return try ${marshal.fromCpp(m.ret.get, ret)}")
+    }
   }
 
   private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
@@ -287,7 +323,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         }
         w.braced {
           for (p <- m.params if !marshal.isSendableArgument(p.ty.resolved)) {
-            w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${idSwift.local(p.ident)})")
+            w.wl(s"let _${SwiftIdent.plain(p.ident)} = DjinniSupport.UncheckedSendable(${internalName(m, p)})")
           }
           val capture = "[djinniProxy = self.djinniProxy] in"
           if (typedOutcome) {
@@ -311,16 +347,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
       for (m <- i.methods.filter(!_.static)) {
         w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
-          w.wl("var _params = djinni.swift.ParameterList()")
-          w.wl("_params.addValue(inst)")
-          for (p <- m.params) {
-            w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
-          }
-          w.wl(s"var ret = ${swiftxxPrefix}${name}_${SwiftIdent.plain(m.ident)}(&_params)")
-          w.wl("try handleCppErrors(&ret)")
-          if (!m.ret.isEmpty) {
-            w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
-          }
+          writeCppCall(w, s"${swiftxxPrefix}${name}_${SwiftIdent.plain(m.ident)}", m)
         }
       }
     }
@@ -369,20 +396,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"final class ${marshal.typename(ident, i)}CppProxy: DjinniSupport.CppProxy, ${marshal.fqTypename(ident, i)}, @unchecked Sendable").braced {
           w.wl("init(_ inst: djinni.swift.AnyValue) { super.init(inst:inst) } ")
           for (m <- i.methods.filter(!_.static)) {
-            w.w(s"func ${idSwift.method(m.ident)}(")
-            if (m.params.nonEmpty) { w.w("_ ") }
-            w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
-            w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
-              w.wl("var _params = djinni.swift.ParameterList()")
-              w.wl("_params.addValue(inst)")
-              for (p <- m.params) {
-                w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
-              }
-              w.wl(s"var ret = ${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
-              w.wl("try handleCppErrors(&ret)")
-              if (!m.ret.isEmpty) {
-                w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
-              }
+            w.w(s"func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
+              writeCppCall(w, s"${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}", m)
             }
           }
         }
@@ -445,19 +460,8 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         w.w(s"public class ${marshal.typename(ident, i)}_statics: @unchecked Sendable").braced {
           generateSwiftConstants(w, i.consts)
           for (m <- staticMethods) {
-            w.w(s"public static func ${idSwift.method(m.ident)}(")
-            if (m.params.nonEmpty) { w.w("_ ") }
-            w.w(m.params.map(p => s"${idSwift.local(p.ident)}: ${marshal.fqParamType(p.ty)}").mkString(", "))
-            w.w(s") throws -> ${marshal.fqReturnType(m.ret)}").braced {
-              w.wl("var _params = djinni.swift.ParameterList()")
-              for (p <- m.params) {
-              w.wl(s"_params.addValue(try ${marshal.toCpp(p.ty, idSwift.local(p.ident))})")
-              }
-              w.wl(s"var ret = ${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}(&_params)")
-              w.wl("try handleCppErrors(&ret)")
-              if (!m.ret.isEmpty) {
-              w.wl(s"return try ${marshal.fromCpp(m.ret.get, "ret")}")
-              }
+            w.w(s"public static func ${idSwift.method(m.ident)}(${paramList(m)}) throws -> ${marshal.fqReturnType(m.ret)}").braced {
+              writeCppCall(w, s"${swiftxxPrefix}${marshal.typename(ident, i)}_${SwiftIdent.plain(m.ident)}", m)
             }
           }
         }
