@@ -17,7 +17,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd -P)"
-mitti_root="${MITTI_MOBILE_ROOT:-$HOME/Desktop/safetyculture/mitti-mobile}"
+mitti_root="${MITTI_MOBILE_ROOT:?set MITTI_MOBILE_ROOT to a mitti-mobile checkout}"
 base_ref="${BASE_REF:-origin/main}"
 bazel="${BAZEL:-bazel}"
 jobs="${JOBS:-4}"
