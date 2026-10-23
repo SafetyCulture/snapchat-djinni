@@ -82,8 +82,8 @@ func runTests() throws {
     }
 
     // nil success from the Swift host reads as success on the C++ side
-    check(try service.listenerMaybe(Doubler(), false) == -2, "listenerMaybe(false) is a nil success")
-    check(try service.listenerMaybe(Doubler(), true) == 42, "listenerMaybe(true) carries the value")
+    check(try service.listenerMaybe(Doubler(), flag: false) == -2, "listenerMaybe(false) is a nil success")
+    check(try service.listenerMaybe(Doubler(), flag: true) == 42, "listenerMaybe(true) carries the value")
 
     // A date keeps one millisecond across the boundary
     let epochMs = Date(timeIntervalSince1970: 1_700_000_000.001)
