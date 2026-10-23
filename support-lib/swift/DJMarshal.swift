@@ -80,12 +80,17 @@ public typealias F64Marshaller = FloatMarshaller<Double>
 public enum StringMarshaller: Marshaller {
     public typealias SwiftType = String
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        let range = djinni.swift.getBinaryRange(v)
-        if (range.size > 0) {
-            return String(data: Data(bytes: range.bytes, count: range.size), encoding: String.Encoding.utf8) ?? "invalid"
-        } else {
+        let range = try binaryRange(v)
+        if (range.size == 0) {
             return String()
         }
+        guard let bytes = range.bytes else { throw DjinniError("a string value has no bytes") }
+        let buffer = UnsafeBufferPointer(start: bytes.assumingMemoryBound(to: UInt8.self), count: range.size)
+        // String(decoding:) replaces each invalid sequence with U+FFFD and keeps a leading BOM. The bytes of the result
+        // equal the input only when the input is valid UTF-8.
+        let string = String(decoding: buffer, as: UTF8.self)
+        guard string.utf8.elementsEqual(buffer) else { throw DjinniError("a string value is not valid UTF-8") }
+        return string
     }
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         let bytes = s.utf8CString
@@ -101,12 +106,12 @@ public enum StringMarshaller: Marshaller {
 public enum BinaryMarshaller: Marshaller {
     public typealias SwiftType = Data
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
-        let range = djinni.swift.getBinaryRange(v)
-        if (range.size > 0) {
-            return Data(bytes: range.bytes, count: range.size)
-        } else {
+        let range = try binaryRange(v)
+        if (range.size == 0) {
             return Data()
         }
+        guard let bytes = range.bytes else { throw DjinniError("a binary value has no bytes") }
+        return Data(bytes: bytes, count: range.size)
     }
     static public func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
         // withUnsafeBytes can give a nil baseAddress for an empty Data, and makeBinaryValue accepts nil
@@ -164,9 +169,9 @@ public enum ListMarshaller<T: Marshaller>: Marshaller {
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         var array = SwiftType()
         try withUnsafePointer(to: v) { p in
-            let size = djinni.swift.getSize(p)
+            let size = try compositeSize(p)
             for i in 0..<size {
-                array.append(try T.fromCpp(djinni.swift.getMember(p, i)))
+                array.append(try T.fromCpp(compositeMember(p, i)))
             }
         }
         return array
@@ -188,9 +193,9 @@ public enum SetMarshaller<T: Marshaller>: Marshaller where T.SwiftType: Hashable
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         var s = SwiftType()
         try withUnsafePointer(to: v) { p in
-            let size = djinni.swift.getSize(p)
+            let size = try compositeSize(p)
             for i in 0..<size {
-                s.insert(try T.fromCpp(djinni.swift.getMember(p, i)))
+                s.insert(try T.fromCpp(compositeMember(p, i)))
             }
         }
         return s
@@ -209,10 +214,11 @@ public enum MapMarshaller<K: Marshaller, V: Marshaller>: Marshaller where K.Swif
     static public func fromCpp(_ v: djinni.swift.AnyValue) throws -> SwiftType {
         var s = SwiftType()
         try withUnsafePointer(to: v) { p in
-            let size = djinni.swift.getSize(p)
+            let size = try compositeSize(p)
+            guard size % 2 == 0 else { throw DjinniError("a map has an odd number of keys and values") }
             for i in stride(from: 0, to: size, by: 2) {
-                try s.updateValue(V.fromCpp(djinni.swift.getMember(p, i+1)),
-                                  forKey: K.fromCpp(djinni.swift.getMember(p, i)))
+                try s.updateValue(V.fromCpp(compositeMember(p, i+1)),
+                                  forKey: K.fromCpp(compositeMember(p, i)))
             }
         }
         return s
