@@ -48,8 +48,12 @@ fi
 spb_mod="$cache/spb-$protobuf_tag-$(swiftc --version | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -f "$spb_mod/SwiftProtobuf.swiftmodule" ]; then
   mkdir -p "$cache"
-  # The sources of one tag stay in their own directory; a tag bump never reuses stale sources
-  [ -d "$cache/swift-protobuf-$protobuf_tag" ] || git clone --quiet --depth 1 --branch "$protobuf_tag" https://github.com/apple/swift-protobuf "$cache/swift-protobuf-$protobuf_tag"
+  # Pinned archive: a moved tag cannot change the sources
+  if [ ! -d "$cache/swift-protobuf-$protobuf_tag" ]; then
+    curl -fsSL --retry 3 -o "$cache/swift-protobuf-$protobuf_tag.tar.gz" "https://github.com/apple/swift-protobuf/archive/refs/tags/$protobuf_tag.tar.gz"
+    [ "$(shasum -a 256 "$cache/swift-protobuf-$protobuf_tag.tar.gz" | cut -d' ' -f1)" = "7e35c119afe8f16fe4de45c2143b0f50a205db83738092336562d610469283ac" ] || { echo "SHA-256 of the SwiftProtobuf archive differs" >&2; exit 1; }
+    tar -xzf "$cache/swift-protobuf-$protobuf_tag.tar.gz" -C "$cache"
+  fi
   mkdir -p "$spb_mod"
   swiftc -emit-module -emit-module-path "$spb_mod/SwiftProtobuf.swiftmodule" -module-name SwiftProtobuf \
     -parse-as-library -swift-version 5 -package-name SwiftProtobuf -wmo -Onone "$cache"/swift-protobuf-$protobuf_tag/Sources/SwiftProtobuf/*.swift
