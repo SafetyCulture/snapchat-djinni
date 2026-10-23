@@ -37,6 +37,7 @@ skip() {
 for tool in javac java kotlinc "${CXX:-clang++}"; do
   command -v "$tool" >/dev/null 2>&1 || skip "$tool is not installed"
 done
+echo "JDK: $(java -version 2>&1 | head -n 1)"
 # /usr/bin/javac on macOS is a launcher, so readlink would resolve java_home to /usr
 java_home="${JAVA_HOME:-}"
 if [ -z "$java_home" ] && [ "$(uname -s)" = Darwin ] && [ -x /usr/libexec/java_home ]; then
@@ -127,7 +128,7 @@ run_mode() {
   mkdir -p "$work/classes-$name"
   echo "== kotlinc and run: $name"
   kotlinc -Werror -d "$work/classes-$name" -cp "$work/java-classes:$libs" "$kotlin_dir" "$src/$main" "${extra[@]}"
-  java -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$native" "$@" 2>&1 | tee "$work/java-$name.log"
+  java --enable-native-access=ALL-UNNAMED -Xcheck:jni -cp "$work/classes-$name:$work/java-classes:$libs" "rt.kj.${main%.kt}Kt" "$native" "$@" 2>&1 | tee "$work/java-$name.log"
   if grep -q '^WARNING' "$work/java-$name.log"; then
     echo "FAIL: -Xcheck:jni reported a warning in $name" >&2
     exit 1
@@ -177,7 +178,7 @@ mkdir -p "$work/java-two-classes" "$work/classes-two_glue"
 # shellcheck disable=SC2046
 javac -nowarn -d "$work/java-two-classes" $(find "$out_a/java" "$repo_root/support-lib/java" -name '*.java')
 kotlinc -Werror -d "$work/classes-two_glue" -cp "$work/java-two-classes:$stdlib" "$out_b/kotlin" "$src/TwoGlueMain.kt"
-java -Xcheck:jni -cp "$work/classes-two_glue:$work/java-two-classes:$stdlib" rt.two.TwoGlueMainKt "$work/libtwo.$lib_ext" 2>&1 | tee "$work/java-two_glue.log"
+java --enable-native-access=ALL-UNNAMED -Xcheck:jni -cp "$work/classes-two_glue:$work/java-two-classes:$stdlib" rt.two.TwoGlueMainKt "$work/libtwo.$lib_ext" 2>&1 | tee "$work/java-two_glue.log"
 if grep -q '^WARNING' "$work/java-two_glue.log"; then
   echo "FAIL: -Xcheck:jni reported a warning in two_glue" >&2
   exit 1
