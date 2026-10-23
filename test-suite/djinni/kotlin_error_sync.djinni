@@ -1,0 +1,8 @@
+@import "kotlin_error.djinni"
+
+# The names and the types of members of Any: the blocking functions override them. A suspend function cannot, so
+# only the blocking case reads this file.
+kotlin_error_any_names = interface +c {
+  to_string(): string;
+  hash_code(): i32;
+}

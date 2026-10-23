@@ -227,7 +227,7 @@ echo "Kotlin methods: a method with the name of a member of Any that cannot over
 
 # 3b. The error type of the application, with blocking functions and with suspend functions. The natives, the
 # lookups and the fields must not change. The JNI code binds by name in the first run and in JNI_OnLoad in the second.
-for mode in error-sync:kotlin_error::false error-suspend:kotlin_error_async:--kotlin-suspend-wrap:true; do
+for mode in error-sync:kotlin_error_sync::false error-suspend:kotlin_error_async:--kotlin-suspend-wrap:true; do
   IFS=: read -r name idl suspend onload <<<"$mode"
   mkdir -p "$work/$name"
   (cd "$repo_root/test-suite" && java -jar "$jar" \
