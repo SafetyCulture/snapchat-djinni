@@ -59,6 +59,8 @@ kj_service = interface +c {
   failing_future(): future<i32>;
   done(): future<void>;
   complete_pending(value: i32);
+  # Calls of pending() that reached C++; a cancelled-before-start call must not count
+  pending_started(): i32;
   fail(): i32;
   busy(millis: i32);
   max_concurrent(): i32;

@@ -17,6 +17,7 @@
 namespace {
 
 std::atomic<int32_t> liveServices{0};
+std::atomic<int32_t> pendingStarted{0};
 
 class KjServiceImpl : public kj::KjService {
 public:
@@ -55,10 +56,13 @@ public:
     }
 
     djinni::Future<int32_t> pending() override {
+        pendingStarted.fetch_add(1);
         std::lock_guard<std::mutex> lock(_mutex);
         _pending = std::make_unique<djinni::Promise<int32_t>>();
         return _pending->getFuture();
     }
+
+    int32_t pending_started() override { return pendingStarted.load(); }
 
     djinni::Future<int32_t> failing_future() override {
         return djinni::Promise<int32_t>::reject(std::make_exception_ptr(std::runtime_error("failed future")));

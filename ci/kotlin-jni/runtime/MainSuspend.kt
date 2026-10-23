@@ -77,13 +77,15 @@ fun main(args: Array<String>) {
         service.completePending(1)
         delay(100)
 
-        // A cancelled coroutine does not call C++.
+        // A cancelled coroutine does not call C++: the counter of pending() calls must not move.
+        val startedBefore = service.pendingStarted()
         val early = launch(Dispatchers.Default) {
             coroutineContext.job.cancel()
             service.pending()
         }
         early.join()
         check(early.isCancelled, "an early cancelled coroutine is cancelled")
+        check(service.pendingStarted() == startedBefore, "a coroutine cancelled before the call does not call C++")
 
         // A cancelled coroutine is released before the C++ future completes.
         val published = CompletableDeferred<WeakReference<ByteArray>>()
