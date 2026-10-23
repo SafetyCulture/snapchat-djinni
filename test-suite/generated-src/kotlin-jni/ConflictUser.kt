@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class ConflictUser {
     abstract fun Conflict(): Conflict?
@@ -12,21 +11,17 @@ abstract class ConflictUser {
     abstract fun conflictArg(cs: HashSet<Conflict>): Boolean
 
     class CppProxy private constructor(private val nativeRef: Long) : ConflictUser() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun Conflict(): Conflict? {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_Conflict(this.nativeRef)
         }
         private external fun native_Conflict(_nativeRef: Long): Conflict?
 
         override fun conflictArg(cs: HashSet<Conflict>): Boolean {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_conflictArg(this.nativeRef, cs)
         }
         private external fun native_conflictArg(_nativeRef: Long, cs: HashSet<Conflict>): Boolean

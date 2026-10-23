@@ -178,7 +178,6 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
     })
     i.consts.foreach(c => refs.find(c.ty))
     if (i.ext.cpp) {
-      refs.imports.add("java.util.concurrent.atomic.AtomicBoolean")
       refs.imports.add("com.snapchat.djinni.NativeObjectManager")
     }
     // JNI calls only the natives of an interface that C++ implements. It calls the methods of one that Kotlin implements.
@@ -236,11 +235,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
           w.wl
           annotationHeader.foreach(w.wl)
           w.w(s"class CppProxy$typeParamList private constructor(private val nativeRef: Long) : $self$typeParamList()").braced {
-            w.wl("private val destroyed = AtomicBoolean(false)")
             if (suspendInstance) {
               w.wl("private val dispatcher = Dispatchers.IO.limitedParallelism(1)")
+              w.wl
             }
-            w.wl
             w.w("init").braced {
               w.wl("if (nativeRef == 0L) throw RuntimeException(\"nativeRef is zero\")")
               w.wl("NativeObjectManager.register(this, nativeRef)")
@@ -253,8 +251,6 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
               writeThrows(w)
               if (suspendWrap) {
                 w.w(s"override suspend fun ${kt(meth)}(${paramList(m)})${suspendReturnClause(m.ret)}").braced {
-                  w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
-                  val call = s"native_$meth(this.nativeRef${preComma(args)})"
                   m.ret.flatMap(r => marshal.futureValueType(r).map(v => (r, v))) match {
                     case Some((ret, value)) =>
                       // Prefixed locals cannot shadow an IDL parameter or a type of the IDL
@@ -289,7 +285,6 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
                 }
               } else {
                 w.w(s"override fun ${kt(meth)}(${paramList(m)})${returnClause(m.ret)}").braced {
-                  w.wl("assert(!destroyed.get()) { \"trying to use a destroyed object\" }")
                   w.wl(s"${returnStmt}native_$meth(this.nativeRef${preComma(args)})")
                 }
               }

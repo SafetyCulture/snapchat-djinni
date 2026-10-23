@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /** Used for C++ multiple inheritance tests */
 abstract class ReturnTwo {
@@ -16,15 +15,12 @@ abstract class ReturnTwo {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : ReturnTwo() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun returnTwo(): Byte {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return native_returnTwo(this.nativeRef)
         }
         private external fun native_returnTwo(_nativeRef: Long): Byte

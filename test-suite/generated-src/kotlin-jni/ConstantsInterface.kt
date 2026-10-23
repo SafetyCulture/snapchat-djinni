@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 
 /** Interface containing constants */
 abstract class ConstantsInterface {
@@ -55,15 +54,12 @@ abstract class ConstantsInterface {
     }
 
     class CppProxy private constructor(private val nativeRef: Long) : ConstantsInterface() {
-        private val destroyed = AtomicBoolean(false)
-
         init {
             if (nativeRef == 0L) throw RuntimeException("nativeRef is zero")
             NativeObjectManager.register(this, nativeRef)
         }
 
         override fun dummy() {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             native_dummy(this.nativeRef)
         }
         private external fun native_dummy(_nativeRef: Long)

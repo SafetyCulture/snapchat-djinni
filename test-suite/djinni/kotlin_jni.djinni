@@ -23,3 +23,9 @@ kotlin_jni_listener = interface +j {
   const label: optional<string> = "label";
   on_event(value: i32);
 }
+
+# C++ implements this one. The parameter name must not collide with the members of the generated proxy.
+kotlin_jni_proxy = interface +c {
+  static create(): kotlin_jni_proxy;
+  mark(destroyed: bool): bool;
+}

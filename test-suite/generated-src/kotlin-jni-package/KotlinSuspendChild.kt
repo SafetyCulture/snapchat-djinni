@@ -4,7 +4,6 @@
 package com.dropbox.djinni.test.kt
 
 import com.snapchat.djinni.NativeObjectManager
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -12,7 +11,6 @@ abstract class KotlinSuspendChild {
     abstract suspend fun name(): String
 
     class CppProxy private constructor(private val nativeRef: Long) : KotlinSuspendChild() {
-        private val destroyed = AtomicBoolean(false)
         private val dispatcher = Dispatchers.IO.limitedParallelism(1)
 
         init {
@@ -21,7 +19,6 @@ abstract class KotlinSuspendChild {
         }
 
         override suspend fun name(): String {
-            assert(!destroyed.get()) { "trying to use a destroyed object" }
             return withContext(this.dispatcher) { native_name(this@CppProxy.nativeRef) }
         }
         private external fun native_name(_nativeRef: Long): String
