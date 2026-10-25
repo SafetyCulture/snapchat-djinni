@@ -117,16 +117,17 @@ EOF
 python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12ProtosStubs.swift" "$repo_root/ci/fixtures/s12"
 cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
 
-case_files=("$cases/cxx-free-api"/swift/*.swift "$cases/cxx-free-api-future-field"/swift/*.swift)
+case_files=("$cases/cxx-free-api"/swift/*.swift "$cases/cxx-free-api-future-field"/swift/*.swift
+            "$cases/cxx-free-api-error-module"/swift/*.swift)
 
 run_mode() { # <label> <swiftc flags...>
   local tag=$1 build
   shift
   local flags="$*"
   build="$work/build-$tag"
-  mkdir -p "$build" "$build/core" "$build/s12" "$build/gen" "$build/negative"
+  mkdir -p "$build" "$build/core" "$build/stubs" "$build/s12" "$build/gen" "$build/negative"
   # The client gets the directory of DjinniSupportCore only, so no C++-interop module is on its search path.
-  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build/core" -I "$build" -I "$mods" -I "$spb_mod")
+  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build/core" -I "$build/stubs" -I "$build" -I "$mods" -I "$spb_mod")
   local s12=(-parse-as-library -swift-version 5 -I "$spb_mod")
 
   echo "== [$tag] (a) DjinniSupportCore without C++ interop, library evolution"
@@ -140,6 +141,13 @@ run_mode() { # <label> <swiftc flags...>
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/s12/S12Protos.swiftmodule" -module-name S12Protos \
     "${s12[@]}" "$work/S12ProtosStubs.swift" "$work"/*.pb.swift
+  # swiftc -enable-library-evolution keeps the public import of Models warning-free.
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/stubs/Models.swiftmodule" -module-name Models \
+    -parse-as-library -enable-library-evolution $flags "$repo_root/ci/swift-stubs/Models.swift"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/stubs/ModelsSupport.swiftmodule" -module-name ModelsSupport \
+    -parse-as-library $flags "${cxx[@]}" "$repo_root/ci/swift-stubs/ModelsSupport.swift"
 
   echo "== [$tag] (c) the cxx-free-api module: library evolution, verified interface, no warning"
   local module_log="$build/gen/module.log"
@@ -147,7 +155,8 @@ run_mode() { # <label> <swiftc flags...>
   if ! swiftc -emit-module -emit-module-path "$build/gen/TestSuite.swiftmodule" \
       -emit-module-interface-path "$build/gen/TestSuite.swiftinterface" -module-name TestSuite -parse-as-library \
       -enable-library-evolution -emit-module-interface -verify-emitted-module-interface \
-      $flags "${cxx[@]}" "${case_files[@]}" "$client/ErrorConformance.swift" >"$module_log" 2>&1; then
+      $flags "${cxx[@]}" "${case_files[@]}" "$client/ErrorConformance.swift" \
+      "$client/ModelsErrorConformance.swift" >"$module_log" 2>&1; then
     echo "FAIL: the cxx-free-api module did not build:" >&2
     cat "$module_log" >&2
     exit 1
@@ -189,7 +198,7 @@ run_mode() { # <label> <swiftc flags...>
 
   echo "== [$tag] (e) the client without C++ interop"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name CxxFreeClient $flags -I "$build/gen" -I "$build/core" -I "$build/s12" -I "$spb_mod" \
+  swiftc -typecheck -module-name CxxFreeClient $flags -I "$build/gen" -I "$build/core" -I "$build/stubs" -I "$build/s12" -I "$spb_mod" \
     "$client/Client.swift"
   echo "CXX-FREE CLIENT OK [$tag]"
 

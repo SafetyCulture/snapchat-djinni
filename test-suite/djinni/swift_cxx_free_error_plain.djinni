@@ -1,0 +1,19 @@
+@extern "vendor/third-party/swift_models_error.yaml"
+
+# Generated with --swift-internal-cxx-imports --swift-cxx-free-api and --swift-error-type CruxError, without
+# --swift-async-wrap. No type of the methods names the record, so its module comes only from the error type.
+
+swift_cxx_free_plain_item = record {
+  id: string;
+}
+
+# An instance method throws the record: the protocol and the C++ proxy import the module of the record.
+swift_cxx_free_plain_instance = interface +c {
+  ping(): i32;
+  item(): swift_cxx_free_plain_item;
+}
+
+# A static method throws the record: only the class of the static methods imports the module.
+swift_cxx_free_plain_static = interface +c {
+  static count(): i32;
+}

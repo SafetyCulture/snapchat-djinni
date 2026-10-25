@@ -390,6 +390,9 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   // The Swift type of the --swift-error-type record, with its module.
   private var errorType: Option[String] = None
 
+  // The module of the --swift-error-type record, when the record is an extern type of another module.
+  private var errorTypeModule: Option[String] = None
+
   // The IDL methods of each interface that get a synchronous form (--swift-sync-method).
   private var syncMethods: Map[String, Set[String]] = Map.empty
 
@@ -399,6 +402,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       case td: ExternTypeDecl if td.body.isInstanceOf[Record] && swiftBlock(td, "typename").contains(name) =>
         swiftBlock(td, "module").fold(name)(module => s"$module.$name")
     }.getOrElse(name))
+    // A public signature that throws the error type names its module when the record comes from another module.
+    errorTypeModule = spec.swiftErrorType.flatMap(name => idl.collectFirst {
+      case td: ExternTypeDecl if td.body.isInstanceOf[Record] && swiftBlock(td, "typename").contains(name) =>
+        swiftBlock(td, "module").filter(module => module.nonEmpty && module != spec.swiftModule)
+    }.flatten)
     syncMethods = spec.swiftSyncMethods.flatMap(_.split("\\.", 2) match {
       case Array(interface, method) => Some((interface, method))
       case _ => None
@@ -554,11 +562,16 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     })
     // The wrapper takes the name of the protocol, so a wrapped interface has no protocol.
     val wrap = spec.swiftAsyncWrap.isDefined && i.ext.cpp && !i.ext.swift
+    // The C++ proxy of an interface without the wrapper throws the error type too, so its file needs the module
+    if (!wrap && i.ext.cpp && i.methods.exists(m => !m.static && typed(i, m))) {
+      if (spec.swiftCxxFreeApi) errorTypeModule.foreach(refs.privateImports.add)
+    }
     // The public API is the protocol, or the class of the async wrappers, and it holds the instance methods only.
     val apiRefs = new SwiftRefs(ident.name)
     i.methods.filter(!_.static).foreach(m => {
       m.params.foreach(p => apiRefs.find(p.ty))
       signatureResult(i, m, wrap).foreach(apiRefs.find)
+      if (typed(i, m)) errorTypeModule.foreach(apiRefs.swiftImports.add)
     })
     // The class of the static methods is public, so its types need public imports in the private file.
     val staticsRefs = new SwiftRefs(ident.name)
@@ -566,6 +579,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     i.methods.filter(m => m.static && m.lang.swift).foreach(m => {
       m.params.foreach(p => staticsRefs.find(p.ty))
       signatureResult(i, m, wrap = false).foreach(staticsRefs.find)
+      if (typed(i, m)) errorTypeModule.foreach { module =>
+        staticsRefs.swiftImports.add(module)
+        // The private file holds the class of the static methods, and its imports decide the level
+        if (spec.swiftCxxFreeApi) refs.privateImports.add(module)
+      }
     })
     if (wrap) {
       refs.swiftImports.add("DjinniSupport")

@@ -174,6 +174,8 @@ single_case_mods "$work/sync-listener-mods" sync-listener
 single_case_mods "$work/sync-listener-error-mods" sync-listener-error
 # The cxx-free cases have their own module, because they write an access level on every import.
 single_case_mods "$work/cxx-free-mods" cxx-free-api
+single_case_mods "$work/cxx-free-error-mods" cxx-free-api-error-module
+single_case_mods "$work/cxx-free-error-plain-mods" cxx-free-api-error-module-plain
 # The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
 SWIFTXX_NAMESPACE='djinni_options::nested' single_case_mods "$work/nested-mods" nested-ns
 
@@ -307,6 +309,29 @@ swift_pass() { # <swiftc flags>
     $flags "${cxx[@]}" -I "$work/cxx-free-mods" "$cases/cxx-free-api"/swift/*.swift \
     "$cases/cxx-free-api-future-field"/swift/*.swift "$repo_root/ci/swift-cxx-free/ErrorConformance.swift"
   echo "TEST-SUITE CXX-FREE-API SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite cxx-free-api-error-module (--swift-error-type of an extern record)"
+  # The extern Swift type and its marshaller are two modules. The error record is the type of --swift-error-type.
+  local ce="$build/cxx-free-error"
+  mkdir -p "$build/stubs" "$ce"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/stubs/Models.swiftmodule" -module-name Models \
+    -parse-as-library -enable-library-evolution $flags "$repo_root/ci/swift-stubs/Models.swift"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/stubs/ModelsSupport.swiftmodule" -module-name ModelsSupport \
+    -parse-as-library $flags "${cxx[@]}" -I "$mods" -I "$build/stubs" "$repo_root/ci/swift-stubs/ModelsSupport.swift"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$ce/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/cxx-free-error-mods" -I "$build/stubs" "$cases/cxx-free-api-error-module"/swift/*.swift \
+    "$repo_root/ci/swift-cxx-free/ModelsErrorConformance.swift"
+  echo "TEST-SUITE CXX-FREE-ERROR-MODULE SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite cxx-free-api-error-module-plain (no async wrapper)"
+  local cp="$build/cxx-free-error-plain"
+  mkdir -p "$cp"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$cp/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/cxx-free-error-plain-mods" -I "$build/stubs" "$cases/cxx-free-api-error-module-plain"/swift/*.swift \
+    "$repo_root/ci/swift-cxx-free/ModelsErrorConformance.swift"
+  echo "TEST-SUITE CXX-FREE-ERROR-MODULE-PLAIN SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite internal-imports-separate (--swift-internal-cxx-imports)"
   local im="$build/internal-imports" ipublic=() iprivate=()
   mkdir -p "$im"

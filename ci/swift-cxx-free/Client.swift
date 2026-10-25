@@ -1,4 +1,5 @@
 import DjinniSupportCore
+import Models
 import TestSuite
 
 // A client of the generated module without C++ interop. It imports no C++ module and names no C++ type.
@@ -33,6 +34,11 @@ func colorName(_ color: SwiftCxxFreeColor) -> String {
 // The async wrapper method throws the error type of --swift-error-type.
 func fetch(_ service: SwiftCxxFreeService) async throws(SwiftCxxFreeFailure) -> SwiftCxxFreeItem {
     return try await service.fetch("client")
+}
+
+// The error type of the extern module comes through the class of the static methods.
+func makeErrorService() throws(Models.CruxError) -> SwiftCxxFreeErrorService {
+    return try SwiftCxxFreeErrorService_statics.create()
 }
 
 // The error type reaches the client through CppExceptionConvertible.

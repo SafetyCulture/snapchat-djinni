@@ -320,6 +320,8 @@ swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
 swift_cxx_free_api_relative="djinni/swift_cxx_free_api.djinni"
 swift_cxx_free_future_field_relative="djinni/swift_cxx_free_future_field.djinni"
 swift_cxx_free_future_outcome_relative="djinni/swift_cxx_free_future_outcome.djinni"
+swift_cxx_free_error_module_relative="djinni/swift_cxx_free_error_module.djinni"
+swift_cxx_free_error_plain_relative="djinni/swift_cxx_free_error_plain.djinni"
 swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
 swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
@@ -662,7 +664,38 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_cxx_free_future_outcome_relative" \
+    --idl "$swift_cxx_free_future_outcome_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-error-module/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-error-module/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-error-module/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_error_module_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_error_plain_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -743,6 +776,42 @@ if ! grep -qxF "public import Models" "$cxx_free_outcome/SwiftCxxFreeLookup.swif
 fi
 if ! grep -qF "async throws -> Swift.Result<Int32, Models.CruxError>" "$cxx_free_outcome/SwiftCxxFreeLookup.swift"; then
     echo "The cxx-free future-outcome case does not return the outcome of the future." 1>&2
+    exit 1
+fi
+# A public signature that throws the extern error record imports the module of the record.
+cxx_free_error="$temp_out/swift-features/cxx-free-api-error-module/swift"
+for cxx_free_file in SwiftCxxFreeErrorService.swift SwiftCxxFreeErrorService+Private.swift SwiftCxxFreeErrorListener.swift; do
+    if ! grep -qxF "public import Models" "$cxx_free_error/$cxx_free_file"; then
+        echo "The cxx-free error-module case does not import the module of the error record: $cxx_free_file" 1>&2
+        exit 1
+    fi
+done
+if ! grep -qF "async throws(Models.CruxError)" "$cxx_free_error/SwiftCxxFreeErrorService.swift"; then
+    echo "The cxx-free error-module case does not throw the extern error record." 1>&2
+    exit 1
+fi
+# Without the async wrapper no type of the methods names the record, so each file that throws it imports its module.
+cxx_free_error_plain="$temp_out/swift-features/cxx-free-api-error-module-plain/swift"
+if ! grep -qxF "public import Models" "$cxx_free_error_plain/SwiftCxxFreePlainInstance.swift"; then
+    echo "The cxx-free plain protocol does not import the module of the record." 1>&2
+    exit 1
+fi
+# The C++ proxy is internal, so its file imports the module with an internal level. The class of the static methods is
+# public, so its file needs a public import.
+if ! grep -qxF "internal import Models" "$cxx_free_error_plain/SwiftCxxFreePlainInstance+Private.swift"; then
+    echo "The cxx-free plain proxy does not import the module of the record." 1>&2
+    exit 1
+fi
+if ! grep -qxF "public import Models" "$cxx_free_error_plain/SwiftCxxFreePlainStatic+Private.swift"; then
+    echo "The cxx-free plain statics class does not import the module of the record." 1>&2
+    exit 1
+fi
+if ! grep -qF "func ping() throws(Models.CruxError) -> Int32" "$cxx_free_error_plain/SwiftCxxFreePlainInstance.swift"; then
+    echo "The cxx-free plain case does not throw the record from an instance method whose types do not name it." 1>&2
+    exit 1
+fi
+if ! grep -qF "public static func count() throws(Models.CruxError) -> Int32" "$cxx_free_error_plain/SwiftCxxFreePlainStatic+Private.swift"; then
+    echo "The cxx-free plain case does not throw the record from a static method." 1>&2
     exit 1
 fi
 # The flag needs its two companion flags: the imports of the C++ modules and one module for all Swift files.
