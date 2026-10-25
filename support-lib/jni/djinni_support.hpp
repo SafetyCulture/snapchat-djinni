@@ -383,9 +383,9 @@ public:
             return jniEnv->NewLocalRef(impl);
         }
 
-        // Cases 3 and 4.
+        // Cases 3 and 4. The glue class is the tag: two glue sets of one C++ type need one proxy each.
         assert(m_cppProxyClass);
-        return JniCppProxyCache::get(typeid(c), c, &newCppProxy);
+        return JniCppProxyCache::get(typeid(Self), c, &newCppProxy);
 
     }
 
@@ -450,8 +450,9 @@ private:
     static std::pair<jobject, void*> newCppProxy(const std::shared_ptr<void> & cppObj) {
         const auto & data = JniClass<Self>::get();
         const auto & jniEnv = jniGetThreadEnv();
+        typename CppProxyHandle<I>::Tag cacheTag(typeid(Self));
         std::unique_ptr<CppProxyHandle<I>> to_encapsulate(
-                new CppProxyHandle<I>(std::static_pointer_cast<I>(cppObj)));
+                new CppProxyHandle<I>(cacheTag, std::static_pointer_cast<I>(cppObj)));
         jlong handle = static_cast<jlong>(reinterpret_cast<uintptr_t>(to_encapsulate.get()));
         jobject cppProxy = jniEnv->NewObject(data.m_cppProxyClass.clazz.get(),
                                              data.m_cppProxyClass.constructor,

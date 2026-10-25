@@ -7,11 +7,24 @@ crux_error = record {
   code: i32;
 }
 
+# Swift implements this one. The synchronous form of error_service registers it.
+error_listener = interface +sw {
+  on_done(value: i32): i32;
+}
+
 error_service = interface +c {
   static create(): error_service;
   # A static method throws the error type; a static future is async.
   static fail_static(): i32;
   static delayed_static(value: i32): future<i32>;
+  # --swift-sync-method gives these registrations a synchronous form, and the form throws CruxError.
+  register_listener(listener: error_listener): i32;
+  # The mach thread id of the register_listener call.
+  registration_thread(): i64;
+  # Calls the listener that register_listener stored.
+  call_registered_listener(value: i32): i32;
+  # The synchronous form throws CruxError when C++ throws.
+  register_listener_failing(listener: error_listener): i32;
   divide(a: i32, b: i32): outcome<i32, crux_error>;
   fail(): outcome<i32, crux_error>;
   add(a: i32, b: i32): i32;

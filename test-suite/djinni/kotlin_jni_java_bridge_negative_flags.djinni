@@ -1,0 +1,10 @@
+# A flags type inside a list is a single option in Java and an EnumSet in Kotlin, so the bridge has no converter.
+
+bridge_negative_flags = flags {
+  first;
+  second;
+}
+
+bridge_negative_flag_list = record {
+  values: list<bridge_negative_flags>;
+}

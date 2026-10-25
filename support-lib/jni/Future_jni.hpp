@@ -21,6 +21,7 @@
 #include "../cpp/Future.hpp"
 
 #include <optional>
+#include <stdexcept>
 
 namespace djinni {
 
@@ -42,14 +43,18 @@ struct NativeFutureHandlerJniInfo {
     const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(JJ)V") };
 };
 
-struct DjinniCppExceptionJniInfo {
-    const GlobalRef<jclass> clazz { jniFindClass("com/snapchat/djinni/DjinniCppException") };
+// DjinniCppException, or RuntimeException when the app does not have that class, as in jniSetPendingFromCurrent.
+struct CppExceptionJniInfo {
+    const GlobalRef<jclass> clazz { findClass() };
     const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(Ljava/lang/String;)V") };
-};
-
-struct RuntimeExceptionJniInfo {
-    const GlobalRef<jclass> clazz { jniFindClass("java/lang/RuntimeException") };
-    const jmethodID constructor { jniGetMethodID(clazz.get(), "<init>", "(Ljava/lang/String;)V") };
+private:
+    static GlobalRef<jclass> findClass() {
+        try {
+            return jniFindClass("com/snapchat/djinni/DjinniCppException");
+        } catch (const std::exception&) {
+            return jniFindClass("java/lang/RuntimeException");
+        }
+    }
 };
 
 struct ThrowableJniInfo {
@@ -89,22 +94,29 @@ struct SetResult<Void> {
     }
 };
 
-// The Java exception of a failed C++ future: a DjinniCppException with the message of the C++ exception. When the class
-// is not on the class path, the lookup throws and the exception is a RuntimeException, as in jniSetPendingFromCurrent.
 inline LocalRef<jobject> makeJavaException(JNIEnv* jniEnv, const std::string& what) {
+    const auto& exceptionJniInfo = JniClass<CppExceptionJniInfo>::get();
+    LocalRef<jstring> message;
     try {
-        const auto& exceptionJniInfo = JniClass<DjinniCppExceptionJniInfo>::get();
-        return LocalRef<jobject>(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, what).get()));
-    } catch (const std::exception&) {
-        const auto& exceptionJniInfo = JniClass<RuntimeExceptionJniInfo>::get();
-        return LocalRef<jobject>(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, String::fromCpp(jniEnv, what).get()));
+        message = String::fromCpp(jniEnv, what);
+    } catch (const std::range_error&) {
+        // A message that is not valid UTF-8 cannot become a Java string, but the future must still fail.
+        message = String::fromCpp(jniEnv, "C++ exception with a message that is not valid UTF-8");
     }
+    return LocalRef<jobject>(jniEnv, jniEnv->NewObject(exceptionJniInfo.clazz.get(), exceptionJniInfo.constructor, message.get()));
 }
 
-// Fails the Java promise with the exception of makeJavaException
+// The promise must fail in every case, or the coroutine that waits for it never resumes. If the JVM cannot make the
+// exception, for example with no memory, the promise fails with the exception of the JVM.
 inline void setJavaException(JNIEnv* jniEnv, const PromiseJniInfo& promiseJniInfo, jobject promise, const std::string& what) {
-    LocalRef<jobject> jex = makeJavaException(jniEnv, what);
-    jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_exception, jex.get());
+    try {
+        LocalRef<jobject> jex = makeJavaException(jniEnv, what);
+        // If NewObject fails, it gives null and leaves its exception pending.
+        jniExceptionCheck(jniEnv);
+        jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_exception, jex.get());
+    } catch (const jni_exception& e) {
+        jniEnv->CallVoidMethod(promise, promiseJniInfo.method_set_exception, e.java_exception());
+    }
 }
 
 template <class RESULT>
@@ -175,13 +187,8 @@ public:
     static LocalRef<JniType> fromCpp(JNIEnv* jniEnv, CppType c)
     {
         const auto& promiseJniInfo = JniClass<PromiseJniInfo>::get();
-        // Resolve the exception classes here, on the thread of the call, and not on the worker thread that fails the
-        // future. A lookup that fails there must not leave the coroutine waiting.
-        try {
-            JniClass<DjinniCppExceptionJniInfo>::get();
-        } catch (const std::exception&) {
-            JniClass<RuntimeExceptionJniInfo>::get();
-        }
+        // The thread of the call has the class loader of the app. Resolve the exception class here.
+        JniClass<CppExceptionJniInfo>::get();
 
         auto promise = std::make_shared<PromiseHolder>();
         promise->set(jniEnv, jniEnv->NewObject(promiseJniInfo.clazz.get(), promiseJniInfo.constructor));

@@ -1,4 +1,5 @@
 import DjinniSupportCxx
+import DjinniSupportCore
 import SwiftProtobuf
 import Foundation
 

@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <pthread.h>
 #include <stdexcept>
 #include <mutex>
 #include <thread>
@@ -122,6 +123,32 @@ public:
         return listener->on_value(value);
     }
 
+    // The recorded thread id shows which thread ran the synchronous call.
+    int32_t register_listener(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        std::lock_guard<std::mutex> lock(_registeredMutex);
+        _registered = listener;
+        _registrationThread = static_cast<int64_t>(pthread_mach_thread_np(pthread_self()));
+        return ++_registrationCount;
+    }
+
+    int64_t registration_thread() override {
+        std::lock_guard<std::mutex> lock(_registeredMutex);
+        return _registrationThread;
+    }
+
+    int32_t call_registered_listener(int32_t value) override {
+        std::shared_ptr<rt::RuntimeListener> listener;
+        {
+            std::lock_guard<std::mutex> lock(_registeredMutex);
+            listener = _registered;
+        }
+        return listener ? listener->on_value(value) : -1;
+    }
+
+    djinni::Future<int32_t> observe(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        return djinni::Promise<int32_t>::resolve(listener->on_value(1));
+    }
+
     std::shared_ptr<rt::RuntimeAsync> same() override { return shared_from_this(); }
 
 private:
@@ -130,6 +157,10 @@ private:
     std::atomic<int32_t> _pendingStarted{0};
     std::mutex _mutex;
     std::unique_ptr<djinni::Promise<int32_t>> _pending;
+    std::mutex _registeredMutex;
+    std::shared_ptr<rt::RuntimeListener> _registered;
+    int64_t _registrationThread{0};
+    int32_t _registrationCount{0};
 };
 
 } // namespace

@@ -5,7 +5,7 @@ import DjinniSupport
 import Foundation
 
 /**
- * Each async method runs its blocking C++ call on `DispatchQueue.global(qos: .userInitiated)`. Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupport.djinniCallQueue()`). Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws CancellationError and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.
  */
@@ -15,6 +15,6 @@ public final class SwiftAsyncChild: @unchecked Sendable {
     init(proxy: SwiftAsyncChildCppProxy) { self.djinniProxy = proxy }
 
     @concurrent public func name() async throws -> String {
-        return try await DjinniSupport.djinniCall(DispatchQueue.global(qos: .userInitiated)) { [djinniProxy = self.djinniProxy] in try djinniProxy.name() }
+        return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.name() }
     }
 }

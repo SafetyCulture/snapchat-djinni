@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "DataRef.hpp"
 #include "Future.hpp"
 #include "expected.hpp"
 #include <cstdint>
@@ -23,6 +24,9 @@ public:
     static /*not-null*/ std::shared_ptr<SwiftErrorService> create();
 
     static ::djinni::Future<SwiftErrorItem> load_static(const std::string & id);
+
+    /** A parameter that is not Sendable crosses into the queue in a box. A parameter named params must not hide the box. */
+    static ::djinni::Future<int32_t> upload(const ::djinni::DataRef & params);
 
     virtual djinni::expected<SwiftErrorItem, CruxError> fetch(const std::string & id) = 0;
 

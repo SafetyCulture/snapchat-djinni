@@ -1,0 +1,6 @@
+@extern "vendor/third-party/bridge_extern_negative.yaml"
+
+# An extern type with two classes and no Protobuf marker has no converter.
+bridge_negative_extern = record {
+  value: bridge_no_marker;
+}

@@ -1,0 +1,17 @@
+@extern "../../support-lib/dataref.yaml"
+@extern "../../support-lib/dataview.yaml"
+
+# Swift's Error is Sendable, and a DataRef or a DataView is not, so a record that conforms to Error cannot hold one.
+
+swift_error_buffer_derived = record {
+  data: DataRef;
+} deriving(error)
+
+swift_error_buffer_nested = record {
+  views: list<DataView>;
+} deriving(error)
+
+# The same record without deriving(error) is fine.
+swift_error_buffer_plain = record {
+  data: DataRef;
+}

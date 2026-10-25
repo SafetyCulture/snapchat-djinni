@@ -1,4 +1,5 @@
 import DjinniSupportCxx
+import DjinniSupportCore
 import Foundation
 
 // DataView and DataRef are bridged to `NSData` instead of `Data` because `Data`

@@ -4,7 +4,8 @@
 # For several IDL sets the script generates Java, JNI C++ and Kotlin with the same flags, compiles the Java
 # and the Kotlin on the JVM, and compares the class files with `javap -p -s` (ci/kotlin_jni_compare.py):
 # the Crux assets IDL with the flags of crux/tools/generate_code.sh, the whole Crux IDL with --kotlin-error-type
-# and --kotlin-suspend-wrap, and the test-suite IDL.
+# and --kotlin-suspend-wrap, and the test-suite IDL. The bridge pass compiles the Java classes of one run with
+# the Kotlin JNI classes and the converters of a second run, and runs a round-trip program.
 #
 # Needs javac, javap and kotlinc. The Kotlin compiler needs its Parcelize plugin (parcelize-compiler.jar).
 #
@@ -144,6 +145,42 @@ if [ "$check_crux" != 0 ]; then
     exit 1
   fi
   echo "crux error type: $(grep -l "$package.CruxException" "$work/crux-error/kotlin"/*.kt | wc -l | tr -d ' ') Kotlin files throw CruxException"
+
+  # 1c. The Java <-> Kotlin JNI converters over the whole Crux IDL. The pass compiles, and stdout lists the
+  # records that hold a +c interface.
+  name=bridge-crux
+  crux_java=com.safetyculture.crux.domain
+  crux_kotlin=com.safetyculture.cruxkt.domain
+  mkdir -p "$work/$name"
+  (cd "$work/fx-main" && java -jar "$jar" \
+    --java-out "$work/$name/java" --java-package "$crux_java" --ident-java-field mFooBar \
+    --java-nonnull-annotation androidx.annotation.NonNull --java-implement-android-os-parcelable true \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
+  (cd "$work/fx-main" && java -jar "$jar" \
+    --kotlin-jni-out "$work/$name/kotlin" --java-package "$crux_kotlin" --ident-java-field mFooBar \
+    --java-nonnull-annotation androidx.annotation.NonNull --java-implement-android-os-parcelable true \
+    --kotlin-jni-java-bridge-out "$work/$name/bridge" --kotlin-jni-java-bridge-package "$crux_java" \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni) >"$work/$name/run.log" 2>&1 || {
+    cat "$work/$name/run.log" >&2
+    exit 1
+  }
+  if ! grep -qxF "bridge: skipped inspection_session_result: field session is a +c interface" "$work/$name/run.log"; then
+    echo "FAIL: the Crux bridge pass did not skip inspection_session_result" >&2
+    cat "$work/$name/run.log" >&2
+    exit 1
+  fi
+  echo "crux bridge: $(grep -c '^bridge: skipped ' "$work/$name/run.log") records skipped"
+  grep '^bridge: skipped ' "$work/$name/run.log"
+  mkdir -p "$work/$name/stubs" "$work/$name/java-classes" "$work/$name/kotlin-classes"
+  python3 "$repo_root/ci/kotlin_jni_stubs.py" "$work/fx-main/extern" "$work/$name/stubs"
+  echo "== $name: javac ($(find "$work/$name/java" -name '*.java' | wc -l | tr -d ' ') Java files)"
+  # shellcheck disable=SC2046
+  javac -nowarn -d "$work/$name/java-classes" \
+    $(find "$work/$name/stubs" "$work/$name/java" "$repo_root/ci/kotlin-jni/stubs" "$repo_root/support-lib/java" -name '*.java')
+  echo "== $name: kotlinc ($(find "$work/$name/kotlin" "$work/$name/bridge" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
+  kotlinc -Werror -d "$work/$name/kotlin-classes" -Xplugin="$kotlin_lib/parcelize-compiler.jar" \
+    -cp "$work/$name/java-classes:$kotlin_lib/parcelize-runtime.jar" \
+    "$work/$name/kotlin" "$work/$name/bridge"
 fi
 
 # 2. The test-suite IDL, with the flags of test-suite/run_djinni.sh. The second run registers the natives in JNI_OnLoad.
@@ -290,6 +327,69 @@ mkdir -p "$work/$name/java"
   --kotlin-jni-out "$work/$name/kotlin" --jni-out "$work/$name/jni" --java-package "$package" \
   --idl djinni/kotlin_extern_array.djinni --idl-include-path djinni/vendor)
 compile_and_compare "$name" "$package" "" "$repo_root/ci/kotlin-jni/extern-array" com.dropbox.djinni.testextern
+
+# 6. The Java <-> Kotlin JNI converters. Run 1 writes the Java classes, and run 2 writes the Kotlin JNI classes and
+# the bridge. The round-trip program covers every field kind and the +j wrapper, and no JNI code is needed.
+name=bridge
+mkdir -p "$work/$name"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --java-out "$work/$name/java" --java-package com.dropbox.djinni.bridgejava --ident-java-field mFooBar \
+  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor)
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
+  --kotlin-jni-java-bridge-out "$work/$name/bridge" \
+  --kotlin-jni-java-bridge-package com.dropbox.djinni.bridgejava \
+  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor) >"$work/$name/run.log" 2>&1 || {
+  cat "$work/$name/run.log" >&2
+  exit 1
+}
+grep '^bridge: skipped ' "$work/$name/run.log" >"$work/$name/skips.log" || true
+if ! grep -qxF "bridge: skipped kotlin_java_bridge_skipped: field service is a +c interface" "$work/$name/skips.log" || \
+   ! grep -qxF "bridge: skipped kotlin_java_bridge_holder: field skipped holds kotlin_java_bridge_skipped, which is skipped" "$work/$name/skips.log"; then
+  echo "FAIL: the bridge did not report the skipped records" >&2
+  cat "$work/$name/run.log" >&2
+  exit 1
+fi
+echo "== $name: javac ($(find "$work/$name/java" -name '*.java' | wc -l | tr -d ' ') Java files)"
+mkdir -p "$work/$name/java-classes" "$work/$name/kotlin-classes"
+# shellcheck disable=SC2046
+javac -nowarn -d "$work/$name/java-classes" \
+  $(find "$work/$name/java" "$repo_root/support-lib/java" -name '*.java') \
+  "$repo_root/ci/kotlin-jni/bridge/ExternJavaMessage.java"
+echo "== $name: kotlinc ($(find "$work/$name/kotlin" "$work/$name/bridge" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
+kotlinc -Werror -d "$work/$name/kotlin-classes" -cp "$work/$name/java-classes:$kotlin_lib/kotlin-stdlib.jar" \
+  "$work/$name/kotlin" "$work/$name/bridge" \
+  "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt" \
+  "$repo_root/ci/kotlin-jni/bridge/BridgeRoundTrip.kt"
+echo "== $name: run"
+java -cp "$work/$name/kotlin-classes:$work/$name/java-classes:$kotlin_lib/kotlin-stdlib.jar" BridgeRoundTripKt
+
+# The bridge flags do not change the Kotlin JNI output, also with --kotlin-suspend-wrap. The bridge compiles and
+# runs against the suspend classes.
+name=bridge-suspend
+mkdir -p "$work/$name"
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
+  --kotlin-suspend-wrap --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor)
+(cd "$repo_root/test-suite" && java -jar "$jar" \
+  --kotlin-jni-out "$work/$name/kotlin-bridge" --java-package com.dropbox.djinni.bridgekt --ident-java-field mFooBar \
+  --kotlin-suspend-wrap --kotlin-jni-java-bridge-out "$work/$name/bridge" \
+  --kotlin-jni-java-bridge-package com.dropbox.djinni.bridgejava \
+  --idl djinni/kotlin_jni_java_bridge.djinni --idl-include-path djinni/vendor) >"$work/$name/run-bridge.log" 2>&1 || {
+  cat "$work/$name/run-bridge.log" >&2
+  exit 1
+}
+echo "== $name: bridge flags do not change the Kotlin JNI output"
+diff -r "$work/$name/kotlin" "$work/$name/kotlin-bridge"
+mkdir -p "$work/$name/kotlin-classes"
+echo "== $name: kotlinc ($(find "$work/$name/kotlin-bridge" "$work/$name/bridge" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
+kotlinc -Werror -d "$work/$name/kotlin-classes" \
+  -cp "$work/bridge/java-classes:$kotlin_lib/kotlin-stdlib.jar:$coroutines" \
+  "$work/$name/kotlin-bridge" "$work/$name/bridge" \
+  "$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt" \
+  "$repo_root/ci/kotlin-jni/bridge/BridgeRoundTrip.kt"
+echo "== $name: run"
+java -cp "$work/$name/kotlin-classes:$work/bridge/java-classes:$kotlin_lib/kotlin-stdlib.jar:$coroutines" BridgeRoundTripKt
 # The compare tool must reject a JNI lookup that it cannot parse, so a change in the shape of the generated C++
 # cannot turn a lookup into a silent skip. The mutant has one lookup split over two lines.
 mutant="$work/compare-mutant"

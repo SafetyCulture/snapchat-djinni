@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Typechecks the generated Swift for the Crux assets IDL against support-lib/swift and
-# syntax-checks the generated Swift/C++ glue.
+# Typechecks the generated Swift for the Crux assets IDL against support-lib/swift-core and
+# support-lib/swift and syntax-checks the generated Swift/C++ glue.
 #
-# The script generates Swift and Swift/C++ glue with the built generator. It runs
-# `swiftc -typecheck` over the generated Swift in Swift 5 mode, in Swift 6 mode with complete
-# strict concurrency checking, and in Swift 6 mode with NonisolatedNonsendingByDefault (the mode of
-# Approachable Concurrency in the app modules). Then it compiles the glue with `-fsyntax-only`. SwiftProtobuf is the real library. The
+# The script generates Swift and Swift/C++ glue with the built generator. It compiles the generated Swift to SIL
+# (`swiftc -emit-sil`) in three modes: Swift 5, Swift 6 with strict concurrency checking set to complete, and Swift 6
+# with NonisolatedNonsendingByDefault (the mode of Approachable Concurrency in the app modules). The data-race checks
+# of Swift 6 run on SIL, after the type checker, so `-typecheck` is not enough. Then the script compiles the glue with
+# `-fsyntax-only`. SwiftProtobuf is the real library. The
 # generated protobuf types (module S12Protos) are the real messages of the assets protos
 # (ci/fixtures/s12) plus stubs for the other yamls; the generated Swift/C++ declarations
 # (module CruxCxx), the protobuf C++ headers and the message translators are stubs,
 # because they come from other build steps. One more pass generates the whole Crux IDL (main.djinni) with
-# --swift-error-type CruxError and --swift-async-wrap; the fixture adds the crux_error record, which Crux lacks.
+# --swift-error-type CruxError, --swift-async-wrap and three --swift-sync-method values; the fixture adds the
+# crux_error record, which Crux lacks.
 #
 # It also compiles the Java, JNI C++ and Objective-C++ output of the +sw host case of the test suite, so the
 # other languages still compile next to the Swift files. That needs javac and the JNI headers of a JDK.
@@ -84,10 +86,18 @@ out_async="$work/out-async"
   --swift-async-wrap com.safetyculture.crux \
   --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 # The whole Crux IDL with --swift-error-type and the async wrappers. The Crux IDL has no error record, so the
-# fixture adds crux_error.
+# fixture adds crux_error. Three registration methods get the synchronous form of --swift-sync-method.
 python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-error" "$repo_root" main.djinni
 printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-error/crux/djinni/domain/ci_crux_error.djinni"
 printf '@import "ci_crux_error.djinni"\n' >>"$work/fx-error/crux/djinni/domain/swift_fixture.djinni"
+# The same fixture with --swift-internal-cxx-imports. The consumer turns the option on, so the public signatures of
+# the whole IDL must stay valid when the C++ glue imports are internal.
+out_error_internal="$work/out-error-internal"
+# shellcheck disable=SC2086
+(cd "$work/fx-error" && java -jar "$jar" \
+  --swift-out "$out_error_internal/swift" --swift-module Crux --swift-private-in-same-module \
+  --swift-async-wrap com.safetyculture.crux --swift-error-type CruxError --swift-internal-cxx-imports \
+  --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 out_error="$work/out-error"
 # shellcheck disable=SC2086
 (cd "$work/fx-error" && java -jar "$jar" \
@@ -95,6 +105,9 @@ out_error="$work/out-error"
   --swift-out "$out_error/swift" --swift-module Crux --swift-private-in-same-module \
   --swiftxx-out "$out_error/swiftxx" --swiftxx-include-cpp-prefix generated/ \
   --swift-async-wrap com.safetyculture.crux --swift-error-type CruxError \
+  --swift-sync-method crux_API.add_mutation_processor_observer \
+  --swift-sync-method crux_API.add_container_status_change_observer \
+  --swift-sync-method media_API.add_media_observer \
   --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 
 # Stub modules
@@ -154,6 +167,13 @@ single_case_mods() { # <module dir> <case>
 }
 single_case_mods "$work/error-legacy-mods" error-legacy
 single_case_mods "$work/separate-mods" separate-module
+# A module cannot import one module with two access levels, so the internal-imports case has its own module.
+single_case_mods "$work/internal-imports-single-mods" internal-imports
+single_case_mods "$work/internal-imports-mods" internal-imports-separate
+single_case_mods "$work/sync-listener-mods" sync-listener
+single_case_mods "$work/sync-listener-error-mods" sync-listener-error
+# The cxx-free cases have their own module, because they write an access level on every import.
+single_case_mods "$work/cxx-free-mods" cxx-free-api
 # The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
 SWIFTXX_NAMESPACE='djinni_options::nested' single_case_mods "$work/nested-mods" nested-ns
 
@@ -172,7 +192,11 @@ extension CruxError: CppExceptionConvertible {
 }
 EOF
 
-# One pass compiles DjinniSupport and typechecks the generated Swift with the given swiftc flags.
+# The data-race checks of Swift 6 run on SIL, after the type checker.
+swift_check() { # <swiftc arguments>
+  swiftc -emit-sil -wmo -parse-as-library -o /dev/null "$@"
+}
+# One pass compiles DjinniSupport and compiles the generated Swift to SIL with the given swiftc flags.
 swift_pass() { # <swiftc flags>
   local flags=$1 build
   build="$work/build-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
@@ -183,6 +207,10 @@ swift_pass() { # <swiftc flags>
   # DjinniSupport is a package with its own settings; only the modules that use the generated code turn the
   # upcoming feature on, so its nonisolated members stay concurrent.
   local support_flags=${flags/ -enable-upcoming-feature NonisolatedNonsendingByDefault/}
+  echo "== [$flags] DjinniSupportCore (support-lib/swift-core, $support_flags)"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/DjinniSupportCore.swiftmodule" -module-name DjinniSupportCore \
+    -parse-as-library -enable-library-evolution $support_flags "$repo_root"/support-lib/swift-core/*.swift
   echo "== [$flags] DjinniSupport (support-lib/swift, $support_flags)"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
@@ -202,40 +230,57 @@ swift_pass() { # <swiftc flags>
   esac
   echo "== [$flags] Crux (generated Swift, $(ls "$out"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
+  swift_check -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out"/swift/*.swift
   echo "SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] Crux with --swift-async-wrap (generated Swift, $(ls "$out_async"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
+  swift_check -module-name Crux $flags "${cxx[@]}" -I "$mods" "$out_async"/swift/*.swift
   echo "SWIFT ASYNC TYPECHECK OK [$flags]"
   # The S12Protos module of the whole Crux IDL has more messages, so it has its own directory.
   mkdir -p "$build/error"
-  cp "$build"/DjinniSupport.* "$build/error/"
+  cp "$build"/DjinniSupport.* "$build"/DjinniSupportCore.* "$build/error/"
   swiftc -emit-module -emit-module-path "$build/error/S12Protos.swiftmodule" -module-name S12Protos \
     -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosErrorStubs.swift" "$work"/*.pb.swift
   local errcxx=("${cxx[@]/#$build/$build/error}")
-  echo "== [$flags] Crux IDL with --swift-error-type and --swift-async-wrap (generated Swift, $(ls "$out_error"/swift/*.swift | wc -l | tr -d ' ') files)"
+  echo "== [$flags] Crux IDL with --swift-error-type, --swift-async-wrap and --swift-sync-method (generated Swift, $(ls "$out_error"/swift/*.swift | wc -l | tr -d ' ') files)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
+  swift_check -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
   echo "SWIFT ERROR TYPE TYPECHECK OK [$flags]"
+  echo "== [$flags] Crux IDL with --swift-internal-cxx-imports (generated Swift, $(ls "$out_error_internal"/swift/*.swift | wc -l | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  swift_check -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error_internal"/swift/*.swift "$error_conformance"
+  echo "SWIFT INTERNAL-IMPORTS TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
   files+=("$error_conformance" "$repo_root/ci/swift-typecheck/AsyncCallers.swift")
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}"
   echo "TEST-SUITE SWIFT TYPECHECK OK [$flags]"
+  # This file shares a value that is not Sendable. It must fail, or the data-race checks did not run.
+  case "$flags" in
+    *swift-version\ 6*)
+      echo "== [$flags] negative case: two tasks share the NSData of a wrapper method"
+      # shellcheck disable=SC2086
+      if negative="$(swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$tsmods" "${files[@]}" "$repo_root/ci/swift-negative/share_wrapper_result.swift" 2>&1)"; then
+        echo "FAIL: two tasks share a value that is not Sendable, and the SIL check accepts it" >&2
+        exit 1
+      fi
+      printf '%s\n' "$negative" | grep -q "risks causing data races" || { echo "FAIL: the data-race negative case failed for another reason:" >&2; printf '%s\n' "$negative" >&2; exit 1; }
+      echo "NEGATIVE DATA-RACE CASE REJECTED [$flags]"
+      ;;
+  esac
   echo "== [$flags] TestSuite options (--swiftxx-namespace, --swiftxx-include-prefix, --swiftxx-base-lib-*)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$optmods" "$cases/options"/swift/*.swift
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$optmods" "$cases/options"/swift/*.swift
   echo "TEST-SUITE OPTIONS SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite error-legacy (--swift-error-type, --swift-legacy-records, --swift-async-wrap)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/error-legacy-mods" "$cases/error-legacy"/swift/*.swift "$error_conformance"
   echo "TEST-SUITE ERROR-LEGACY SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite nested-ns (--swiftxx-namespace djinni_options::nested)"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuite $flags "${cxx[@]}" -I "$work/nested-mods" "$cases/nested-ns"/swift/*.swift
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/nested-mods" "$cases/nested-ns"/swift/*.swift
   echo "TEST-SUITE NESTED-NS SWIFT TYPECHECK OK [$flags]"
   # Without --swift-private-in-same-module the public files and the private files are two modules.
   echo "== [$flags] TestSuite separate-module"
@@ -248,16 +293,48 @@ swift_pass() { # <swiftc flags>
   swiftc -emit-module -emit-module-path "$sm/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
     $flags "${cxx[@]}" -I "$work/separate-mods" "${public[@]}"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/separate-mods" -I "$sm" "${private[@]}"
+  swift_check -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/separate-mods" -I "$sm" "${private[@]}"
   echo "TEST-SUITE SEPARATE-MODULE SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite internal-imports (--swift-internal-cxx-imports)"
+  # shellcheck disable=SC2086
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/internal-imports-single-mods" "$cases/internal-imports"/swift/*.swift
+  echo "TEST-SUITE INTERNAL-IMPORTS SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite cxx-free-api (--swift-internal-cxx-imports, --swift-cxx-free-api)"
+  local cf="$build/cxx-free"
+  mkdir -p "$cf"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$cf/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/cxx-free-mods" "$cases/cxx-free-api"/swift/*.swift \
+    "$cases/cxx-free-api-future-field"/swift/*.swift "$repo_root/ci/swift-cxx-free/ErrorConformance.swift"
+  echo "TEST-SUITE CXX-FREE-API SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite internal-imports-separate (--swift-internal-cxx-imports)"
+  local im="$build/internal-imports" ipublic=() iprivate=()
+  mkdir -p "$im"
+  for f in "$cases/internal-imports-separate"/swift/*.swift; do
+    case "$f" in *+Private.swift) iprivate+=("$f") ;; *) ipublic+=("$f") ;; esac
+  done
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$im/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/internal-imports-mods" "${ipublic[@]}"
+  # shellcheck disable=SC2086
+  swift_check -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/internal-imports-mods" -I "$im" "${iprivate[@]}"
+  echo "TEST-SUITE INTERNAL-IMPORTS-SEPARATE SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite sync-listener (--swift-sync-method)"
+  # shellcheck disable=SC2086
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/sync-listener-mods" "$cases/sync-listener"/swift/*.swift
+  echo "TEST-SUITE SYNC-LISTENER SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite sync-listener-error (--swift-sync-method, --swift-error-type)"
+  # shellcheck disable=SC2086
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/sync-listener-error-mods" "$cases/sync-listener-error"/swift/*.swift "$error_conformance"
+  echo "TEST-SUITE SYNC-LISTENER-ERROR SWIFT TYPECHECK OK [$flags]"
 }
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
 swift_pass "-swift-version 6 -strict-concurrency=complete -enable-upcoming-feature NonisolatedNonsendingByDefault"
 
 # The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
-if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
-  echo "FAIL: a crash construct in support-lib/swift" >&2
+if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift "$repo_root"/support-lib/swift-core/*.swift; then
+  echo "FAIL: a crash construct in support-lib/swift or support-lib/swift-core" >&2
   exit 1
 fi
 echo "NO CRASH CONSTRUCTS OK"
@@ -289,13 +366,13 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-for c in error-legacy separate-module nested-ns; do
+for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error cxx-free-api; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
-echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE AND NESTED-NS C++ GLUE SYNTAX OK"
+echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE, NESTED-NS, INTERNAL-IMPORTS, INTERNAL-IMPORTS-SEPARATE, SYNC-LISTENER, SYNC-LISTENER-ERROR AND CXX-FREE-API C++ GLUE SYNTAX OK"
 
 # An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
 # The other languages must still compile next to the Swift files.

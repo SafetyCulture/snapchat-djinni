@@ -1,0 +1,5 @@
+# An interface with type parameters is not converted.
+
+bridge_negative_generic<T> = interface +j {
+  value(value: T): T;
+}

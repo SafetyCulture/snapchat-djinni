@@ -1,0 +1,32 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Interfaces for --swift-sync-method. The async wrapper gives a synchronous form to the listed methods only.
+
+swift_sync_listener = interface +o +sw {
+  on_value(value: i32): i32;
+}
+
+crux_error = record {
+  message: string;
+  code: i32;
+} deriving(eq, error)
+
+swift_sync_item = record {
+  id: string;
+}
+
+swift_sync_service = interface +c {
+  static create(): swift_sync_service;
+  # Listed. Six methods take a listener, so the output shows the form on the listed ones only.
+  add_listener(listener: swift_sync_listener): i32;
+  call_listener(listener: swift_sync_listener, value: i32): i32;
+  remove_listener(listener: swift_sync_listener);
+  # Listed. The name is a Swift keyword, so the synchronous form is guardNow, without backticks.
+  guard(listener: swift_sync_listener): i32;
+  # Not listed, and a future: no synchronous form.
+  observe(listener: swift_sync_listener): future<i32>;
+  # Listed, and the result is an outcome: the synchronous form gives the value and throws the error.
+  find_listener(listener: swift_sync_listener): outcome<swift_sync_item, crux_error>;
+  count(): i32;
+}

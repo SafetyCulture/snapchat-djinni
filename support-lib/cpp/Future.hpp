@@ -370,6 +370,8 @@ public:
             }
         };
         detail::SharedStatePtr<T> sharedStateForReadyFuture;
+        // Destroy a replaced handler after the unlock: its broken next promise runs handlers that can take this lock.
+        decltype(sharedState->handler) replaced;
         {
             std::unique_lock lk(sharedState->mutex);
             if (sharedState->isReady()) {
@@ -377,6 +379,7 @@ public:
                 sharedStateForReadyFuture = std::move(sharedState);
             } else {
                 // result not yet available
+                replaced = std::move(sharedState->handler);
                 sharedState->handler = detail::createValueHandler<T>(std::move(continuation));
             }
         }

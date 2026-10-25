@@ -41,6 +41,10 @@ enum HostFailure: Error {
     case boom
 }
 
+final class ErrorRecorder: ErrorListener, @unchecked Sendable {
+    func onDone(_ value: Int32) throws -> Int32 { return value + 1 }
+}
+
 func check(_ condition: Bool, _ message: String) {
     if !condition {
         print("FAIL: \(message)")
@@ -207,6 +211,13 @@ func withTimeout<T: Sendable>(_ seconds: Double, _ body: @escaping @Sendable () 
         guard let first = try await group.next() else { throw TimeoutError() }
         return first
     }
+}
+
+// The thread limit of the global queues of libdispatch.
+func constrainedThreadLimit() -> Int {
+    var value: Int32 = 0
+    var size = MemoryLayout<Int32>.size
+    return sysctlbyname("kern.wq_max_constrained_threads", &value, &size, nil, 0) == 0 ? Int(value) : 64
 }
 
 // Waits for a task. A cancel of the caller reaches the task, so a timeout ends the wait.
@@ -495,6 +506,16 @@ func runAsyncTests() async throws {
     let expectedLabel = ProcessInfo.processInfo.environment["RT_QUEUE_LABEL"] ?? "djinni.runtime.blocking"
     check(listener.queueLabel == expectedLabel, "the C++ call runs on \(listener.queueLabel), not on \(expectedLabel)")
 
+    // --swift-sync-method: the synchronous form registers the listener and runs the C++ call on the caller's thread.
+    let callerThread = Int64(pthread_mach_thread_np(pthread_self()))
+    let registeredListener = Doubler()
+    check(try first.registerListenerNow(registeredListener) == 1, "the synchronous registration returns the count")
+    let registrationThread = try await first.registrationThread()
+    check(registrationThread == callerThread, "the synchronous registration ran on thread \(registrationThread), not on \(callerThread)")
+    check(try await first.callRegisteredListener(21) == 42, "the synchronous registration stored the listener")
+    // A future method with a +sw parameter that is not listed keeps the async form.
+    check(try await first.observe(Doubler()) == 2, "observe runs through the async form")
+
     // A call to an object does not wait for a blocking call on the same object, as cancel() must not.
     let blocking = Task { try await first.busy(3000) }
     try await Task.sleep(nanoseconds: 200_000_000)
@@ -503,6 +524,23 @@ func runAsyncTests() async throws {
     let elapsedMs = (DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
     check(elapsedMs < 1500, "a call waits for a blocking call on the same object: \(elapsedMs) ms")
     try await blocking.value
+
+    // Each C++ call waits for a Swift future that DispatchQueue.global() completes. More calls than the global queues
+    // have threads must not stop those queues.
+    if ProcessInfo.processInfo.environment["RT_DEFAULT_QUEUE"] == "1" {
+        let calls = constrainedThreadLimit() + 8
+        let finished = Counter()
+        for _ in 0..<calls {
+            Task {
+                if (try? await service.describeFutureFailure(Doubler())) == "int 42" { finished.add(1) }
+            }
+        }
+        let deadline = DispatchTime.now().uptimeNanoseconds + 60_000_000_000
+        while finished.value < calls && DispatchTime.now().uptimeNanoseconds < deadline {
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        check(finished.value == calls, "blocking calls stop the global queues: \(finished.value) of \(calls) calls ended in 60 s")
+    }
 
     // A C++ exception before a future exists is a DjinniError.
     do {
@@ -603,6 +641,20 @@ func runTypedErrorTests() async throws {
     await expectCruxError("outcome error", code: 7, message: "division by zero") { () async throws(CruxError) in _ = try await errors.divide(1, b: 0) }
     await expectCruxError("outcome error of a future", code: 7, message: "division by zero") { () async throws(CruxError) in _ = try await errors.divideLater(1, b: 0) }
 
+    // --swift-sync-method with --swift-error-type: the form throws CruxError, and the C++ call runs on the caller's thread.
+    let callerThread = Int64(pthread_mach_thread_np(pthread_self()))
+    let registeredListener = ErrorRecorder()
+    check(try errors.registerListenerNow(registeredListener) == 1, "the synchronous registration with the error type returns the count")
+    let registrationThread = try await errors.registrationThread()
+    check(registrationThread == callerThread, "the synchronous registration with the error type ran on another thread")
+    check(try await errors.callRegisteredListener(41) == 42, "the synchronous registration with the error type stored the listener")
+    do throws(CruxError) {
+        _ = try errors.registerListenerFailingNow(registeredListener)
+        check(false, "registerListenerFailingNow must throw CruxError")
+    } catch {
+        check(error.code == -1 && error.message.contains("boom"), "C++ exception of the synchronous form: code \(error.code), message \(error.message)")
+    }
+
     // A C++ exception becomes init(cppException:).
     await expectCruxError("C++ exception of an outcome method", code: -1, message: "boom") { () async throws(CruxError) in _ = try await errors.fail() }
     await expectCruxError("C++ exception of a plain method", code: -1, message: "boom") { () async throws(CruxError) in _ = try await errors.failPlain() }
@@ -639,6 +691,8 @@ func runTypedErrorTests() async throws {
     // A task that is cancelled while it waits for a future throws init(cancellation:) once. The late value is dropped.
     let waiting = Task { () async throws(CruxError) -> Int32 in try await errors.pending() }
     while try await errors.pendingStarted() == startedAfter { await Task.yield() }
+    // The pause lets the task reach the wait for the future before the cancel.
+    try await Task.sleep(nanoseconds: 100_000_000)
     waiting.cancel()
     await expectCruxError("cancellation while waiting", code: -2) { () async throws(CruxError) in _ = try await typedValue(waiting) }
     try await errors.completePending(1)
@@ -664,30 +718,6 @@ func runSyncTypedErrorTests() throws {
             check(error.code == code, "\(name): code \(error.code), expected \(code) (\(error.message))")
         }
     }
-}
-
-// The error types of --swift-error-type hold the C++ exception as a message, and a cancellation as code -2.
-extension CruxError: CppExceptionConvertible {
-    public init(cppException error: DjinniError) {
-        self.init(message: error.errorMessage, code: -1)
-    }
-    public init(cancellation: CancellationError) {
-        self.init(message: "cancelled", code: -2)
-    }
-}
-
-extension SyncError: CppExceptionConvertible {
-    public init(cppException error: DjinniError) {
-        self.init(message: error.errorMessage, code: -1)
-    }
-    public init(cancellation: CancellationError) {
-        self.init(message: "cancelled", code: -2)
-    }
-}
-
-// The queue of --swift-async-queue in the run of runtime.djinni.
-enum RuntimeQueues {
-    static let blocking = DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)
 }
 
 // A deadlock fails the test. The watchdog has its own thread, so it does not need a free worker of libdispatch.

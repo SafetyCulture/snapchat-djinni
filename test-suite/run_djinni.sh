@@ -56,7 +56,7 @@ elif [ $# -eq 1 ]; then
     for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out" \
         "$base_dir/generated-src/swift-features" "$base_dir/generated-src/kotlin-jni" \
         "$base_dir/generated-src/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-package" \
-        "$base_dir/generated-src/kotlin-jni-extern"; do
+        "$base_dir/generated-src/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-java-bridge"; do
         if [ -e "$dir" ]; then
             echo "Deleting \"$dir\"..."
             rm -r "$dir"
@@ -316,6 +316,11 @@ swift_deriving_relative="djinni/swift_deriving.djinni"
 swift_labels_relative="djinni/swift_labels.djinni"
 swift_recursive_relative="djinni/swift_recursive.djinni"
 swift_const_strings_relative="djinni/swift_const_strings.djinni"
+swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
+swift_cxx_free_api_relative="djinni/swift_cxx_free_api.djinni"
+swift_cxx_free_future_field_relative="djinni/swift_cxx_free_future_field.djinni"
+swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
+swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -544,7 +549,104 @@ fi
     --swift-module TestSuite \
     --swift-private-in-same-module \
     \
-    --idl "$swift_recursive_relative" \
+    --idl "$swift_recursive_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/internal-imports/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/internal-imports/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swiftxx-out "$temp_out_relative/swift-features/internal-imports/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_internal_imports_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/internal-imports-separate/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/internal-imports-separate/swift" \
+    --swift-module TestSuite \
+    --swift-internal-cxx-imports \
+    --swiftxx-out "$temp_out_relative/swift-features/internal-imports-separate/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_internal_imports_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/internal-imports-plain/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/internal-imports-plain/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/internal-imports-plain/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_internal_imports_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/sync-listener/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/sync-listener/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_service.add_listener \
+    --swift-sync-method swift_sync_service.find_listener \
+    --swift-sync-method swift_sync_service.guard \
+    --swiftxx-out "$temp_out_relative/swift-features/sync-listener/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_sync_listener_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/sync-listener-error/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/sync-listener-error/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_service.add_listener \
+    --swift-sync-method swift_sync_service.find_listener \
+    --swift-sync-method swift_sync_service.guard \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/sync-listener-error/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_sync_listener_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-error-type SwiftCxxFreeFailure \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_api_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-future-field/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-future-field/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    \
+    --idl "$swift_cxx_free_future_field_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -562,6 +664,189 @@ for name in Plain Left Right; do
         exit 1
     fi
 done
+# --swift-internal-cxx-imports writes the imports of the two C++ glue modules as internal imports. The access level of
+# an import gives no compile-time check for a C++ declaration, so the check reads the generated lines. With the same
+# IDL and the flag off, every other line is identical.
+internal_imports="$temp_out/swift-features/internal-imports/swift"
+internal_plain="$temp_out/swift-features/internal-imports-plain/swift"
+for f in "$internal_imports"/*.swift; do
+    name=$(basename "$f")
+    normalised="$temp_out/internal-import-normalised-$name"
+    sed -E 's/^internal import (TestSuiteCxx|DjinniSupportCxx)$/import \1/' "$f" >"$normalised"
+    if ! diff -u "$internal_plain/$name" "$normalised"; then
+        echo "The internal-imports case differs from the plain case in more than the two C++ glue imports: $name" 1>&2
+        exit 1
+    fi
+done
+if grep -rhE "^import (TestSuiteCxx|DjinniSupportCxx)$" "$internal_imports"; then
+    echo "The internal-imports case still has a plain import of a C++ glue module." 1>&2
+    exit 1
+fi
+if ! grep -rqx "internal import TestSuiteCxx" "$internal_imports" || ! grep -rqx "internal import DjinniSupportCxx" "$internal_imports"; then
+    echo "The internal-imports case does not import both C++ glue modules internally." 1>&2
+    exit 1
+fi
+if grep -rh "^internal import " "$internal_imports" | grep -vE "^internal import (TestSuiteCxx|DjinniSupportCxx)$"; then
+    echo "The option made an import internal that is not a C++ glue module." 1>&2
+    exit 1
+fi
+
+# --swift-cxx-free-api keeps the C++ types out of the public API of the generated module. The compiler proves the rest
+# (ci/swift-typecheck.sh): the module keeps its public API without C++ interop in the client.
+cxx_free="$temp_out/swift-features/cxx-free-api/swift"
+if grep -rhE "^import " "$cxx_free"; then
+    echo "The cxx-free-api case has an import without an access level." 1>&2
+    exit 1
+fi
+if grep -rhE "^public " "$cxx_free" | grep -E "djinni\.swift|DjinniSupport\.|DjinniSupportCxx\.|TestSuiteCxx\."; then
+    echo "A public declaration of the cxx-free-api case names a C++ type." 1>&2
+    exit 1
+fi
+# A marshaller names a C++ type, so it and its members are internal.
+if grep -rhE "^public (enum|typealias) \w+Marshaller" "$cxx_free"; then
+    echo "The cxx-free-api case made a marshaller public." 1>&2
+    exit 1
+fi
+if ! grep -qxF "@frozen public enum SwiftCxxFreeColor: Int32, Codable, Sendable {" "$cxx_free/SwiftCxxFreeColor.swift"; then
+    echo "The cxx-free-api case does not make its enum frozen." 1>&2
+    exit 1
+fi
+if ! grep -qF "DjinniSupportCore.DJFuture<Int32>" "$temp_out/swift-features/cxx-free-api-future-field/swift/SwiftCxxFreePending.swift"; then
+    echo "The cxx-free future-field case does not name the future type through DjinniSupportCore." 1>&2
+    exit 1
+fi
+if grep -rhE "^import " "$temp_out/swift-features/cxx-free-api-future-field/swift"; then
+    echo "The cxx-free future-field case has an import without an access level." 1>&2
+    exit 1
+fi
+# The flag needs its two companion flags: the imports of the C++ modules and one module for all Swift files.
+for cxx_free_missing in swift-internal-cxx-imports swift-private-in-same-module; do
+    case "$cxx_free_missing" in
+        swift-internal-cxx-imports) cxx_free_flags="--swift-private-in-same-module" ;;
+        *) cxx_free_flags="--swift-internal-cxx-imports" ;;
+    esac
+    cxx_free_log="$temp_out/cxx-free-without-$cxx_free_missing.log"
+    cxx_free_out="$temp_out_relative/swift-features/cxx-free-without-$cxx_free_missing"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --swift-out "$cxx_free_out/swift" \
+        --swift-module TestSuite \
+        $cxx_free_flags \
+        --swift-cxx-free-api \
+        --idl "$swift_cxx_free_api_relative") >"$cxx_free_log" 2>&1; then
+        echo "The generator accepted --swift-cxx-free-api without --$cxx_free_missing." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "Error: --swift-cxx-free-api needs --$cxx_free_missing." "$cxx_free_log"; then
+        echo "Missing error message for --swift-cxx-free-api without --$cxx_free_missing." 1>&2
+        cat "$cxx_free_log" 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$cxx_free_out" ]; then
+        echo "The generator wrote files for a rejected flag." 1>&2
+        exit 1
+    fi
+done
+
+# --swift-sync-method adds the synchronous form to the listed methods only. The two listed methods take a listener
+# whose interface has +sw; the other two methods with a listener get no form, also the future method.
+sync_forms() { # <case>
+    grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | sort
+}
+expected_sync_forms="public func addListenerNow(
+public func findListenerNow(
+public func guardNow("
+for sync_case in sync-listener sync-listener-error; do
+    if [ "$(sync_forms "$sync_case")" != "$expected_sync_forms" ]; then
+        echo "The synchronous forms of $sync_case are not the three listed methods." 1>&2
+        sync_forms "$sync_case" 1>&2
+        exit 1
+    fi
+done
+sync_plain="$temp_out/swift-features/sync-listener/swift/SwiftSyncService.swift"
+sync_typed="$temp_out/swift-features/sync-listener-error/swift/SwiftSyncService.swift"
+for expected in \
+    "return try djinniProxy.addListener(listener)" \
+    "return try djinniProxy.findListener(listener).get()"; do
+    if ! grep -qF -- "$expected" "$sync_plain"; then
+        echo "Missing line of the synchronous form without --swift-error-type: $expected" 1>&2
+        exit 1
+    fi
+done
+for expected in \
+    "public func addListenerNow(_ listener: TestSuite.SwiftSyncListener) throws(TestSuite.CruxError) -> Int32 {" \
+    "public func findListenerNow(_ listener: TestSuite.SwiftSyncListener) throws(TestSuite.CruxError) -> TestSuite.SwiftSyncItem {" \
+    "return try DjinniSupport.djinniTyped(TestSuite.CruxError.self) { try djinniProxy.addListener(listener) }" \
+    "return try DjinniSupport.djinniTyped(TestSuite.CruxError.self) { try djinniProxy.findListener(listener) }.get()"; do
+    if ! grep -qF -- "$expected" "$sync_typed"; then
+        echo "Missing line of the synchronous form with --swift-error-type: $expected" 1>&2
+        exit 1
+    fi
+done
+if [ "$(grep -cF -- "The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once." "$sync_typed")" -ne 3 ]; then
+    echo "The synchronous forms do not each have the doc line about the caller's thread." 1>&2
+    exit 1
+fi
+
+# Each bad --swift-sync-method value fails the run before any file is written.
+sync_negative_log="$temp_out/sync-negative.log"
+sync_negative_out="$temp_out_relative/swift-features/sync-negative"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$sync_negative_out/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_missing.add_listener \
+    --swift-sync-method swift_sync_bad_service.missing \
+    --swift-sync-method swift_sync_bad_shared.add_listener \
+    --swift-sync-method swift_sync_bad_service.load \
+    --swift-sync-method swift_sync_bad_service.static_register \
+    --swift-sync-method swift_sync_bad_service.add_listener \
+    --swift-sync-method swift_sync_bad_record.add_listener \
+    --swift-sync-method svc. \
+    --swift-sync-method .x \
+    --swift-sync-method noseparator \
+    --idl "$swift_sync_negative_relative") >"$sync_negative_log" 2>&1; then
+    echo "The generator accepted the bad --swift-sync-method values of $swift_sync_negative_relative." 1>&2
+    exit 1
+fi
+for expected in \
+    "--swift-sync-method swift_sync_missing.add_listener: there is no interface swift_sync_missing." \
+    "--swift-sync-method swift_sync_bad_service.missing: interface swift_sync_bad_service has no method missing." \
+    "--swift-sync-method swift_sync_bad_shared.add_listener: the async wrapper has no class for interface swift_sync_bad_shared, because it is not an interface with +c and without +sw." \
+    "--swift-sync-method swift_sync_bad_service.load: swift_sync_bad_service.load returns future<>, and a synchronous form cannot wait for a future." \
+    "--swift-sync-method swift_sync_bad_service.static_register: swift_sync_bad_service.static_register is static, and the async wrapper has no static methods." \
+    "--swift-sync-method swift_sync_bad_service.add_listener: the synchronous form addListenerNow equals the name of the method add_listener_now of interface swift_sync_bad_service." \
+    "--swift-sync-method swift_sync_bad_record.add_listener: swift_sync_bad_record is not an interface." \
+    "--swift-sync-method svc.: the value needs the form <interface>.<method>." \
+    "--swift-sync-method .x: the value needs the form <interface>.<method>." \
+    "--swift-sync-method noseparator: the value needs the form <interface>.<method>."; do
+    if ! grep -qF -- "$expected" "$sync_negative_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$sync_negative_log" 1>&2
+        exit 1
+    fi
+done
+if [ -e "$base_dir/$sync_negative_out" ]; then
+    echo "The generator wrote files for bad --swift-sync-method values." 1>&2
+    exit 1
+fi
+# Without --swift-async-wrap there is no wrapper to add the form to.
+sync_alone_log="$temp_out/sync-alone.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-features/sync-alone/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-sync-method swift_sync_service.add_listener \
+    --idl "$swift_sync_listener_relative") >"$sync_alone_log" 2>&1; then
+    echo "The generator accepted --swift-sync-method without --swift-async-wrap." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --swift-sync-method needs --swift-async-wrap." "$sync_alone_log"; then
+    echo "Missing the error message of --swift-sync-method without --swift-async-wrap." 1>&2
+    cat "$sync_alone_log" 1>&2
+    exit 1
+fi
+
 # A Java escape becomes the Swift escape for the same character.
 const_strings="$temp_out/swift-features/const-strings/swift"
 for expected in \
@@ -810,26 +1095,28 @@ if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher" ]; then
     exit 1
 fi
 
-# The dispatcher is written in a KDoc comment, so a value that closes the comment is rejected.
-dispatcher_comment_log="$temp_out/dispatcher-comment.log"
-if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
-    --kotlin-jni-out "$temp_out_relative/kotlin-jni-dispatcher-comment" \
-    --kotlin-suspend-wrap \
-    --kotlin-suspend-dispatcher "a */ b" \
-    --java-package $java_package \
-    --idl "djinni/kotlin_suspend.djinni") >"$dispatcher_comment_log" 2>&1; then
-    echo "The generator accepted a --kotlin-suspend-dispatcher value that closes a comment." 1>&2
-    exit 1
-fi
-if ! grep -qF -- "--kotlin-suspend-dispatcher needs a Kotlin expression on one line." "$dispatcher_comment_log"; then
-    echo "Missing error message for a --kotlin-suspend-dispatcher value that closes a comment." 1>&2
-    cat "$dispatcher_comment_log" 1>&2
-    exit 1
-fi
-if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher-comment" ]; then
-    echo "The generator wrote files for a rejected flag." 1>&2
-    exit 1
-fi
+# The dispatcher is written in a KDoc comment. Kotlin comments nest, so a value that opens or closes a comment is rejected.
+for bad_dispatcher in "a */ b" "a /* b"; do
+    dispatcher_comment_log="$temp_out/dispatcher-comment.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --kotlin-jni-out "$temp_out_relative/kotlin-jni-dispatcher-comment" \
+        --kotlin-suspend-wrap \
+        --kotlin-suspend-dispatcher "$bad_dispatcher" \
+        --java-package $java_package \
+        --idl "djinni/kotlin_suspend.djinni") >"$dispatcher_comment_log" 2>&1; then
+        echo "The generator accepted the --kotlin-suspend-dispatcher value \"$bad_dispatcher\"." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "--kotlin-suspend-dispatcher needs a Kotlin expression on one line." "$dispatcher_comment_log"; then
+        echo "Missing error message for the --kotlin-suspend-dispatcher value \"$bad_dispatcher\"." 1>&2
+        cat "$dispatcher_comment_log" 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$temp_out_relative/kotlin-jni-dispatcher-comment" ]; then
+        echo "The generator wrote files for a rejected flag." 1>&2
+        exit 1
+    fi
+done
 
 # The error type flag needs the Kotlin JNI output.
 error_type_log="$temp_out/kotlin-error-type-without-out.log"
@@ -908,27 +1195,29 @@ if [ -e "$base_dir/$temp_out_relative/swift-features/queue-without-wrap" ]; then
     exit 1
 fi
 
-# The queue expression goes into a doc comment, so a value that closes the comment is rejected.
-queue_comment_log="$temp_out/queue-comment.log"
-if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
-    --swift-out "$temp_out_relative/swift-features/queue-comment/swift" \
-    --swift-module TestSuite \
-    --swift-private-in-same-module \
-    --swift-async-wrap "djinni.testsuite" \
-    --swift-async-queue "a */ b" \
-    --idl "$swift_async_relative") >"$queue_comment_log" 2>&1; then
-    echo "The generator accepted a --swift-async-queue value that closes a comment." 1>&2
-    exit 1
-fi
-if ! grep -qF -- "--swift-async-queue needs a Swift expression on one line." "$queue_comment_log"; then
-    echo "Missing error message for a bad --swift-async-queue value." 1>&2
-    cat "$queue_comment_log" 1>&2
-    exit 1
-fi
-if [ -e "$base_dir/$temp_out_relative/swift-features/queue-comment" ]; then
-    echo "The generator wrote files for a rejected flag value." 1>&2
-    exit 1
-fi
+# The queue expression goes into a doc comment. Swift comments nest, so a value that opens or closes a comment is rejected.
+for bad_queue in "a */ b" "a /* b"; do
+    queue_comment_log="$temp_out/queue-comment.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --swift-out "$temp_out_relative/swift-features/queue-comment/swift" \
+        --swift-module TestSuite \
+        --swift-private-in-same-module \
+        --swift-async-wrap "djinni.testsuite" \
+        --swift-async-queue "$bad_queue" \
+        --idl "$swift_async_relative") >"$queue_comment_log" 2>&1; then
+        echo "The generator accepted the --swift-async-queue value \"$bad_queue\"." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "--swift-async-queue needs a Swift expression on one line." "$queue_comment_log"; then
+        echo "Missing error message for the --swift-async-queue value \"$bad_queue\"." 1>&2
+        cat "$queue_comment_log" 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$temp_out_relative/swift-features/queue-comment" ]; then
+        echo "The generator wrote files for a rejected flag value." 1>&2
+        exit 1
+    fi
+done
 
 # The async wrappers need the private files in the same module.
 async_log="$temp_out/async-without-module.log"
@@ -1057,6 +1346,31 @@ done
 if grep -qF "method fine" "$outcome_error_log" || [ -e "$base_dir/$temp_out_relative/swift-outcome-error-negative" ]; then
     echo "The generator reported an outcome with an Error type, or wrote files for a rejected IDL." 1>&2
     cat "$outcome_error_log" 1>&2
+    exit 1
+fi
+
+# Swift's Error is Sendable, so a record that conforms to Error cannot hold a DataRef or a DataView.
+error_buffer_log="$temp_out/swift-error-buffer-negative.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-error-buffer-negative/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --idl "djinni/swift_error_buffer_negative.djinni") >"$error_buffer_log" 2>&1; then
+    echo "The generator accepted a record that conforms to Error and holds a DataRef or a DataView." 1>&2
+    exit 1
+fi
+for expected in \
+    "record swift_error_buffer_derived, field data: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable." \
+    "record swift_error_buffer_nested, field views: the record conforms to Error, and a Swift Error must be Sendable. A DataRef or a DataView is not Sendable."; do
+    if ! grep -qF -- "$expected" "$error_buffer_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$error_buffer_log" 1>&2
+        exit 1
+    fi
+done
+if grep -qF "swift_error_buffer_plain" "$error_buffer_log" || [ -e "$base_dir/$temp_out_relative/swift-error-buffer-negative" ]; then
+    echo "The generator reported a record without deriving(error), or wrote files for a rejected IDL." 1>&2
+    cat "$error_buffer_log" 1>&2
     exit 1
 fi
 
@@ -1307,6 +1621,174 @@ fi
     --idl "djinni/kotlin_extern_array.djinni" \
     --idl-include-path "djinni/vendor" \
 )
+
+# The Java <-> Kotlin JNI converters. Run 1 writes the Java classes, and run 2 writes the Kotlin JNI classes and
+# the bridge that converts between them.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --java-out "$temp_out_relative/kotlin-jni-java-bridge/java" \
+    --java-package "com.dropbox.djinni.bridgejava" \
+    --ident-java-field mFooBar \
+    --idl "djinni/kotlin_jni_java_bridge.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --ident-java-field mFooBar \
+    --idl "djinni/kotlin_jni_java_bridge.djinni" \
+    --idl-include-path "djinni/vendor" \
+)
+
+# Both bridge flags are needed, and the output needs --kotlin-jni-out. Each case exits 1 and writes no file.
+bridge_flag_log="$temp_out/kotlin-jni-java-bridge-flags.log"
+check_bridge_flag() { # <log name> <message> <arguments...>
+    local name=$1 message=$2
+    shift 2
+    local out="$temp_out_relative/kotlin-jni-java-bridge-flags/$name"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" "$@" --idl "djinni/kotlin_jni_java_bridge.djinni" \
+        --idl-include-path "djinni/vendor") >"$bridge_flag_log" 2>&1; then
+        echo "The generator accepted a partial set of bridge flags: $name." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "$message" "$bridge_flag_log" || [ -e "$base_dir/$out" ]; then
+        echo "Missing error message for $name, or files were written: $message" 1>&2
+        cat "$bridge_flag_log" 1>&2
+        exit 1
+    fi
+}
+check_bridge_flag out-only "Error: --kotlin-jni-java-bridge-out needs --kotlin-jni-out." \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-flags/out-only"
+check_bridge_flag missing-package "Error: --kotlin-jni-java-bridge-out needs --kotlin-jni-java-bridge-package." \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags/missing-package/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-flags/missing-package/bridge"
+check_bridge_flag package-only "Error: --kotlin-jni-java-bridge-package needs --kotlin-jni-java-bridge-out." \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags/package-only/kotlin" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava"
+
+# A +j method cannot take a record that holds a +c interface: that record has no converter.
+bridge_skipped_log="$temp_out/kotlin-jni-java-bridge-skipped.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-skipped/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-skipped/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_skipped.djinni") >"$bridge_skipped_log" 2>&1; then
+    echo "The generator accepted a +j method that takes a record without a converter." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "interface bridge_negative_listener, method take_it, parameter value: the record bridge_negative_skipped has no converter, because it holds a +c interface." "$bridge_skipped_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-skipped" ]; then
+    echo "Missing error message for a +j method that takes a record without a converter, or files were written." 1>&2
+    cat "$bridge_skipped_log" 1>&2
+    exit 1
+fi
+
+# A flags type inside a list is a single option in Java and an EnumSet in Kotlin, so there is no converter.
+bridge_flags_log="$temp_out/kotlin-jni-java-bridge-flags-nested.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-flags-nested/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-flags-nested/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_flags.djinni") >"$bridge_flags_log" 2>&1; then
+    echo "The generator accepted a flags type inside a list." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "record bridge_negative_flag_list, field values: a flags type inside a container is com.dropbox.djinni.bridgejava.BridgeNegativeFlags in Java and EnumSet<com.dropbox.djinni.bridgekt.BridgeNegativeFlags> in Kotlin, so the bridge cannot convert it." "$bridge_flags_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-flags-nested" ]; then
+    echo "Missing error message for a flags type inside a list, or files were written." 1>&2
+    cat "$bridge_flags_log" 1>&2
+    exit 1
+fi
+
+# An extern flags type inside a list has the same two forms.
+bridge_extern_flags_log="$temp_out/kotlin-jni-java-bridge-extern-flags.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-extern-flags/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-extern-flags/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_extern_flags.djinni" \
+    --idl-include-path "djinni/vendor") >"$bridge_extern_flags_log" 2>&1; then
+    echo "The generator accepted an extern flags type inside a list." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "record bridge_negative_extern_flags, field values: extern flags type bridge_extern_flags inside a container is com.dropbox.djinni.bridgeextern.ExternFlags in Java and EnumSet<com.dropbox.djinni.bridgeextern.ExternFlags> in Kotlin, so the bridge cannot convert it." "$bridge_extern_flags_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-extern-flags" ]; then
+    echo "Missing error message for an extern flags type inside a list, or files were written." 1>&2
+    cat "$bridge_extern_flags_log" 1>&2
+    exit 1
+fi
+
+# An extern type with two classes and no Protobuf marker has no converter.
+bridge_extern_log="$temp_out/kotlin-jni-java-bridge-extern.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-extern/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-extern/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge_negative_extern.djinni" \
+    --idl-include-path "djinni/vendor") >"$bridge_extern_log" 2>&1; then
+    echo "The generator accepted an extern type with two classes and no Protobuf marker." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "extern type bridge_no_marker is com.dropbox.djinni.bridgeextern.NoMarkerKotlin in Kotlin, not com.dropbox.djinni.bridgeextern.NoMarkerJava, and the yaml does not mark it as a protobuf message." "$bridge_extern_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-extern" ]; then
+    echo "Missing error message for an extern type with two classes, or files were written." 1>&2
+    cat "$bridge_extern_log" 1>&2
+    exit 1
+fi
+
+# The bridge package must differ from the Kotlin JNI package.
+bridge_package_log="$temp_out/kotlin-jni-java-bridge-package.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-package/kotlin" \
+    --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-package/bridge" \
+    --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgekt" \
+    --java-package "com.dropbox.djinni.bridgekt" \
+    --idl "djinni/kotlin_jni_java_bridge.djinni" \
+    --idl-include-path "djinni/vendor") >"$bridge_package_log" 2>&1; then
+    echo "The generator accepted one package for the bridge and the Kotlin JNI classes." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --kotlin-jni-java-bridge-package must differ from the Kotlin JNI package." "$bridge_package_log" || \
+   [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-package" ]; then
+    echo "Missing error message for one package for the bridge and the Kotlin JNI classes, or files were written." 1>&2
+    cat "$bridge_package_log" 1>&2
+    exit 1
+fi
+
+# A +j record and an interface with type parameters have no converter.
+for kind in extended generic; do
+    bridge_type_log="$temp_out/kotlin-jni-java-bridge-$kind.log"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --kotlin-jni-out "$temp_out_relative/kotlin-jni-java-bridge-$kind/kotlin" \
+        --kotlin-jni-java-bridge-out "$temp_out_relative/kotlin-jni-java-bridge-$kind/bridge" \
+        --kotlin-jni-java-bridge-package "com.dropbox.djinni.bridgejava" \
+        --java-package "com.dropbox.djinni.bridgekt" \
+        --idl "djinni/kotlin_jni_java_bridge_negative_$kind.djinni") >"$bridge_type_log" 2>&1; then
+        echo "The generator accepted the $kind case." 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$temp_out_relative/kotlin-jni-java-bridge-$kind" ]; then
+        echo "The generator wrote files for the $kind case." 1>&2
+        exit 1
+    fi
+    if [ "$kind" = extended ]; then
+        expected="record bridge_negative_extended: a +j record is extended by application code, so the bridge cannot construct it."
+    else
+        expected="interface bridge_negative_generic: an interface with type parameters is not converted."
+    fi
+    if ! grep -qF -- "$expected" "$bridge_type_log"; then
+        echo "Missing error message for the $kind case: $expected" 1>&2
+        cat "$bridge_type_log" 1>&2
+        exit 1
+    fi
+done
 if ! grep -qF -- "val bytes: ByteArray" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt || \
    ! grep -qF -- "val keyed: Array<com.dropbox.djinni.testextern.ExternByteMessage>" "$temp_out"/kotlin-jni-extern-array/kotlin/KotlinExternArrays.kt; then
     echo "The array<extern> case does not produce a primitive array and an Array<T>." 1>&2
@@ -1477,6 +1959,7 @@ mirror "kotlin-jni-suspend" "$temp_out/kotlin-jni-suspend" "$base_dir/generated-
 mirror "kotlin-jni-package" "$temp_out/kotlin-jni-package" "$base_dir/generated-src/kotlin-jni-package"
 mirror "kotlin-jni-error" "$temp_out/kotlin-jni-error" "$base_dir/generated-src/kotlin-jni-error"
 mirror "kotlin-jni-extern" "$temp_out/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-extern"
+mirror "kotlin-jni-java-bridge" "$temp_out/kotlin-jni-java-bridge" "$base_dir/generated-src/kotlin-jni-java-bridge"
 
 date > "$gen_stamp"
 

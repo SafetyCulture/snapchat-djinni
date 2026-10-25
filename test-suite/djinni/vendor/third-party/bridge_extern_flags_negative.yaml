@@ -1,0 +1,31 @@
+# An extern flags type. Inside a container it is one option in Java and an EnumSet in Kotlin.
+name: bridge_extern_flags
+typedef: 'flags'
+params: []
+prefix: ''
+cpp:
+  typename: 'bridge_test::ExternFlags'
+  header: '"bridge_extern_flags.pb.h"'
+  byValue: false
+objc:
+  typename: 'BEFExternFlags'
+  header: '"BEFExternFlags.pbobjc.h"'
+  boxed: 'BEFExternFlags'
+  pointer: true
+  hash: '%s.hash'
+objcpp:
+  translator: 'djinni::bridge_test::ExternFlags::Translator'
+  header: '"bridge_extern_flags.djinni.objc.h"'
+java:
+  typename: 'com.dropbox.djinni.bridgeextern.ExternFlags'
+  boxed: 'com.dropbox.djinni.bridgeextern.ExternFlags'
+  reference: true
+  generic: false
+  hash: '%s.hashCode()'
+jni:
+  translator: 'djinni::bridge_test::ExternFlags::Translator'
+  header: '"bridge_extern_flags.djinni.jni.h"'
+  typename: jobject
+  typeSignature: 'Lcom/dropbox/djinni/bridgeextern/ExternFlags;'
+kotlin:
+  typename: 'com.dropbox.djinni.bridgeextern.ExternFlags'

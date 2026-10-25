@@ -333,9 +333,12 @@ For Swift, Djinni generates:
 - Swift files named `<Type>+Private.swift` with the marshalling code
 - C++ glue code that the Swift code calls (`--swiftxx-out`)
 
-The runtime is in `support-lib/swift` (module `DjinniSupport`) and
-`support-lib/swiftxx` (C++ module `DjinniSupportCxx`). `support-lib/apple` is a
-separate Bazel module that supplies SwiftProtobuf.
+The runtime is in `support-lib/swift-core` (module `DjinniSupportCore`),
+`support-lib/swift` (module `DjinniSupport`) and `support-lib/swiftxx` (C++ module
+`DjinniSupportCxx`). `DjinniSupportCore` holds the declarations without C++ and builds
+with library evolution. `DjinniSupport` holds the C++ marshalling layer, depends on
+`DjinniSupportCore`, and re-exports it. `support-lib/apple` is a separate Bazel module
+that supplies SwiftProtobuf.
 
 Command line switches:
 
@@ -343,13 +346,22 @@ Command line switches:
 - `--swift-module`: Swift module name (default: `Module`)
 - `--swift-private-in-same-module`: omit `import <module>` in the `+Private`
   files, for use when all generated Swift files are in one module
+- `--swift-internal-cxx-imports`: write `internal import` for the two C++ glue
+  modules (`<module>Cxx` and `--swiftxx-base-lib-module`). The other imports do
+  not change. See below.
+- `--swift-cxx-free-api`: keep the C++ types out of the public API of the
+  generated module. It needs `--swift-internal-cxx-imports` and
+  `--swift-private-in-same-module`. See below.
 - `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
 - `--swift-async-wrap <label-prefix>`: wrap the interfaces that C++ implements in
   Swift classes with `async` methods. The generator ignores the value.
 - `--swift-async-queue <expression>`: the `DispatchQueue` of the blocking C++
-  calls of the async wrappers. See below.
+  calls of the async wrappers. Each generated file evaluates it once. See below.
 - `--swift-error-type <name>`: the Swift name of the error record. See
   [Errors](#errors).
+- `--swift-sync-method <interface>.<method>`: give the listed method a
+  synchronous form with the name `<method>Now`. Repeat the option for each
+  method. See below.
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated_swift`). The generator stops when `--objcpp-out` and `--swiftxx-out` are both on and the two namespaces are equal, because both glue sets would define the same record helpers.
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
@@ -373,6 +385,11 @@ Swift 6 defaults:
   that holds one of them, also inside a container, a `Result`, or another
   record, has no `Sendable` conformance at all. The generated async wrappers
   pass such a value across queues through an unchecked box.
+- Known limit: the generator sees the fields of the records of its own IDL only.
+  A record of another Djinni module (an extern record of a yaml file) is an
+  extern type. So a record that holds it is `@unchecked Sendable`, also when the
+  extern record holds a `DataRef` or a `DataView`. Do not put such a record in a
+  record of another module.
 - Enums and flags are `Sendable`. An interface protocol is `AnyObject, Sendable`.
   Every generated proxy class and the shared classes of `DjinniSupport` are `@unchecked Sendable`.
 - A host class that implements a `+sw` interface must be `Sendable`. Make it a
@@ -382,17 +399,75 @@ Swift 6 defaults:
 - A record with `deriving(eq)` is `Equatable` and `Hashable` in Swift, so each
   extern field type must be `Hashable` in Swift. SwiftProtobuf messages are.
 
+Internal C++ imports (`--swift-internal-cxx-imports`):
+
+- The generated files import the two C++ glue modules: `<module>Cxx` and the
+  value of `--swiftxx-base-lib-module` (default `DjinniSupportCxx`). With the
+  flag, those two imports are `internal import` (SE-0409). The C++ glue stays an
+  implementation detail of the generated module. The flag changes no other
+  line of the output.
+- The compiler does not apply the access level of an import to a declaration in
+  a C++ namespace. The public signatures of the generated files use only such
+  declarations.
+- A module cannot import one module at two access levels. Every other file of
+  the module that imports one of these two modules must use `internal import`
+  too.
+
+Public API without C++ types (`--swift-cxx-free-api`):
+
+- The public declarations of the generated module name no C++ type and no type
+  of the C++ layer of `DjinniSupport`. A marshaller, a C++ proxy, a vtable and
+  every other declaration that names a C++ type is internal.
+- Every import has an access level. The C++ glue modules and `DjinniSupport` are
+  `internal import`. `Foundation`, the extern modules such as `S12Protos`, and
+  `DjinniSupportCore` are `public import` when a public declaration of the file
+  names one of their types. An unused public import is a warning of the Swift
+  compiler, so a file imports only what it names.
+- The public declarations name the support types through `DjinniSupportCore`,
+  for example `DjinniSupportCore.DJFuture<Int32>`. `DjinniSupport` re-exports
+  `DjinniSupportCore`, so the source of an application does not change.
+- Generated enums are `@frozen`, so a client `switch` stays exhaustive when the
+  generated module has library evolution. Generated records are public structs,
+  and a client reads them as before.
+- The application needs three things:
+  - The `DjinniSupportCore` target, which builds without C++ interop. In Bazel it
+    is `//support-lib/apple:djinni-support-swift-core`.
+  - A generated module that builds with `-enable-library-evolution`. Without
+    library evolution, a client without C++ interop loads the internal C++
+    imports of the module and fails with `missing required module`.
+  - The conformance of the `--swift-error-type` record to
+    `CppExceptionConvertible` in the generated module, with
+    `public import DjinniSupportCore`. The generated code needs the conformance
+    at compile time.
+- `ci/swift-cxx-free-check.sh` proves the result: it builds the modules with
+  library evolution and a verified module interface, and it compiles a client
+  without C++ interop. The client imports the generated module and
+  `DjinniSupportCore` only. The same client fails against the same IDL generated
+  without the option.
+
 Async wrappers (`--swift-async-wrap`):
 
 - An interface with `+c` and without `+sw` becomes a `public final class`. It has
   the name of the interface, so there is no protocol for it. An interface that
   has `+sw` stays a protocol, because the host implements it.
-- Every instance method runs its blocking C++ call on a shared queue. The queue
-  is `DispatchQueue.global(qos: .userInitiated)`. `--swift-async-queue
-  <expression>` sets another `DispatchQueue`, for example a queue of the
-  application. The flag needs `--swift-async-wrap`. The generator does not use
-  the label prefix of `--swift-async-wrap`. The method is `async throws`, and it
-  returns when C++ returns.
+- Every instance method runs its blocking C++ call on a queue of its own: a new
+  serial `DispatchQueue` for each call (`DjinniSupport.djinniCallQueue()`, QoS
+  `.userInitiated`). libdispatch runs a serial queue on its overcommit threads.
+  So a blocked call does not use one of the limited threads of
+  `DispatchQueue.global()`, and those threads stay free for the delivery of Swift
+  futures. Each blocked call holds one thread. The method is `async throws`, and
+  it returns when C++ returns.
+- `--swift-async-queue <expression>` sets another `DispatchQueue`, for example a
+  queue of the application. The flag needs `--swift-async-wrap`. Write the
+  expression on one line, without `/*` or `*/`. Each generated file evaluates the
+  expression once, into a private constant. Thus `DispatchQueue(label: "cpp")`
+  gives one serial queue for the instance methods of the wrapper of an interface.
+  It gives one more serial queue for the static methods of the interface.
+- A global queue or a concurrent queue uses the limited threads of libdispatch.
+  When C++ blocks on all of these threads, the global queues stop. The delivery
+  of Swift futures stops too, so a C++ call that waits for a Swift future does
+  not return. The generator does not use the label prefix of
+  `--swift-async-wrap`.
 - Each wrapper method is `@concurrent`. So it runs on the global concurrent
   executor also when the module uses `NonisolatedNonsendingByDefault`, and not
   on the actor of the caller. The attribute needs Swift 6.2 (Xcode 26) or later.
@@ -416,9 +491,11 @@ Async wrappers (`--swift-async-wrap`):
   are the same Swift object.
 - The calls to one C++ object are not serialized. Two calls to the same object
   can run at the same time, so a `cancel()` call does not wait for the blocking
-  call that it stops. The C++ object must be thread-safe, as it is for the calls
-  of the other languages. An adapter that needs one call at a time must
-  serialize the calls itself, for example on a serial queue.
+  call that it stops. With `--swift-async-queue`, it waits when the queue has no
+  free thread. The C++ object must be thread-safe, as it is for the calls of the
+  other languages. An adapter that needs one call at a time must serialize the
+  calls itself. Another option is `--swift-async-queue` with a serial queue. That
+  queue serializes the calls to all objects of the interface.
 - A task that is already cancelled when the method starts throws
   `CancellationError` (with `--swift-error-type`, the `cancellation` value of the
   error type) and does not call C++. A cancel that comes later does not stop the
@@ -445,6 +522,26 @@ Async wrappers (`--swift-async-wrap`):
     return.
 
 Error type (`--swift-error-type <name>`): see [Errors](#errors).
+
+Synchronous forms (`--swift-sync-method`):
+
+- The option needs `--swift-async-wrap`. The wrapper class of the interface
+  also gets one method for each listed method, with the name `<method>Now`.
+  The value holds the IDL names of the interface and the method, for example
+  `crux_API.add_mutation_processor_observer`.
+- The synchronous form takes the same parameters and gives the same result as
+  the async form. It calls C++ on the thread of the caller and blocks that
+  thread. Use it for a registration that returns at once.
+- With `--swift-error-type E`, the form is `throws(E)` and changes the errors
+  through `DjinniSupport.djinniTyped`. Without it, the form is `throws`.
+- The generator stops before it writes a file in these cases:
+  - the interface or the method does not exist;
+  - the interface is not an interface with `+c` and without `+sw`;
+  - the method is static;
+  - the method returns `future<>`;
+  - the value has no dot, or one of its two parts is empty;
+  - `<method>Now` is the name of another method of the interface.
+- A method that is not listed keeps only its async form.
 
 IDL changes:
 
@@ -482,7 +579,10 @@ Runtime safety (Swift):
   `ObjectIdentifier` of the protocol. Two protocols with the same name in two
   modules do not share a proxy.
 - The closure of `Future.getResult` is `@Sendable`, because it runs on a global
-  queue. A promise that is called twice keeps its first result.
+  queue when the result comes later. When the future already has its result,
+  the closure runs on the thread of the caller, before `getResult` returns. So
+  the closure must not take a lock that the caller holds. A promise that is
+  called twice keeps its first result.
 - Known limit: Swift compares strings by canonical equivalence. A `Set` or a
   `Dictionary` with a string key merges two keys that Swift treats as equal,
   such as `"é"` (U+00E9) and `"e\u{301}"`, although C++ treats the byte
@@ -519,38 +619,54 @@ The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
 Three scripts check the Swift support. They read the Crux IDL from
 `MITTI_MOBILE_ROOT`, except for the runtime test.
 
-- `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It runs
-  `swiftc -typecheck` in Swift 5 mode, in Swift 6 mode with strict concurrency
-  checking, and in Swift 6 mode with `NonisolatedNonsendingByDefault`, and
-  compiles the C++ glue with `-fsyntax-only`. It does the same for the Swift
-  cases of the test suite (`test-suite/djinni/swift_*.djinni`).
+- `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It compiles
+  the generated Swift to SIL (`swiftc -emit-sil`) in three modes: Swift 5,
+  Swift 6 with strict concurrency checking, and Swift 6 with
+  `NonisolatedNonsendingByDefault`. Then it compiles the C++ glue with
+  `-fsyntax-only`. `swiftc -typecheck` is not enough: the region-based isolation
+  checks of Swift 6 ("sending … risks causing data races") run on SIL. A
+  negative case proves that the check runs: two tasks that share the `NSData` of
+  a wrapper method must fail. The script does the same for the Swift cases of the
+  test suite (`test-suite/djinni/swift_*.djinni`).
   It also compiles the Java, the JNI C++ and the Objective-C++ output of the `+sw`
   host case (`javac`, `clang++ -fsyntax-only`), so the other languages still
   compile next to the Swift files.
-  - The `NonisolatedNonsendingByDefault` pass builds `DjinniSupport` without the
-    feature, because `DjinniSupport` is a package with its own settings and only
-    the modules that use the generated code turn the feature on. The pass proves
+  - The `NonisolatedNonsendingByDefault` pass builds `DjinniSupportCore` and
+    `DjinniSupport` without the feature, because both are packages with their own
+    settings and only the modules that use the generated code turn the feature on. The pass proves
     that the generated code and its callers compile in this mode: the test-suite
     files include callers of the async wrappers on the main actor and on an
     actor (`ci/swift-typecheck/AsyncCallers.swift`). It does not prove that
     `@concurrent` is necessary.
   - One more pass generates the whole Crux IDL (`main.djinni`) with
-    `--swift-error-type CruxError` and `--swift-async-wrap`, with a `crux_error`
-    record that the fixture adds, and typechecks it with a conformance stub.
+    `--swift-error-type CruxError`, `--swift-async-wrap` and three
+    `--swift-sync-method` values, with a `crux_error` record that the fixture
+    adds, and typechecks it with a conformance stub.
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
-  of generated interfaces, and runs it in both Swift modes. The program checks
+  of generated interfaces. It runs the program in Swift 5 mode, in Swift 6 mode,
+  and in Swift 6 mode with the optimizer. It also runs the program once with
+  ThreadSanitizer. The program checks
   calls in both directions, the identity of proxies and the release of host
   objects. It also checks the async wrappers, typed errors, C++ exceptions of
   wrapped methods, Swift errors that C++ catches, task cancellation, the queue of
   `--swift-async-queue`, calls to one object that run at the same time, and many
   threads. A watchdog fails the run when it deadlocks.
   - The program runs twice: with `--swift-async-queue` and with the default
-    queue. Each run checks the label of the queue that runs the C++ calls.
+    queue. Each run checks the label of the queue that runs the C++ calls. The
+    run with the default queue also starts more blocking calls than the global
+    queues of libdispatch have threads (`kern.wq_max_constrained_threads`). Each
+    of these calls waits for a Swift future.
   - The typed errors come from two IDL files: `runtime_error.djinni` with
     `--swift-error-type CruxError` and the async wrappers, and
     `runtime_error_sync.djinni` with `--swift-error-type SyncError` and without
     them, so the synchronous protocol and static methods throw the error type
     too.
+  - The synchronous forms (`--swift-sync-method`) register a listener. The
+    program checks that C++ has the listener when the call returns, that the
+    call ran on the thread of the caller (C++ records the mach thread id), and
+    that a C++ exception comes back as `CruxError`. The script also reads the
+    generated Swift: the listed registrations have a synchronous form, and the
+    `future<>` method with a listener has none.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 
@@ -593,6 +709,48 @@ different from `--kotlin-out`, which writes Kotlin Multiplatform code.
   becomes `@Throws`.
 - `--java-out` is not changed. You can use both flags, unless an extern type has
   Kotlin keys (see below).
+
+### Two JNI glue sets in one library
+
+One process can carry two JNI glue sets of the same C++ API. The app uses one
+leg, and a shared module uses the other. The generator makes the second set with
+a second run:
+
+```
+java -jar djinni.jar \
+  --kotlin-jni-out out/kotlin --java-package com.example.cruxkt.domain \
+  --jni-out out/jni/kt --jni-namespace djinni_generated_kt \
+  --jni-include-prefix kt/ --idl main.djinni
+```
+
+- The second run has no `--java-out` and no `--cpp-out`. It writes only the
+  Kotlin JNI classes and the JNI code. The first run writes the Java classes,
+  the C++ headers and the JNI code in the default namespace.
+- The two namespaces differ, so each glue set has its own C++ classes over the
+  same C++ API. The JNI exports differ because the Java packages differ. The
+  library exports one set of `Java_*` symbols for each run, and no symbol is
+  defined twice.
+- `--jni-include-prefix kt/` writes the includes of the second JNI headers for a
+  `kt` folder. The JNI output folder is `out/jni/kt`, so compile the second JNI
+  code with `out/jni` as the include folder.
+
+The C++ proxy cache keys each entry by the glue class, not by the C++ type. Two
+glue sets of one C++ type thus get one Java proxy each. A handle records the tag
+that its `get()` used, so the release removes the same entry. With one glue set
+the new key maps one to one to the old key, so the behaviour does not change.
+
+Check the library of the two sets:
+
+```
+nm -D --defined-only libcrux.so | awk '/ Java_/{print $3}' | sort | uniq -d   # prints nothing
+nm -C libcrux.so | grep 'vtable for djinni_generated\|vtable for djinni_generated_kt'  # one vtable for each +j JavaProxy class in each set
+```
+
+On macOS, use `nm -gU` in place of `nm -D --defined-only`.
+
+`ci/kotlin-jni-runtime-test.sh` builds one library from two glue sets of
+`ci/kotlin-jni/runtime/two_glue.djinni` and checks the two proxies, the cache,
+the release and a `+j` object of each leg.
 
 ### Extern types with Kotlin keys
 
@@ -646,6 +804,73 @@ kotlin:
   rejects `deriving(ord)` over an `optional<>` or a collection.)
 - A yaml without the keys gives the same output as before.
 
+### Java and Kotlin JNI converters
+
+An adapter on the legacy leg converts the Java records of the first run to the
+Kotlin JNI records of the second run, and back. The generator writes the
+converters when two flags are on:
+
+```
+java -jar djinni.jar \
+  --kotlin-jni-out out/kotlin --java-package com.example.cruxkt.domain \
+  --kotlin-jni-java-bridge-out out/bridge \
+  --kotlin-jni-java-bridge-package com.example.crux.domain \
+  --idl main.djinni
+```
+
+- `--kotlin-jni-java-bridge-out <dir>` writes the converters. It needs
+  `--kotlin-jni-out`.
+- `--kotlin-jni-java-bridge-package <package>` is the value of `--java-package`
+  of the other run, whose Java classes the converters use. Each flag needs the
+  other. The generator exits 1 and names the missing flag.
+- The converters are in the package `<kotlin-jni-package>.javabridge`. Both runs
+  must use the same `--ident-java-type`, `--ident-java-method`,
+  `--ident-java-enum` and `--java-gen-interface`. The bridge calls the Java
+  getters, which follow `--ident-java-method`. `--ident-java-field` names the
+  Kotlin properties.
+- The files hold extension functions: `fun <java>.R.toKotlinJni(): <kotlin>.R`
+  and `fun <kotlin>.R.toJava(): <java>.R`. The converters read the Java fields
+  through their getters, and they pass the fields to the constructor in order.
+- The field kinds are primitives, `string`, `binary`, `date`, `optional<>`,
+  `list<>`, `set<>`, `map<>` (also nested), enums, flags (`EnumSet`) and records.
+- An enum converts by option name in an exhaustive `when`.
+- An extern type with the same class in the two runs passes through. An extern
+  type with two classes must have `kotlin.isProtobufMessage: true`. The
+  converter reads `<Target>.parseFrom(value.toByteArray())`. When the yaml has
+  neither, the generator exits 1 and names the type.
+- A `+j` interface gets `class <J>JavaBridge(private val impl: <kotlin>.J) :
+  <java>.J()`, and the reverse `class <J>KotlinBridge`. Each method converts its
+  arguments and its return. A `future<>` or an `outcome<>` passes through when no
+  inner conversion is needed. Otherwise the bridge converts with `Future.then`
+  and `Outcome.match`.
+- The bridge keeps one wrapper for each object in a weak identity map. A wrapper
+  returns its original object when it crosses back, so a call that adds a
+  listener and a call that removes it use the same object. The map removes an
+  entry when the source object is collected and the next conversion drains the
+  queue. A source that is collected before that leaves one entry until then.
+- A `+c` interface without `+j` is not converted; the adapter owns it. A `+c +j`
+  interface has wrappers in both directions, like a `+j` interface. A C++ object
+  of the Kotlin leg crosses to the Java leg as a wrapper. C++ then sees a
+  JavaProxy, not its own object. One launch of the app uses one leg, so the
+  adapter never makes this crossing. A record with a field
+  of a `+c` interface (also `+c +j`), also inside `optional<>`, `list<>`,
+  `set<>` or `map<>`, gets no converter. The same holds for a record that contains such a record.
+  The generator prints one line for each skipped record:
+  `bridge: skipped <record>: field <f> is a +c interface`. When a record holds a
+  skipped record, the line says `bridge: skipped <record>: field <f> holds
+  <other>, which is skipped`.
+- The generator exits 1 and names the field when the two legs have no common
+  form: a `+j` method that takes a record without a converter; a flags type
+  inside a container, which is one option in Java and an `EnumSet` in Kotlin; an
+  extern type with two classes and no Protobuf marker.
+- The generator exits 1 for a `+j` record, an interface with type parameters, and
+  a bridge package that equals the Kotlin JNI package. The resolver rejects a
+  record with type parameters before the bridge runs.
+- `--kotlin-suspend-wrap` is supported. The bridge flags do not change the
+  Kotlin JNI output, also with that flag.
+- Without the two flags the output does not change. The bridge is a new folder
+  only.
+
 ### Kotlin coroutines
 
 `--kotlin-suspend-wrap` makes the instance methods of an interface `suspend`
@@ -661,8 +886,11 @@ check scripts select the newest cached jar, and CI pins 1.10.2
 - The generated class `CppProxy` runs the blocking native call in
   `withContext(<dispatcher>)`. The dispatcher is `Dispatchers.IO`.
   `--kotlin-suspend-dispatcher <expression>` sets another dispatcher, for
-  example the pool of the application. Write the expression with qualified
-  names, because the generator adds no import for it. The flag needs
+  example the pool of the application. Write the expression on one line, with
+  qualified names, and without `/*` or `*/`. The generator adds no import for
+  it. Each generated file evaluates the expression once, into a private
+  property. Thus `kotlinx.coroutines.Dispatchers.IO.limitedParallelism(1)` runs
+  one call at a time for all objects of the interface. The flag needs
   `--kotlin-suspend-wrap`.
 - The calls to one C++ object are not serialized. Two calls to the same object
   can run at the same time, so a `cancel()` call does not wait for the blocking
@@ -673,10 +901,11 @@ check scripts select the newest cached jar, and CI pins 1.10.2
   runs at most 64 blocking tasks at a time (the system property
   `kotlinx.coroutines.io.parallelism`, or the number of cores when it is
   larger). When 64 calls block, the next call waits for a free thread. A
-  `cancel()` call waits too. `--kotlin-suspend-dispatcher` with an executor that
-  has no limit removes the limit, for example
-  `Executors.newCachedThreadPool().asCoroutineDispatcher()`, which the runtime
-  test uses.
+  `cancel()` call waits too. A `--kotlin-suspend-dispatcher` with an executor
+  that has no limit removes the limit. An example is
+  `java.util.concurrent.Executors.newCachedThreadPool().asCoroutineDispatcher()`,
+  which gives one pool for each generated file. The runtime test uses a
+  dispatcher of the application.
 - A method that returns `future<T>` is `suspend fun m(): T`. It uses
   `suspendCancellableCoroutine` over `com.snapchat.djinni.Future.then`.
 - A cancelled coroutine stops waiting and throws `CancellationException`. A
@@ -820,7 +1049,10 @@ error type:
   For the IDL record `crux_error`, the name is `CruxError`. The record conforms
   to `Error`; it does not need `deriving(error)`. An extern record with the
   Swift name `<name>` is accepted; it must conform to `Error` itself. The check
-  runs only with `--swift-out`.
+  runs only with `--swift-out`. A record that conforms to `Error` cannot hold a
+  `DataRef` or a `DataView`. This applies to this record and to a record with
+  `deriving(error)`: `Error` is `Sendable` in Swift, and those types are not.
+  The generator stops with an error that names the field.
 - `--kotlin-error-type <qualified class>`: the class `X` is an `Exception`
   subclass with two constructors, `(error: E)` and
   `(cause: DjinniCppException)`. The flag needs `--kotlin-jni-out`.
@@ -914,8 +1146,11 @@ changes.
 |---|---|---|
 | `--swift-out`, `--swift-module`, `--swift-private-in-same-module`, `+sw` | `swift_host`, `swift_idents`, `swift_types`, `swift_sendable`, `swift_future_field` | `swift-features/` |
 | `--swift-out` without `--swift-private-in-same-module` | `swift_types` | `swift-features/separate-module` |
+| `--swift-internal-cxx-imports` | `swift_internal_imports` | `swift-features/internal-imports`, `swift-features/internal-imports-separate`, `swift-features/internal-imports-plain` |
+| `--swift-cxx-free-api` | `swift_cxx_free_api`, `swift_cxx_free_future_field` | `swift-features/cxx-free-api`, `swift-features/cxx-free-api-future-field` |
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
+| `--swift-sync-method` | `swift_sync_listener` | `swift-features/sync-listener`, `swift-features/sync-listener-error` |
 | `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |
 | `--kotlin-error-type`, with and without `--kotlin-suspend-wrap` | `kotlin_error`, `kotlin_error_sync`, `kotlin_error_async`, `kotlin_error_negative`, `kotlin_error_any_negative`, `kotlin_error_any_suspend_negative` | `kotlin-jni-error/sync`, `kotlin-jni-error/suspend` |
 | `--swift-error-type` with `--swift-legacy-records`, `--swift-async-wrap` and `--swift-async-queue` | `swift_error` | `swift-features/error-legacy` |
@@ -925,10 +1160,18 @@ changes.
 | `--kotlin-jni-package` and `--kotlin-suspend-dispatcher` with `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-package` |
 | `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-suspend` |
 | `kotlin.jniTypename`, `jni.kotlin*` of an extern type, with `--kotlin-jni-out` and with `--jni-out` alone | `kotlin_extern` | `kotlin-jni-extern/kotlin`, `kotlin-jni-extern/jni`, `kotlin-jni-extern/jni-java` |
+| `--kotlin-jni-java-bridge-out`, `--kotlin-jni-java-bridge-package` | `kotlin_jni_java_bridge` | `kotlin-jni-java-bridge/java`, `kotlin-jni-java-bridge/kotlin`, `kotlin-jni-java-bridge/bridge` |
+| Two JNI glue sets in one library (runtime) | `two_glue` | none |
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
-`--swift-private-in-same-module`, `--swift-async-queue` without
+`--swift-private-in-same-module`, `--swift-cxx-free-api` without
+`--swift-internal-cxx-imports` or without `--swift-private-in-same-module`,
+`--swift-async-queue` without
 `--swift-async-wrap` and with a value that closes a comment,
+`--swift-sync-method` without `--swift-async-wrap`, with an interface or a
+method that does not exist, with an interface that the async wrapper does not
+wrap, with a static method, with a `future<>` method, with a value that has no
+dot, and with a name that equals the synchronous form of another method,
 `--swift-error-type` with an outcome of another error type and with a
 `future<>` method without `--swift-async-wrap`, `--kotlin-suspend-wrap` without
 `--kotlin-jni-out`, `--kotlin-suspend-dispatcher` without
@@ -942,6 +1185,12 @@ message without a `swift` block with `--swift-out` or `--swiftxx-out`, equal
 `--swiftxx-namespace` and `--objcpp-namespace` with both outputs on, `deriving(ord)`
 over the Kotlin class of an extern type with Kotlin keys, and an extern type whose
 `jni.kotlinTypeSignature` and `kotlin.jniTypename` name two classes. It checks
+the bridge flags: `--kotlin-jni-java-bridge-out` without `--kotlin-jni-out` or
+without `--kotlin-jni-java-bridge-package`, `--kotlin-jni-java-bridge-package`
+without `--kotlin-jni-java-bridge-out`, a bridge package that equals the Kotlin
+JNI package, an extern type with two classes and no Protobuf marker, a flags type
+inside a container, a `+j` record, an interface with type parameters, and a `+j`
+method that takes a record without a converter. It checks
 that every `+Private.swift` file of the options case imports
 `--swiftxx-base-lib-module`, and that the warning for an interface with `+o` and
 without `+sw` appears once.
@@ -969,9 +1218,13 @@ The Docker image of the pipeline has no `swiftc`, so the pipeline does not run
 them. Run them on a Mac before you merge a change to a Swift file:
 
 ```
-./ci/swift-typecheck.sh      # Swift 5, Swift 6, Swift 6 with NonisolatedNonsendingByDefault, and the whole Crux IDL with --swift-error-type
-./ci/swift-runtime-test.sh   # also --swift-legacy-records
+./ci/swift-typecheck.sh        # Swift 5, Swift 6, Swift 6 with NonisolatedNonsendingByDefault, and the whole Crux IDL with --swift-error-type
+./ci/swift-cxx-free-check.sh   # --swift-cxx-free-api: library evolution, verified interface, and a client without C++ interop
+./ci/swift-runtime-test.sh     # also --swift-legacy-records
 ```
+
+`ci/swift-runtime-test.sh` builds and runs its program with Xcode 26.5. Xcode 27
+fails in the code generator of the typed async closures of the program.
 
 ### Kotlin checks (pipeline and local)
 
@@ -1014,9 +1267,10 @@ The `future<>` djinni type is mapped to the `Future` types defined in the C++,
 Java and ObjC djinni support library. In Javascript, `future<>` is mapped to the
 builtin `Promise` type (and therefore supports the `await` syntax).
 
-The C++ `Future` type has optional support for coroutines. If coroutines are
-availble (eg. compiling with C++20 or C++17 with -fcoroutines-ts), then you can
-use `co_await` on future objects.
+The C++ `Future` type has optional support for coroutines. It is on when the
+compiler defines `__cpp_coroutines` (C++17 with `-fcoroutines-ts` on an older
+clang); then you can use `co_await` on future objects. Clang in C++20 mode
+defines only `__cpp_impl_coroutine`, so the support is off there.
 
 A `Promise` that is destroyed without a value or an exception completes its
 future with `djinni::BrokenPromiseException`. A waiter on the other side of
@@ -1025,9 +1279,12 @@ the language boundary then gets an error and does not wait for ever: a Swift
 `DjinniCppException`, and a Java `Future.get` throws an `ExecutionException`
 with a `DjinniCppException` as its cause. Keep the promise alive until you
 complete it. When a second call replaces a stored promise, the future of the
-first call breaks. A handler that `Future::then` runs can throw any type. The
-future that `then` returns gets the exception, and the completion of the
-first future does not fail.
+first call breaks. A broken promise runs the handlers of its future on the
+thread that destroys it, as `setValue` does. So destroy or replace a promise
+outside any lock that a handler can take. Move the old promise into a local that
+you declare before the lock, as `ci/swift-runtime/runtime_async_impl.cpp` does. A
+handler that `Future::then` runs can throw any type. The future that `then`
+returns gets the exception, and the completion of the first future does not fail.
 
 ## FAQ
 

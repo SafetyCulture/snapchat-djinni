@@ -125,19 +125,27 @@ public:
      * proxy class `MyInterface` which wraps `@protocol DBMyInterface` would contain a
      * `Handle<id<DBMyInterface>>`.
      *
-     * TagType should be the same type that was passed in to `get()` when this handle was
-     * created. Normally this is the same as T (a specialized OwningImplPointer), but in
-     * cases like Java where all object types are uniformly represented as `jobject` in C++,
-     * another type may be used.
+     * TagType is the default tag that the destructor passes to `cleanup()`. Normally this is the
+     * same as T (a specialized OwningImplPointer), but in cases like Java where all object types
+     * are uniformly represented as `jobject` in C++, another type may be used. A handle
+     * constructed with a Tag uses that tag, and the tag must equal the tag of `get()`. Two glue
+     * sets of one C++ type need one proxy each.
      */
     template <typename T, typename TagType = T>
     class Handle {
     public:
+        struct Tag {
+            explicit Tag(const std::type_index & tag) : value(tag) {}
+            const std::type_index value;
+        };
+
         template <typename... Args> Handle(Args &&... args)
-            : m_cache(get_base()), m_obj(std::forward<Args>(args)...) {}
+            : m_cache(get_base()), m_tag(typeid(TagType)), m_obj(std::forward<Args>(args)...) {}
+        template <typename... Args> Handle(Tag tag, Args &&... args)
+            : m_cache(get_base()), m_tag(tag.value), m_obj(std::forward<Args>(args)...) {}
         Handle(const Handle &) = delete;
         Handle & operator=(const Handle &) = delete;
-        ~Handle() { if (m_obj) cleanup(m_cache, typeid(TagType), get_unowning(m_obj)); }
+        ~Handle() { if (m_obj) cleanup(m_cache, m_tag, get_unowning(m_obj)); }
 
         void assign(const T & obj) { m_obj = obj; }
 
@@ -145,6 +153,7 @@ public:
 
     private:
         const std::shared_ptr<Pimpl> m_cache;
+        const std::type_index m_tag;
         T m_obj;
     };
 

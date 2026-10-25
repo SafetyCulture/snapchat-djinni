@@ -1,0 +1,24 @@
+@extern "../../support-lib/future.yaml"
+
+# Each --swift-sync-method value of the test suite names one of the mistakes below. The generator must reject the run.
+
+swift_sync_bad_listener = interface +sw {
+  on_value(value: i32);
+}
+
+swift_sync_bad_record = record {
+  value: i32;
+}
+
+swift_sync_bad_shared = interface +c +sw {
+  add_listener(listener: swift_sync_bad_listener);
+}
+
+swift_sync_bad_service = interface +c {
+  static create(): swift_sync_bad_service;
+  add_listener(listener: swift_sync_bad_listener);
+  # The Swift name of this method is the name of the synchronous form of add_listener.
+  add_listener_now(listener: swift_sync_bad_listener);
+  load(listener: swift_sync_bad_listener): future<i32>;
+  static static_register(listener: swift_sync_bad_listener);
+}
