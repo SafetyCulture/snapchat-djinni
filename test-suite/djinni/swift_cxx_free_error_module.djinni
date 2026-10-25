@@ -1,0 +1,24 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+@extern "vendor/third-party/swift_models_error.yaml"
+
+# Generated with --swift-internal-cxx-imports --swift-cxx-free-api --swift-async-wrap and
+# --swift-error-type CruxError. The error record is an extern record of another module, so each public signature that
+# throws it or takes it imports that module.
+
+swift_cxx_free_error_item = record {
+  id: string;
+}
+
+# Swift implements this one, so its protocol names the error record as a value.
+swift_cxx_free_error_listener = interface +sw {
+  on_error(error: extern_models_error);
+}
+
+swift_cxx_free_error_service = interface +c {
+  static create(): swift_cxx_free_error_service;
+  # A static method throws the error type.
+  static load(id: string): outcome<swift_cxx_free_error_item, extern_models_error>;
+  fetch(id: string): outcome<swift_cxx_free_error_item, extern_models_error>;
+  watch(listener: swift_cxx_free_error_listener);
+}

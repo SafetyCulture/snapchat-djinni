@@ -3,8 +3,12 @@
 #
 # It builds the generator at the working tree and at BASE_REF, runs both over every Crux
 # IDL file with the flags crux/tools/generate_code.sh passes, and diffs the output trees.
-# A second pass adds the ts, wasm and yaml generators. The script exits 0 only when both
-# diffs are empty. Exit codes and stderr of each run are part of the compared output.
+# A second pass adds the ts, wasm and yaml generators. A third pass runs the Swift and
+# Swift/C++ generators over the same IDL with the flags of the app. It turns off the
+# three options of #32 (--swift-internal-cxx-imports, --swift-sync-method,
+# --swift-cxx-free-api); the older flags of the app stay on. The script exits 0 only when
+# the three diffs are empty. Exit codes and stderr of each run are part of the compared
+# output.
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
@@ -85,6 +89,32 @@ run_one() { # <jar> <idl> <out dir> <cpp ns> <objc prefix> <java pkg> <objc dir>
   rm -f "$out"/.stdout.bak "$out"/.stderr.bak
 }
 
+# The Swift pass needs the crux_error record, because the app passes --swift-error-type. The extern yamls of the
+# fixtures carry the `swift:` blocks that the app uses. The synchronous forms stay out: the base jar may predate
+# --swift-sync-method, and the other gates cover them.
+swift_fx="$work/swift-fx"
+python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_dir" "$swift_fx" "$repo_root" main.djinni >&2
+printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$swift_fx/crux/djinni/domain/ci_crux_error.djinni"
+printf '@import "ci_crux_error.djinni"\n' >>"$swift_fx/crux/djinni/domain/swift_fixture.djinni"
+
+# One Swift generator run with the flags of the app.
+run_swift() { # <jar> <out dir>
+  local jar=$1 out=$2 code=0
+  mkdir -p "$out"
+  local -a args=(
+    --cpp-out "$out/cpp/generated" --cpp-namespace crux::generated --cpp-ext cc --hpp-ext h --ident-cpp-method FooBar
+    --swift-out "$out/swift" --swift-module CruxBindings --swift-private-in-same-module
+    --swiftxx-out "$out/swiftxx" --swiftxx-namespace crux::generated::swift --swiftxx-include-cpp-prefix generated/
+    --swift-error-type CruxError --swift-async-wrap com.safetyculture.crux --swift-async-queue CruxAsyncQueue.shared
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni
+  )
+  (cd "$swift_fx" && java -jar "$jar" "${args[@]}" >"$out/.stdout" 2>"$out/.stderr") || code=$?
+  echo "$code" >"$out/.exit"
+  # The generator prints absolute paths of its inputs and outputs; normalise them.
+  sed -i.bak -e "s#$work/[a-z]*-out/[^ ]*#<out>#g" -e "s#$mitti_root#<mitti>#g" "$out/.stdout" "$out/.stderr"
+  rm -f "$out"/.stdout.bak "$out"/.stderr.bak
+}
+
 jobs_file="$work/jobs.txt"
 : >"$jobs_file"
 add_jobs() { # <pass>
@@ -106,6 +136,10 @@ xargs -P "$jobs" -L 1 bash -c '
   run_one "$work/$side.jar" "$idl" "$work/$side-out/$pass/$label" "$cpp_ns" "$prefix" "$jpkg" "$objc_dir" "$kpkg" "$ksup" "$kcin" "$pass"
 ' <"$jobs_file"
 
+echo "swift pass: the Crux IDL with the flags of the app, and every option off"
+run_swift "$work/base.jar" "$work/base-out/swift"
+run_swift "$work/head.jar" "$work/head-out/swift"
+
 status=0
 # main.djinni imports every other file, as in crux/tools/generate_code.sh. Fail if a file is missing.
 for f in "$domain_dir"/*.djinni; do
@@ -124,6 +158,19 @@ for pass in exact extra; do
   [ "$failed" = 0 ] || { echo "a generator run failed; see $work" >&2; KEEP_OUT=1; status=1; }
   if diff -r "$work/base-out/$pass" "$work/head-out/$pass"; then
     echo "pass=$pass: diff -r base head is empty"
+  else
+    echo "pass=$pass: outputs differ" >&2
+    status=1
+  fi
+done
+for pass in swift; do
+  reads="$(grep -L '^0$' "$work"/base-out/"$pass/.exit" "$work"/head-out/"$pass/.exit" 2>/dev/null)" || [ $? = 1 ] || { echo "cannot read the exit markers of the $pass pass" >&2; KEEP_OUT=1; exit 1; }
+  if [ -n "$reads" ]; then
+    echo "pass=$pass: a generator run failed; see $work" >&2
+    KEEP_OUT=1; status=1
+  fi
+  if diff -r "$work/base-out/$pass" "$work/head-out/$pass"; then
+    echo "pass=$pass: diff -r base head is empty ($(find "$work/head-out/$pass/swift" -type f | wc -l | tr -d ' ') swift files)"
   else
     echo "pass=$pass: outputs differ" >&2
     status=1

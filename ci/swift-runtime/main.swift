@@ -35,10 +35,45 @@ final class Doubler: RuntimeListener, @unchecked Sendable {
     func makeData() throws -> NSData { Data((0..<256).map { UInt8($0) }) as NSData }
     func onFail() throws -> Int32 { throw HostFailure.boom }
     func onMaybe(_ flag: Bool) throws -> Result<Int32?, RuntimeError> { .success(flag ? 42 : nil) }
+    // The error tests of Rethrower are the only callers of these four methods.
+    func rethrowingInt() throws -> Int32 { 0 }
+    func rethrowingArgument() throws -> Int32 { 0 }
+    func throwingMessage() throws -> Int32 { 0 }
+    func failingFuture() throws -> DJFuture<Int32> { DJFuture<Int32> { promise in promise(.success(0)) } }
 }
 
 enum HostFailure: Error {
     case boom
+}
+
+// A host that carries a C++ error back to C++, and one that throws its own message.
+final class Rethrower: RuntimeListener, @unchecked Sendable { // SAFETY: the service is immutable, and the test calls one method at a time
+    private let service: RuntimeService
+
+    init(_ service: RuntimeService) { self.service = service }
+
+    func onValue(_ value: Int32) throws -> Int32 { value }
+    func makeData() throws -> NSData { NSData() }
+    func onFail() throws -> Int32 { throw HostFailure.boom }
+    func onMaybe(_ flag: Bool) throws -> Result<Int32?, RuntimeError> { .success(nil) }
+    func delayedFuture(_ value: Int32, millis: Int32) throws -> DJFuture<Int32> {
+        return DJFuture<Int32> { promise in promise(.success(value)) }
+    }
+    func rethrowingInt() throws -> Int32 { return try service.raiseInt() }
+    func rethrowingArgument() throws -> Int32 { return try service.raiseArgument() }
+    func throwingMessage() throws -> Int32 { throw DjinniError("swift detail") }
+    func failingFuture() throws -> DJFuture<Int32> {
+        let failure: DjinniError
+        do {
+            _ = try service.raiseInt()
+            failure = DjinniError("raise_int did not throw")
+        } catch let error as DjinniError {
+            failure = error
+        } catch {
+            failure = DjinniError(String(describing: error))
+        }
+        return DJFuture<Int32> { promise in promise(.failure(failure)) }
+    }
 }
 
 final class ErrorRecorder: ErrorListener, @unchecked Sendable {
@@ -60,6 +95,17 @@ func runTests() throws {
 
     // A Swift object that C++ calls back.
     check(try service.callListener(Doubler(), value: 21) == 42, "callListener")
+
+    // A Swift error that carries a C++ error back to C++ keeps the type of the exception, and a Swift error with
+    // only a message keeps its text.
+    let rethrower = Rethrower(service)
+    check(try service.callRethrowingInt(rethrower) == "int 42", "the C++ int that a Swift error carries back")
+    check(try service.callRethrowingArgument(rethrower) == "invalid_argument bad argument",
+          "the C++ exception type that a Swift error carries back")
+    check(try service.callThrowingMessage(rethrower) == "exception swift detail",
+          "the message of a Swift error that C++ catches")
+    check(try service.callFailingFuture(rethrower) == "int 42",
+          "the C++ int of a failed host future")
 
     // The C++ object keeps a Swift object, and the Swift object stays alive.
     do {
@@ -510,6 +556,8 @@ func runAsyncTests() async throws {
     let callerThread = Int64(pthread_mach_thread_np(pthread_self()))
     let registeredListener = Doubler()
     check(try first.registerListenerNow(registeredListener) == 1, "the synchronous registration returns the count")
+    check(try first.recordPairNow(7, second: 9) == 7009, "the synchronous form passes the two parameters in order")
+    check(try first.recordedPairNow() == "7,9", "C++ records the two parameters in the order of the call")
     let registrationThread = try await first.registrationThread()
     check(registrationThread == callerThread, "the synchronous registration ran on thread \(registrationThread), not on \(callerThread)")
     check(try await first.callRegisteredListener(21) == 42, "the synchronous registration stored the listener")

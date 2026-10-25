@@ -616,12 +616,14 @@ abstract class Generator(spec: Spec)
 
   // --------------------------------------------------------------------------
 
-  def writeMethodDoc(w: IndentWriter, method: Interface.Method, ident: IdentConverter, extra: Seq[String] = Seq()) {
+  // `raw` lines are appended after the replacement, for text that the generator wrote and a parameter name must not
+  // change.
+  def writeMethodDoc(w: IndentWriter, method: Interface.Method, ident: IdentConverter, extra: Seq[String] = Seq(), raw: Seq[String] = Seq()) {
     val paramReplacements = method.params.map(p => (s"\\b${Regex.quote(p.ident.name)}\\b", s"${ident(p.ident.name)}"))
     val newDoc = Doc((method.doc.lines ++ extra).map(l => {
       paramReplacements.foldLeft(l)((line, rep) =>
         line.replaceAll(rep._1, rep._2))
-    }))
+    }) ++ raw)
     writeDoc(w, newDoc)
   }
 

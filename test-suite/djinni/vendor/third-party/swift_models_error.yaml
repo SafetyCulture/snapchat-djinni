@@ -1,0 +1,49 @@
+# An extern record whose Swift type and Swift marshaller live in two modules. The generated public API names the type,
+# and only the generated private files name the marshaller.
+---
+name: extern_models_error
+typedef: 'record'
+params: []
+prefix: ''
+cpp:
+  typename: 'models_test::CruxError'
+  header: '"models_error.hpp"'
+  byValue: true
+objc:
+  typename: 'NSDate'
+  header: '<Foundation/Foundation.h>'
+  boxed: 'NSDate'
+  pointer: true
+  hash: '(NSUInteger)%s.timeIntervalSinceReferenceDate'
+objcpp:
+  translator: '::djinni::Date'
+  header: '"DJIMarshal+Private.h"'
+java:
+  typename: 'java.util.Date'
+  boxed: 'java.util.Date'
+  reference: true
+  generic: true
+  hash: '%s.hashCode()'
+  writeToParcel: 'out.writeLong(%s.getTime())'
+  readFromParcel: 'new %s(in.readLong())'
+jni:
+  translator: '::djinni::Date'
+  header: '"Marshal.hpp"'
+  typename: jobject
+  typeSignature: 'Ljava/util/Date;'
+wasm:
+  typename: 'em::val'
+  translator: '::djinni::Date'
+  header: '"djinni_wasm.hpp"'
+ts:
+  typename: 'Date'
+  module: ''
+swift:
+  typename: 'CruxError'
+  module: 'Models'
+  generic: false
+  translator: 'CruxErrorMarshaller'
+  translator.module: 'ModelsSupport'
+swiftxx:
+  translator: 'models_test::CruxErrorAdaptor'
+  header: '"models_error_adaptor.hpp"'

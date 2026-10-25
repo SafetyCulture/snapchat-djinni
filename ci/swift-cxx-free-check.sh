@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Proves that a module generated with --swift-cxx-free-api keeps its public API free of C++ types.
 #
-# The script generates the cxx-free test-suite case and the whole Crux IDL with
+# The script compiles the checked-in cxx-free test-suite cases, and it generates the whole Crux IDL with
 # --swift-internal-cxx-imports and --swift-cxx-free-api. It builds the modules with library evolution and a verified
-# module interface. Then a client that imports the generated module and DjinniSupportCore compiles without C++
-# interoperability and without a C++ module on the search path. The same client fails against the same IDL generated
-# without the option, and the script prints the diagnostic. It runs the checks for Swift 5 and for Swift 6 with strict
-# concurrency checking. macOS only.
+# module interface. Then clients compile without C++ interoperability and without a C++ module on the search path: one
+# against the generated module, and one against the whole Crux module. The same test-suite IDL generated without the
+# option cannot make a verified interface, and the script prints the diagnostic. It runs the checks for Swift 5 and for
+# Swift 6 with strict concurrency checking. macOS only.
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
@@ -24,11 +24,14 @@ cache="${SWIFT_CACHE:-$HOME/.cache/djinni-swift}"
 protobuf_tag=1.38.1
 cases="$repo_root/test-suite/generated-src/swift-features"
 client="$repo_root/ci/swift-cxx-free"
+stubs="$repo_root/ci/swift-stubs"
 
 for d in "$domain_dir" "$extern_src"; do
   [ -d "$d" ] || { echo "missing directory: $d (set MITTI_MOBILE_ROOT)" >&2; exit 2; }
 done
-for f in "$client/Client.swift" "$client/ErrorConformance.swift" "$client/CruxAsyncQueue.swift" "$client/CruxErrorConformance.swift"; do
+for f in "$client/Client.swift" "$client/CruxClient.swift" "$client/ErrorConformance.swift" \
+         "$client/CruxAsyncQueue.swift" "$client/CruxErrorConformance.swift" \
+         "$stubs/Models.swift" "$stubs/ModelsSupport.swift"; do
   [ -f "$f" ] || { echo "missing file: $f" >&2; exit 2; }
 done
 
@@ -90,7 +93,9 @@ out_negative="$work/negative"
 # Stub C++ modules. The glue of the case and of the negative run is the same, so one stub serves both.
 mods="$work/mods"
 mkdir -p "$mods"
-python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/TestSuiteCxx.hpp" "$cases/cxx-free-api/swiftxx"
+python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/TestSuiteCxx.hpp" \
+  "$cases/cxx-free-api/swiftxx" "$cases/cxx-free-api-future-outcome/swiftxx" "$cases/cxx-free-api-error-module/swiftxx" \
+  "$cases/cxx-free-api-error-module-plain/swiftxx"
 SWIFTXX_NAMESPACE=crux::generated::swift python3 "$repo_root/ci/swift_stubs.py" cxx-header "$mods/CruxBindingsCxx.hpp" "$out_crux/swiftxx"
 cat >"$mods/module.modulemap" <<EOF
 module DjinniSupportCxx {
@@ -117,22 +122,26 @@ EOF
 python3 "$repo_root/ci/swift_stubs.py" s12protos "$work/fx/extern" "$work/S12ProtosStubs.swift" "$repo_root/ci/fixtures/s12"
 cp "$repo_root"/ci/fixtures/s12/*.pb.swift "$work/"
 
-case_files=("$cases/cxx-free-api"/swift/*.swift "$cases/cxx-free-api-future-field"/swift/*.swift)
+case_files=("$cases/cxx-free-api"/swift/*.swift "$cases/cxx-free-api-future-field"/swift/*.swift
+            "$cases/cxx-free-api-future-outcome"/swift/*.swift "$cases/cxx-free-api-error-module"/swift/*.swift
+            "$cases/cxx-free-api-error-module-plain"/swift/*.swift)
 
 run_mode() { # <label> <swiftc flags...>
   local tag=$1 build
   shift
   local flags="$*"
   build="$work/build-$tag"
-  mkdir -p "$build" "$build/core" "$build/s12" "$build/gen" "$build/negative"
-  # The client gets the directory of DjinniSupportCore only, so no C++-interop module is on its search path.
-  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build/core" -I "$build" -I "$mods" -I "$spb_mod")
+  mkdir -p "$build" "$build/core" "$build/stubs" "$build/s12" "$build/gen" "$build/negative"
+  # The clients get the directory of DjinniSupportCore only, so no C++-interop module is on their search path.
+  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$build/core" -I "$build/stubs" -I "$build" -I "$mods" -I "$spb_mod")
   local s12=(-parse-as-library -swift-version 5 -I "$spb_mod")
 
   echo "== [$tag] (a) DjinniSupportCore without C++ interop, library evolution"
   # shellcheck disable=SC2086
-  swiftc -emit-module -emit-module-path "$build/core/DjinniSupportCore.swiftmodule" -module-name DjinniSupportCore \
-    -parse-as-library -enable-library-evolution $flags "$repo_root"/support-lib/swift-core/*.swift
+  swiftc -emit-module -emit-module-path "$build/core/DjinniSupportCore.swiftmodule" \
+    -emit-module-interface-path "$build/core/DjinniSupportCore.swiftinterface" -module-name DjinniSupportCore \
+    -parse-as-library -enable-library-evolution -emit-module-interface -verify-emitted-module-interface \
+    $flags "$repo_root"/support-lib/swift-core/*.swift
   echo "== [$tag] (b) DjinniSupport with C++ interop"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
@@ -140,6 +149,16 @@ run_mode() { # <label> <swiftc flags...>
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/s12/S12Protos.swiftmodule" -module-name S12Protos \
     "${s12[@]}" "$work/S12ProtosStubs.swift" "$work"/*.pb.swift
+  # The two modules of the extern record of the future-outcome case. The type module keeps library evolution, so the
+  # generated module imports it without a warning.
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/stubs/Models.swiftmodule" \
+    -emit-module-interface-path "$build/stubs/Models.swiftinterface" -module-name Models \
+    -parse-as-library -enable-library-evolution -emit-module-interface -verify-emitted-module-interface \
+    $flags "$stubs/Models.swift"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/stubs/ModelsSupport.swiftmodule" -module-name ModelsSupport \
+    -parse-as-library $flags "${cxx[@]}" "$stubs/ModelsSupport.swift"
 
   echo "== [$tag] (c) the cxx-free-api module: library evolution, verified interface, no warning"
   local module_log="$build/gen/module.log"
@@ -147,7 +166,8 @@ run_mode() { # <label> <swiftc flags...>
   if ! swiftc -emit-module -emit-module-path "$build/gen/TestSuite.swiftmodule" \
       -emit-module-interface-path "$build/gen/TestSuite.swiftinterface" -module-name TestSuite -parse-as-library \
       -enable-library-evolution -emit-module-interface -verify-emitted-module-interface \
-      $flags "${cxx[@]}" "${case_files[@]}" "$client/ErrorConformance.swift" >"$module_log" 2>&1; then
+      $flags "${cxx[@]}" "${case_files[@]}" "$client/ErrorConformance.swift" \
+      "$client/ModelsErrorConformance.swift" >"$module_log" 2>&1; then
     echo "FAIL: the cxx-free-api module did not build:" >&2
     cat "$module_log" >&2
     exit 1
@@ -185,43 +205,57 @@ run_mode() { # <label> <swiftc flags...>
     echo "FAIL: the interface of the Crux module does not import S12Protos for its message types." >&2
     exit 1
   fi
-  echo "CXX-FREE CRUX MODULE OK [$tag] ($(grep -c 'warning:' "$crux_log" || true) warnings, none an error)"
+  # The stub S12Protos is not resilient. Its library-evolution warning is the only warning the module may print; each
+  # diagnostic is printed twice, when the module is emitted and when its interface is verified.
+  local warnings resilient
+  warnings=$(grep -cE "^[^ |].*warning: " "$crux_log" || true)
+  resilient=$(grep -cE "^[^ |].*warning: module 'S12Protos' was not compiled with library evolution support" "$crux_log" || true)
+  if [ "$warnings" -ne "$resilient" ]; then
+    echo "FAIL: the Crux module has a warning that is not the library-evolution warning of S12Protos:" >&2
+    grep -E "^[^ |].*warning: " "$crux_log" | grep -vF "warning: module 'S12Protos' was not compiled with library evolution support" | head -5 >&2
+    exit 1
+  fi
+  echo "CXX-FREE CRUX MODULE OK [$tag] ($((warnings / 2)) diagnostics, each printed twice ($warnings lines); all are the S12Protos library-evolution warning)"
 
   echo "== [$tag] (e) the client without C++ interop"
   # shellcheck disable=SC2086
-  swiftc -typecheck -module-name CxxFreeClient $flags -I "$build/gen" -I "$build/core" -I "$build/s12" -I "$spb_mod" \
+  swiftc -typecheck -module-name CxxFreeClient $flags -I "$build/gen" -I "$build/core" -I "$build/stubs" -I "$build/s12" -I "$spb_mod" \
     "$client/Client.swift"
   echo "CXX-FREE CLIENT OK [$tag]"
 
-  echo "== [$tag] (f) the same client against the module without --swift-cxx-free-api must fail"
-  local negative="$build/negative" negative_log="$build/negative/module.log" client_log="$build/negative/client.log"
+  echo "== [$tag] (e2) the same client against the interface of the generated module, in an empty directory"
+  local only="$build/interface-only"
+  mkdir -p "$only"
+  cp "$build/gen/TestSuite.swiftinterface" "$only/"
+  cp "$build/core"/DjinniSupportCore.swiftinterface "$build/core"/DjinniSupportCore.swiftmodule "$only/"
+  cp "$build/stubs"/Models.swiftinterface "$build/stubs"/Models.swiftmodule "$only/"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name CxxFreeClient $flags -I "$only" "$client/Client.swift"
+  echo "CXX-FREE INTERFACE CLIENT OK [$tag]"
+
+  echo "== [$tag] (e3) the Crux client without C++ interop"
+  # shellcheck disable=SC2086
+  swiftc -typecheck -module-name CruxClient $flags -I "$build/gen" -I "$build/core" -I "$build/s12" -I "$spb_mod" \
+    "$client/CruxClient.swift"
+  echo "CXX-FREE CRUX CLIENT OK [$tag]"
+
+  echo "== [$tag] (f) the same test-suite IDL without --swift-cxx-free-api must not make a verified interface"
+  local negative="$build/negative" negative_log="$build/negative/module.log"
   # shellcheck disable=SC2086
   if swiftc -emit-module -emit-module-path "$negative/TestSuite.swiftmodule" \
       -emit-module-interface-path "$negative/TestSuite.swiftinterface" -module-name TestSuite -parse-as-library \
       -enable-library-evolution -emit-module-interface -verify-emitted-module-interface \
       $flags "${cxx[@]}" "$out_negative"/swift/*.swift "$client/ErrorConformance.swift" >"$negative_log" 2>&1; then
-    # The interface passed, so the client must fail on the C++ module that the module needs but does not have.
-    # shellcheck disable=SC2086
-    if swiftc -typecheck -module-name CxxFreeClient $flags -I "$negative" -I "$build/core" -I "$build/s12" -I "$spb_mod" \
-        "$client/Client.swift" >"$client_log" 2>&1; then
-      echo "FAIL: the client compiled against the module without --swift-cxx-free-api." >&2
-      exit 1
-    fi
-    if ! grep -qF "missing required module 'DjinniSupportCxx'" "$client_log"; then
-      echo "FAIL: the client failed for another reason:" >&2
-      cat "$client_log" >&2
-      exit 1
-    fi
-    echo "  client: $(grep -m1 "missing required module" "$client_log")"
-  else
-    # The interface names the C++ namespace through the clang module. Swift 6.3 prints it without the member.
-    if ! grep -qF "cannot find type '__ObjC" "$negative_log"; then
-      echo "FAIL: the module without the option failed for another reason:" >&2
-      cat "$negative_log" >&2
-      exit 1
-    fi
-    echo "  interface: $(grep -m1 "cannot find type '__ObjC" "$negative_log")"
+    echo "FAIL: the module without --swift-cxx-free-api made a verified interface." >&2
+    exit 1
   fi
+  # The interface names the C++ namespace through the clang module. Swift 6.3 prints it without the member.
+  if ! grep -qF "cannot find type '__ObjC" "$negative_log"; then
+    echo "FAIL: the module without the option failed for another reason:" >&2
+    cat "$negative_log" >&2
+    exit 1
+  fi
+  echo "  interface: $(grep -m1 "cannot find type '__ObjC" "$negative_log")"
   echo "CXX-FREE NEGATIVE REJECTED [$tag]"
 }
 

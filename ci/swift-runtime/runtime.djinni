@@ -14,6 +14,13 @@ runtime_listener = interface +o +j +sw {
   on_maybe(flag: bool): outcome<optional<i32>, runtime_error>;
   # The result arrives on another thread after the given time
   delayed_future(value: i32, millis: i32): future<i32>;
+  # The Swift host rethrows the C++ error that raise_int or raise_argument gave it
+  rethrowing_int(): i32;
+  rethrowing_argument(): i32;
+  # The Swift host throws an error that holds only a message
+  throwing_message(): i32;
+  # The Swift host returns a future that fails with the C++ error that raise_int gave it
+  failing_future(): future<i32>;
 }
 
 runtime_service = interface +c +sw {
@@ -44,6 +51,14 @@ runtime_service = interface +c +sw {
   # kept_data_retain_count is the number of references to that data; a failed call must not change it.
   bad_blob(): runtime_blob;
   kept_data_retain_count(): i32;
+  # The host rethrows the C++ error, and C++ catches its type. Each method returns what C++ saw.
+  call_rethrowing_int(listener: runtime_listener): string;
+  call_rethrowing_argument(listener: runtime_listener): string;
+  call_throwing_message(listener: runtime_listener): string;
+  call_failing_future(listener: runtime_listener): string;
+  # A C++ error for the host to carry back to C++.
+  raise_int(): i32;
+  raise_argument(): i32;
 }
 
 runtime_blob = record {
@@ -70,6 +85,10 @@ runtime_async = interface +c {
   call_listener(listener: runtime_listener, value: i32): i32;
   # --swift-sync-method gives this registration a synchronous form. C++ stores the listener and the thread of the call.
   register_listener(listener: runtime_listener): i32;
+  # A listed registration with two parameters of the same type: the synchronous form must pass them in order.
+  record_pair(first: i32, second: i32): i32;
+  # The two values that record_pair stored, as "first,second".
+  recorded_pair(): string;
   # The mach thread id of the register_listener call.
   registration_thread(): i64;
   # Calls the listener that register_listener stored.

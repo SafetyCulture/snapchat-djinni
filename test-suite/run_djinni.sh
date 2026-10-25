@@ -319,7 +319,11 @@ swift_const_strings_relative="djinni/swift_const_strings.djinni"
 swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
 swift_cxx_free_api_relative="djinni/swift_cxx_free_api.djinni"
 swift_cxx_free_future_field_relative="djinni/swift_cxx_free_future_field.djinni"
+swift_cxx_free_future_outcome_relative="djinni/swift_cxx_free_future_outcome.djinni"
+swift_cxx_free_error_module_relative="djinni/swift_cxx_free_error_module.djinni"
+swift_cxx_free_error_plain_relative="djinni/swift_cxx_free_error_plain.djinni"
 swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
+swift_sync_doc_relative="djinni/swift_sync_doc.djinni"
 swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
@@ -599,6 +603,7 @@ fi
     --swift-sync-method swift_sync_service.add_listener \
     --swift-sync-method swift_sync_service.find_listener \
     --swift-sync-method swift_sync_service.guard \
+    --swift-sync-method swift_sync_service.call_listener \
     --swiftxx-out "$temp_out_relative/swift-features/sync-listener/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
@@ -615,6 +620,7 @@ fi
     --swift-sync-method swift_sync_service.add_listener \
     --swift-sync-method swift_sync_service.find_listener \
     --swift-sync-method swift_sync_service.guard \
+    --swift-sync-method swift_sync_service.call_listener \
     --swift-error-type CruxError \
     --swiftxx-out "$temp_out_relative/swift-features/sync-listener-error/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
@@ -646,7 +652,67 @@ fi
     --swift-internal-cxx-imports \
     --swift-cxx-free-api \
     \
-    --idl "$swift_cxx_free_future_field_relative" \
+    --idl "$swift_cxx_free_future_field_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-async-queue "DispatchQueue.global(qos: .utility)" \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_future_outcome_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-error-module/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-error-module/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-error-module/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_error_module_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_error_plain_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/sync-doc/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/sync-doc/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_doc_service.reserve \
+    --swiftxx-out "$temp_out_relative/swift-features/sync-doc/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_sync_doc_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -692,16 +758,22 @@ if grep -rh "^internal import " "$internal_imports" | grep -vE "^internal import
 fi
 
 # --swift-cxx-free-api keeps the C++ types out of the public API of the generated module. The compiler proves the rest
-# (ci/swift-typecheck.sh): the module keeps its public API without C++ interop in the client.
+# (ci/swift-cxx-free-check.sh): the module keeps a verified interface and a client without C++ interop.
 cxx_free="$temp_out/swift-features/cxx-free-api/swift"
-if grep -rhE "^import " "$cxx_free"; then
-    echo "The cxx-free-api case has an import without an access level." 1>&2
-    exit 1
-fi
-if grep -rhE "^public " "$cxx_free" | grep -E "djinni\.swift|DjinniSupport\.|DjinniSupportCxx\.|TestSuiteCxx\."; then
-    echo "A public declaration of the cxx-free-api case names a C++ type." 1>&2
-    exit 1
-fi
+for cxx_free_dir in "$temp_out"/swift-features/cxx-free-api*/swift; do
+    if grep -rhE "^import " "$cxx_free_dir"; then
+        echo "A cxx-free file has an import without an access level: $cxx_free_dir" 1>&2
+        exit 1
+    fi
+    if grep -rhE "^[[:space:]]*public " "$cxx_free_dir" | grep -E "djinni\.swift|DjinniSupport\.|DjinniSupportCxx\.|TestSuiteCxx\."; then
+        echo "A public declaration of a cxx-free case names a C++ type: $cxx_free_dir" 1>&2
+        exit 1
+    fi
+    if grep -rhE "^public import (DjinniSupport|DjinniSupportCxx|TestSuiteCxx)$" "$cxx_free_dir"; then
+        echo "A cxx-free file imports a C++ layer as public: $cxx_free_dir" 1>&2
+        exit 1
+    fi
+done
 # A marshaller names a C++ type, so it and its members are internal.
 if grep -rhE "^public (enum|typealias) \w+Marshaller" "$cxx_free"; then
     echo "The cxx-free-api case made a marshaller public." 1>&2
@@ -715,8 +787,55 @@ if ! grep -qF "DjinniSupportCore.DJFuture<Int32>" "$temp_out/swift-features/cxx-
     echo "The cxx-free future-field case does not name the future type through DjinniSupportCore." 1>&2
     exit 1
 fi
-if grep -rhE "^import " "$temp_out/swift-features/cxx-free-api-future-field/swift"; then
-    echo "The cxx-free future-field case has an import without an access level." 1>&2
+# The async wrapper of a future<outcome<T, E>> returns the outcome, so its file imports the module of E.
+cxx_free_outcome="$temp_out/swift-features/cxx-free-api-future-outcome/swift"
+if ! grep -qxF "public import Models" "$cxx_free_outcome/SwiftCxxFreeLookup.swift"; then
+    echo "The cxx-free future-outcome case does not import the module of the error type." 1>&2
+    exit 1
+fi
+if ! grep -qF "async throws -> Swift.Result<Int32, Models.CruxError>" "$cxx_free_outcome/SwiftCxxFreeLookup.swift"; then
+    echo "The cxx-free future-outcome case does not return the outcome of the future." 1>&2
+    exit 1
+fi
+# A public signature that throws the extern error record imports the module of the record.
+cxx_free_error="$temp_out/swift-features/cxx-free-api-error-module/swift"
+for cxx_free_file in SwiftCxxFreeErrorService.swift SwiftCxxFreeErrorService+Private.swift SwiftCxxFreeErrorListener.swift; do
+    if ! grep -qxF "public import Models" "$cxx_free_error/$cxx_free_file"; then
+        echo "The cxx-free error-module case does not import the module of the error record: $cxx_free_file" 1>&2
+        exit 1
+    fi
+done
+if ! grep -qF "async throws(Models.CruxError)" "$cxx_free_error/SwiftCxxFreeErrorService.swift"; then
+    echo "The cxx-free error-module case does not throw the extern error record." 1>&2
+    exit 1
+fi
+# Without the async wrapper no type of the methods names the record, so each file that throws it imports its module.
+cxx_free_error_plain="$temp_out/swift-features/cxx-free-api-error-module-plain/swift"
+if ! grep -qxF "public import Models" "$cxx_free_error_plain/SwiftCxxFreePlainInstance.swift"; then
+    echo "The cxx-free plain protocol does not import the module of the record." 1>&2
+    exit 1
+fi
+# The C++ proxy is internal, so its file imports the module with an internal level. The class of the static methods is
+# public, so its file needs a public import.
+if ! grep -qxF "internal import Models" "$cxx_free_error_plain/SwiftCxxFreePlainInstance+Private.swift"; then
+    echo "The cxx-free plain proxy does not import the module of the record." 1>&2
+    exit 1
+fi
+if ! grep -qxF "public import Models" "$cxx_free_error_plain/SwiftCxxFreePlainStatic+Private.swift"; then
+    echo "The cxx-free plain statics class does not import the module of the record." 1>&2
+    exit 1
+fi
+if ! grep -qF "func ping() throws(Models.CruxError) -> Int32" "$cxx_free_error_plain/SwiftCxxFreePlainInstance.swift"; then
+    echo "The cxx-free plain case does not throw the record from an instance method whose types do not name it." 1>&2
+    exit 1
+fi
+if ! grep -qF "public static func count() throws(Models.CruxError) -> Int32" "$cxx_free_error_plain/SwiftCxxFreePlainStatic+Private.swift"; then
+    echo "The cxx-free plain case does not throw the record from a static method." 1>&2
+    exit 1
+fi
+# A client of the option imports DjinniSupportCore, so the doc comment names that module.
+if ! grep -qF "DjinniSupportCore.djinniCallQueue()" "$cxx_free/SwiftCxxFreeService.swift"; then
+    echo "The cxx-free-api case names the C++ layer in the doc comment of the async wrapper." 1>&2
     exit 1
 fi
 # The flag needs its two companion flags: the imports of the C++ modules and one module for all Swift files.
@@ -747,21 +866,37 @@ for cxx_free_missing in swift-internal-cxx-imports swift-private-in-same-module;
     fi
 done
 
-# --swift-sync-method adds the synchronous form to the listed methods only. The two listed methods take a listener
-# whose interface has +sw; the other two methods with a listener get no form, also the future method.
+# --swift-sync-method adds the synchronous form to the listed methods only. The listed methods take a listener whose
+# interface has +sw; observe returns a future, so it gets no form.
 sync_forms() { # <case>
-    grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | sort
+    grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | LC_ALL=C sort
 }
 expected_sync_forms="public func addListenerNow(
+public func callListenerNow(
 public func findListenerNow(
 public func guardNow("
 for sync_case in sync-listener sync-listener-error; do
     if [ "$(sync_forms "$sync_case")" != "$expected_sync_forms" ]; then
-        echo "The synchronous forms of $sync_case are not the three listed methods." 1>&2
+        echo "The synchronous forms of $sync_case are not the listed methods." 1>&2
         sync_forms "$sync_case" 1>&2
         exit 1
     fi
 done
+# The fixed sentence of a synchronous form keeps its words, also when a parameter has one of them. The parameter of
+# sync-doc is named for, so the replacement would write `for`.
+sync_doc="$temp_out/swift-features/sync-doc/swift/SwiftSyncDocService.swift"
+if ! grep -qF "public func reserveNow(_ \`for\`: Int32)" "$sync_doc"; then
+    echo "The sync-doc case does not escape its keyword parameter." 1>&2
+    exit 1
+fi
+if ! grep -qF "Use this method for a registration that returns at once." "$sync_doc"; then
+    echo "The synchronous form lost its fixed doc sentence." 1>&2
+    exit 1
+fi
+if grep -qF "Use this method \`for\` a registration" "$sync_doc"; then
+    echo "A parameter name changed the fixed doc sentence of a synchronous form." 1>&2
+    exit 1
+fi
 sync_plain="$temp_out/swift-features/sync-listener/swift/SwiftSyncService.swift"
 sync_typed="$temp_out/swift-features/sync-listener-error/swift/SwiftSyncService.swift"
 for expected in \
@@ -782,7 +917,9 @@ for expected in \
         exit 1
     fi
 done
-if [ "$(grep -cF -- "The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once." "$sync_typed")" -ne 3 ]; then
+sync_typed_forms="$(grep -cE "public func [A-Za-z0-9]+Now\(" "$sync_typed")"
+sync_typed_docs="$(grep -cF -- "The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once." "$sync_typed")"
+if [ "$sync_typed_docs" -ne "$sync_typed_forms" ]; then
     echo "The synchronous forms do not each have the doc line about the caller's thread." 1>&2
     exit 1
 fi

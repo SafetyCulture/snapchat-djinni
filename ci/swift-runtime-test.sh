@@ -54,6 +54,8 @@ out="$work/out"
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-async-queue RuntimeQueues.blocking \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
 # The error type has its own IDL: every method that Swift calls into C++ throws it.
@@ -99,15 +101,19 @@ done
   --cpp-out "$work/default/cpp" --cpp-namespace rt \
   --swift-out "$work/default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --idl runtime.djinni)
 cp -R "$out/swift" "$out/swift-default"
 cp "$work"/default/swift/*.swift "$out/swift-default/"
 
 # --swift-sync-method gives the listed registrations a synchronous form. The future method with a +sw parameter that
 # is not listed gets none.
-now_forms() { grep -hoE "public func [A-Za-z0-9]+Now\(" "$1" | sort; }
-if [ "$(now_forms "$out/swift/RuntimeAsync.swift")" != "public func registerListenerNow(" ]; then
-  echo "FAIL: RuntimeAsync does not have the one synchronous form that is listed." >&2
+now_forms() { grep -hoE "public func [A-Za-z0-9]+Now\(" "$1" | LC_ALL=C sort; }
+if [ "$(now_forms "$out/swift/RuntimeAsync.swift")" != "public func recordPairNow(
+public func recordedPairNow(
+public func registerListenerNow(" ]; then
+  echo "FAIL: RuntimeAsync does not have the three synchronous forms that are listed." >&2
   now_forms "$out/swift/RuntimeAsync.swift" >&2
   exit 1
 fi
@@ -137,6 +143,8 @@ out_cxx_free="$work/cxx-free"
   --swift-out "$out_cxx_free/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-internal-cxx-imports --swift-cxx-free-api \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --swift-async-queue 'DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)' \
   --swiftxx-out "$out_cxx_free/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
@@ -169,6 +177,8 @@ out_cxx_free="$work/cxx-free"
   --swift-out "$work/cxx-free-default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-internal-cxx-imports --swift-cxx-free-api \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --idl runtime.djinni)
 cp -R "$out_cxx_free/swift" "$out_cxx_free/swift-default"
 cp "$work"/cxx-free-default/swift/*.swift "$out_cxx_free/swift-default/"
@@ -254,8 +264,8 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   done
 }
 # The cxx-free variant: the generated Swift is a module of its own with library evolution, and the program imports it.
-run_cxx_free() { # <swiftc flags> [<runs>]
-  local flags=$1 mode_runs=${2:-$runs} build
+run_cxx_free() { # <swiftc flags> [<object folder>] [<runs>]
+  local flags=$1 objs=${2:-$work/objs} mode_runs=${3:-$runs} build
   build="$work/build-cxx-free-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
@@ -280,7 +290,7 @@ run_cxx_free() { # <swiftc flags> [<runs>]
     { echo "@testable import RuntimeTest"; cat "$src/main.swift"; } >"$program"
     # shellcheck disable=SC2086
     swiftc -module-name RuntimeMain $flags "${cxx[@]}" -I "$build/$variant" "$program" \
-      "$work/objs"/*.o "$build/$variant/libRuntimeTest.a" "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" \
+      "$objs"/*.o "$build/$variant/libRuntimeTest.a" "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" \
       "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-cxx-free-$variant"
   done
   echo "== [$flags] cxx-free blocking queue"
@@ -301,8 +311,10 @@ run_cxx_free "-swift-version 6 -strict-concurrency=complete"
 # The optimizer shortens object lifetimes, and it can show a lifetime bug that -Onone hides.
 build_objs "$work/objs-O" -O2
 run_mode "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"
+run_cxx_free "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"
 # One run is enough: ThreadSanitizer reports two accesses without an order also when they do not collide.
 if [ "${RUNTIME_TSAN:-1}" = 1 ]; then
   build_objs "$work/objs-tsan" -fsanitize=thread
   TSAN_OPTIONS="halt_on_error=1 ${TSAN_OPTIONS:-}" run_mode "-swift-version 6 -strict-concurrency=complete -sanitize=thread" "$work/objs-tsan" 1
+  TSAN_OPTIONS="halt_on_error=1 ${TSAN_OPTIONS:-}" run_cxx_free "-swift-version 6 -strict-concurrency=complete -sanitize=thread" "$work/objs-tsan" 1
 fi

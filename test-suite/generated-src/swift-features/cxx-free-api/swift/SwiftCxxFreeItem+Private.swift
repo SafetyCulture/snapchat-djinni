@@ -13,7 +13,8 @@ enum SwiftCxxFreeItemMarshaller: DjinniSupport.Marshaller {
             let id = try StringMarshaller.fromCpp(DjinniSupport.compositeMember(p, 0))
             let color = try SwiftCxxFreeColorMarshaller.fromCpp(DjinniSupport.compositeMember(p, 1))
             let options = try SwiftCxxFreeOptionsMarshaller.fromCpp(DjinniSupport.compositeMember(p, 2))
-            return SwiftType(id: id, color: color, options: options)
+            let when = try DateMarshaller.fromCpp(DjinniSupport.compositeMember(p, 3))
+            return SwiftType(id: id, color: color, options: options, when: when)
         }
     }
     static func toCpp(_ s: SwiftType) throws -> djinni.swift.AnyValue {
@@ -21,6 +22,7 @@ enum SwiftCxxFreeItemMarshaller: DjinniSupport.Marshaller {
         try DjinniSupport.addMember(&ret, StringMarshaller.toCpp(s.id))
         try DjinniSupport.addMember(&ret, SwiftCxxFreeColorMarshaller.toCpp(s.color))
         try DjinniSupport.addMember(&ret, SwiftCxxFreeOptionsMarshaller.toCpp(s.options))
+        try DjinniSupport.addMember(&ret, DateMarshaller.toCpp(s.when))
         return ret
     }
 }

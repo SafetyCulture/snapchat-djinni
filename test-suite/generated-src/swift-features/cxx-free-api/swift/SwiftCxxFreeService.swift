@@ -6,7 +6,7 @@ internal import DjinniSupport
 /**
  * C++ implements this one, so the generated files of its proxy import the C++ glue.
  *
- * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupport.djinniCallQueue()`). Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupportCore.djinniCallQueue()`). Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws TestSuite.SwiftCxxFreeFailure(cancellation:) and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with TestSuite.SwiftCxxFreeFailure(cancellation:). The C++ future is not cancelled; its late result is dropped.
  */
