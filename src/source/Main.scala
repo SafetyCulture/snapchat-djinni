@@ -127,6 +127,7 @@ object Main {
     var swiftErrorType: Option[String] = None
     var swiftInternalCxxImports: Boolean = false
     var swiftSyncMethods: Seq[String] = Seq()
+    var swiftCxxFreeApi: Boolean = false
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
     var kotlinSuspendWrap: Boolean = false
@@ -299,6 +300,8 @@ object Main {
         .text("Omit 'import <module>' in +Private Swift files (use when those files are compiled in the same module to avoid 'ignoring import' warnings).")
       opt[Unit]("swift-internal-cxx-imports").foreach(_ => swiftInternalCxxImports = true)
         .text("Write the imports of the C++ glue modules as internal imports: the module of --swift-module with the Cxx suffix, and the module of --swiftxx-base-lib-module. The other imports do not change.")
+      opt[Unit]("swift-cxx-free-api").foreach(_ => swiftCxxFreeApi = true)
+        .text("Keep the C++ types out of the public API of the generated module: the public declarations name the support types of DjinniSupportCore, every declaration that names a C++ type is internal, and the enums are @frozen. It needs --swift-internal-cxx-imports and --swift-private-in-same-module.")
       opt[Unit]("swift-legacy-records").foreach(_ => swiftLegacyRecords = true)
         .text("Generate Swift records with `var` fields. The default is `let` fields.")
       opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
@@ -429,6 +432,16 @@ object Main {
       if (!argParser.parse(flags.map({_.split(" ", 2)}).flatten :+ "--idl" :+ idlFile.getName())) {
         System.exit(1); return
       }
+    }
+
+    if (swiftCxxFreeApi && !swiftInternalCxxImports) {
+      System.err.println("Error: --swift-cxx-free-api needs --swift-internal-cxx-imports.")
+      System.exit(1); return
+    }
+
+    if (swiftCxxFreeApi && !swiftPrivateInSameModule) {
+      System.err.println("Error: --swift-cxx-free-api needs --swift-private-in-same-module.")
+      System.exit(1); return
     }
 
     if (swiftAsyncWrap.isDefined && !swiftPrivateInSameModule) {
@@ -619,6 +632,7 @@ object Main {
       swiftErrorType,
       swiftInternalCxxImports,
       swiftSyncMethods,
+      swiftCxxFreeApi,
       kotlinJniOutFolder,
       kotlinJniPackage,
       kotlinSuspendWrap,

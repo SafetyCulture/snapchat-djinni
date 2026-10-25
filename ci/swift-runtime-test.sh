@@ -4,7 +4,9 @@
 # The program checks the runtime: calls from Swift into C++, calls from C++ into a Swift object,
 # the identity of proxies, and many threads that create and release proxies and host objects.
 # It runs in Swift 5 mode, in Swift 6 mode, and in Swift 6 mode with the optimizer (-O, and -O2 for C++). It also runs
-# once with ThreadSanitizer for Swift and C++. A watchdog fails the program when it deadlocks. macOS only.
+# once with ThreadSanitizer for Swift and C++. The last variant generates the same IDL with
+# --swift-internal-cxx-imports and --swift-cxx-free-api, builds the generated module with library evolution, and runs
+# the same program. A watchdog fails the program when it deadlocks. macOS only.
 #
 # Environment:
 #   HEAD_JAR           prebuilt //src:djinni_deploy.jar, skips the Bazel build
@@ -128,6 +130,54 @@ if ! grep -qF "return try DjinniSupport.djinniTyped(RuntimeTest.CruxError.self) 
   exit 1
 fi
 
+# The same four IDLs with the option that keeps the C++ types out of the public API of the generated module.
+out_cxx_free="$work/cxx-free"
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out_cxx_free/cpp" --cpp-namespace rt \
+  --swift-out "$out_cxx_free/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-internal-cxx-imports --swift-cxx-free-api \
+  --swift-sync-method runtime_async.register_listener \
+  --swift-async-queue 'DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)' \
+  --swiftxx-out "$out_cxx_free/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime.djinni)
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out_cxx_free/cpp" --cpp-namespace rt \
+  --swift-out "$out_cxx_free/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-internal-cxx-imports --swift-cxx-free-api \
+  --swift-sync-method error_service.register_listener \
+  --swift-sync-method error_service.register_listener_failing \
+  --swift-error-type CruxError \
+  --swiftxx-out "$out_cxx_free/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime_error.djinni)
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out_cxx_free/cpp" --cpp-namespace rt \
+  --swift-out "$out_cxx_free/swift" --swift-module RuntimeTest --swift-private-in-same-module \
+  --swift-internal-cxx-imports --swift-cxx-free-api \
+  --swift-error-type SyncError \
+  --swiftxx-out "$out_cxx_free/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime_error_sync.djinni)
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$out_cxx_free/cpp" --cpp-namespace rt \
+  --swift-out "$out_cxx_free/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-internal-cxx-imports --swift-cxx-free-api \
+  --swift-legacy-records \
+  --swiftxx-out "$out_cxx_free/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
+  --idl runtime_legacy.djinni)
+# The same program with the default queue: runtime.djinni without --swift-async-queue replaces its files.
+(cd "$src" && java -jar "$jar" \
+  --cpp-out "$work/cxx-free-default/cpp" --cpp-namespace rt \
+  --swift-out "$work/cxx-free-default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-internal-cxx-imports --swift-cxx-free-api \
+  --swift-sync-method runtime_async.register_listener \
+  --idl runtime.djinni)
+cp -R "$out_cxx_free/swift" "$out_cxx_free/swift-default"
+cp "$work"/cxx-free-default/swift/*.swift "$out_cxx_free/swift-default/"
+# The option changes the Swift files only.
+if ! diff -r "$out/swiftxx" "$out_cxx_free/swiftxx"; then
+  echo "FAIL: --swift-cxx-free-api changed the C++ glue." >&2
+  exit 1
+fi
+
 # Modules
 mods="$work/mods"; build="$work/build"
 mkdir -p "$mods" "$build"
@@ -190,7 +240,7 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   local variant
   for variant in swift swift-default; do
     # shellcheck disable=SC2086
-    swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out/$variant"/*.swift "$src/main.swift" \
+    swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out/$variant"/*.swift "$src/main.swift" "$src/error_conformance.swift" "$src/runtime_queues.swift" \
       "$objs"/*.o "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-$variant"
   done
   local i
@@ -203,8 +253,51 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
     run_guarded env RT_QUEUE_LABEL=djinni.call RT_DEFAULT_QUEUE=1 "$build/runtime-test-swift-default"
   done
 }
+# The cxx-free variant: the generated Swift is a module of its own with library evolution, and the program imports it.
+run_cxx_free() { # <swiftc flags> [<runs>]
+  local flags=$1 mode_runs=${2:-$runs} build
+  build="$work/build-cxx-free-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
+  mkdir -p "$build"
+  local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
+  echo "== [$flags] cxx-free"
+  # shellcheck disable=SC2086
+  swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupportCore.swiftmodule" -module-name DjinniSupportCore \
+    -parse-as-library -enable-library-evolution $flags "$repo_root"/support-lib/swift-core/*.swift -o "$build/libDjinniSupportCore.a"
+  # shellcheck disable=SC2086
+  swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
+    -enable-testing -parse-as-library $flags "${cxx[@]}" "$repo_root"/support-lib/swift/*.swift -o "$build/libDjinniSupport.a"
+  local variant swift_dir program
+  for variant in swift swift-default; do
+    swift_dir="$out_cxx_free/$variant"
+    mkdir -p "$build/$variant"
+    # shellcheck disable=SC2086
+    # -enable-testing lets the program reach the internal marshallers, as it does in the one-module variants.
+    swiftc -emit-library -static -emit-module -emit-module-path "$build/$variant/RuntimeTest.swiftmodule" -module-name RuntimeTest \
+      -parse-as-library -enable-testing -enable-library-evolution $flags "${cxx[@]}" -I "$build/$variant" \
+      "$swift_dir"/*.swift "$src/error_conformance.swift" -o "$build/$variant/libRuntimeTest.a"
+    # The program imports the generated module, so one line goes in front of its own imports.
+    program="$build/$variant/main.swift"
+    { echo "@testable import RuntimeTest"; cat "$src/main.swift"; } >"$program"
+    # shellcheck disable=SC2086
+    swiftc -module-name RuntimeMain $flags "${cxx[@]}" -I "$build/$variant" "$program" \
+      "$work/objs"/*.o "$build/$variant/libRuntimeTest.a" "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" \
+      "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-cxx-free-$variant"
+  done
+  echo "== [$flags] cxx-free blocking queue"
+  local i
+  for i in $(seq 1 "$mode_runs"); do
+    run_guarded env RT_QUEUE_LABEL=djinni.runtime.blocking "$build/runtime-test-cxx-free-swift"
+  done
+  echo "== [$flags] cxx-free default queue"
+  for i in $(seq 1 "$mode_runs"); do
+    run_guarded env RT_QUEUE_LABEL=djinni.call RT_DEFAULT_QUEUE=1 "$build/runtime-test-cxx-free-swift-default"
+  done
+}
+
 run_mode "-swift-version 5"
 run_mode "-swift-version 6 -strict-concurrency=complete"
+run_cxx_free "-swift-version 5"
+run_cxx_free "-swift-version 6 -strict-concurrency=complete"
 # The optimizer shortens object lifetimes, and it can show a lifetime bug that -Onone hides.
 build_objs "$work/objs-O" -O2
 run_mode "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"

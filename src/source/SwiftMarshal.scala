@@ -156,7 +156,10 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
             case MOptional => throw new AssertionError("nested optional?")
             case m => s"Optional<${f(arg)}>"
           }
-        case e: MExtern => Array(e.swift.module, e.swift.typename).filter(s => !s.isEmpty).mkString(".") + (if (e.swift.generic) args(tm) else "")
+        case e: MExtern =>
+          // The public API of --swift-cxx-free-api names the support types through DjinniSupportCore
+          val supportModule = if (spec.swiftCxxFreeApi && e.swift.module == "DjinniSupport") "DjinniSupportCore" else e.swift.module
+          Array(supportModule, e.swift.typename).filter(s => !s.isEmpty).mkString(".") + (if (e.swift.generic) args(tm) else "")
         case p: MProtobuf => p.body.swift match {
           case Some(o) => o.prefix + p.name
           case None => throw GenerateException(SwiftProtobuf.message(p.name))

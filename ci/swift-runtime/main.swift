@@ -720,30 +720,6 @@ func runSyncTypedErrorTests() throws {
     }
 }
 
-// The error types of --swift-error-type hold the C++ exception as a message, and a cancellation as code -2.
-extension CruxError: CppExceptionConvertible {
-    public init(cppException error: DjinniError) {
-        self.init(message: error.errorMessage, code: -1)
-    }
-    public init(cancellation: CancellationError) {
-        self.init(message: "cancelled", code: -2)
-    }
-}
-
-extension SyncError: CppExceptionConvertible {
-    public init(cppException error: DjinniError) {
-        self.init(message: error.errorMessage, code: -1)
-    }
-    public init(cancellation: CancellationError) {
-        self.init(message: "cancelled", code: -2)
-    }
-}
-
-// The queue of --swift-async-queue in the run of runtime.djinni.
-enum RuntimeQueues {
-    static let blocking = DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)
-}
-
 // A deadlock fails the test. The watchdog has its own thread, so it does not need a free worker of libdispatch.
 Thread.detachNewThread {
     Thread.sleep(forTimeInterval: 180)

@@ -128,6 +128,7 @@ package object generatorTools {
                    swiftErrorType: Option[String],
                    swiftInternalCxxImports: Boolean,
                    swiftSyncMethods: Seq[String],
+                   swiftCxxFreeApi: Boolean,
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],
                    kotlinSuspendWrap: Boolean,

@@ -349,6 +349,9 @@ Command line switches:
 - `--swift-internal-cxx-imports`: write `internal import` for the two C++ glue
   modules (`<module>Cxx` and `--swiftxx-base-lib-module`). The other imports do
   not change. See below.
+- `--swift-cxx-free-api`: keep the C++ types out of the public API of the
+  generated module. It needs `--swift-internal-cxx-imports` and
+  `--swift-private-in-same-module`. See below.
 - `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
 - `--swift-async-wrap <label-prefix>`: wrap the interfaces that C++ implements in
   Swift classes with `async` methods. The generator ignores the value.
@@ -409,6 +412,38 @@ Internal C++ imports (`--swift-internal-cxx-imports`):
 - A module cannot import one module at two access levels. Every other file of
   the module that imports one of these two modules must use `internal import`
   too.
+
+Public API without C++ types (`--swift-cxx-free-api`):
+
+- The public declarations of the generated module name no C++ type and no type
+  of the C++ layer of `DjinniSupport`. A marshaller, a C++ proxy, a vtable and
+  every other declaration that names a C++ type is internal.
+- Every import has an access level. The C++ glue modules and `DjinniSupport` are
+  `internal import`. `Foundation`, the extern modules such as `S12Protos`, and
+  `DjinniSupportCore` are `public import` when a public declaration of the file
+  names one of their types. An unused public import is a warning of the Swift
+  compiler, so a file imports only what it names.
+- The public declarations name the support types through `DjinniSupportCore`,
+  for example `DjinniSupportCore.DJFuture<Int32>`. `DjinniSupport` re-exports
+  `DjinniSupportCore`, so the source of an application does not change.
+- Generated enums are `@frozen`, so a client `switch` stays exhaustive when the
+  generated module has library evolution. Generated records are public structs,
+  and a client reads them as before.
+- The application needs three things:
+  - The `DjinniSupportCore` target, which builds without C++ interop. In Bazel it
+    is `//support-lib/apple:djinni-support-swift-core`.
+  - A generated module that builds with `-enable-library-evolution`. Without
+    library evolution, a client without C++ interop loads the internal C++
+    imports of the module and fails with `missing required module`.
+  - The conformance of the `--swift-error-type` record to
+    `CppExceptionConvertible` in the generated module, with
+    `public import DjinniSupportCore`. The generated code needs the conformance
+    at compile time.
+- `ci/swift-cxx-free-check.sh` proves the result: it builds the modules with
+  library evolution and a verified module interface, and it compiles a client
+  without C++ interop. The client imports the generated module and
+  `DjinniSupportCore` only. The same client fails against the same IDL generated
+  without the option.
 
 Async wrappers (`--swift-async-wrap`):
 
@@ -1112,6 +1147,7 @@ changes.
 | `--swift-out`, `--swift-module`, `--swift-private-in-same-module`, `+sw` | `swift_host`, `swift_idents`, `swift_types`, `swift_sendable`, `swift_future_field` | `swift-features/` |
 | `--swift-out` without `--swift-private-in-same-module` | `swift_types` | `swift-features/separate-module` |
 | `--swift-internal-cxx-imports` | `swift_internal_imports` | `swift-features/internal-imports`, `swift-features/internal-imports-separate`, `swift-features/internal-imports-plain` |
+| `--swift-cxx-free-api` | `swift_cxx_free_api`, `swift_cxx_free_future_field` | `swift-features/cxx-free-api`, `swift-features/cxx-free-api-future-field` |
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
 | `--swift-sync-method` | `swift_sync_listener` | `swift-features/sync-listener`, `swift-features/sync-listener-error` |
@@ -1128,7 +1164,9 @@ changes.
 | Two JNI glue sets in one library (runtime) | `two_glue` | none |
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
-`--swift-private-in-same-module`, `--swift-async-queue` without
+`--swift-private-in-same-module`, `--swift-cxx-free-api` without
+`--swift-internal-cxx-imports` or without `--swift-private-in-same-module`,
+`--swift-async-queue` without
 `--swift-async-wrap` and with a value that closes a comment,
 `--swift-sync-method` without `--swift-async-wrap`, with an interface or a
 method that does not exist, with an interface that the async wrapper does not
@@ -1180,9 +1218,13 @@ The Docker image of the pipeline has no `swiftc`, so the pipeline does not run
 them. Run them on a Mac before you merge a change to a Swift file:
 
 ```
-./ci/swift-typecheck.sh      # Swift 5, Swift 6, Swift 6 with NonisolatedNonsendingByDefault, and the whole Crux IDL with --swift-error-type
-./ci/swift-runtime-test.sh   # also --swift-legacy-records
+./ci/swift-typecheck.sh        # Swift 5, Swift 6, Swift 6 with NonisolatedNonsendingByDefault, and the whole Crux IDL with --swift-error-type
+./ci/swift-cxx-free-check.sh   # --swift-cxx-free-api: library evolution, verified interface, and a client without C++ interop
+./ci/swift-runtime-test.sh     # also --swift-legacy-records
 ```
+
+`ci/swift-runtime-test.sh` builds and runs its program with Xcode 26.5. Xcode 27
+fails in the code generator of the typed async closures of the program.
 
 ### Kotlin checks (pipeline and local)
 

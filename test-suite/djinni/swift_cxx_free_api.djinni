@@ -1,0 +1,37 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Generated with --swift-internal-cxx-imports --swift-cxx-free-api --swift-async-wrap and
+# --swift-error-type SwiftCxxFreeFailure. No public declaration of the generated module names a C++ type.
+
+swift_cxx_free_color = enum { red; green; blue; }
+
+swift_cxx_free_options = flags { loud; fast; }
+
+swift_cxx_free_failure = record {
+  message: string;
+  code: i32;
+}
+
+swift_cxx_free_item = record {
+  id: string;
+  color: swift_cxx_free_color;
+  options: swift_cxx_free_options;
+}
+
+# Swift implements this one, so the client of the generated module writes it.
+swift_cxx_free_listener = interface +sw {
+  on_item(item: swift_cxx_free_item);
+  next(value: i32): i32;
+}
+
+# C++ implements this one, so the generated files of its proxy import the C++ glue.
+swift_cxx_free_service = interface +c {
+  static create(): swift_cxx_free_service;
+  item(id: string): swift_cxx_free_item;
+  color(): swift_cxx_free_color;
+  watch(listener: swift_cxx_free_listener);
+  fetch(id: string): future<swift_cxx_free_item>;
+  find(id: string): outcome<swift_cxx_free_item, swift_cxx_free_failure>;
+  fail(): outcome<i32, swift_cxx_free_failure>;
+}

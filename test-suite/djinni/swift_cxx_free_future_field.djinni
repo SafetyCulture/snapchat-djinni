@@ -1,0 +1,8 @@
+@extern "../../support-lib/future.yaml"
+
+# Generated with --swift-internal-cxx-imports --swift-cxx-free-api. The C++ glue of a record cannot copy a future,
+# so this case has no glue and the typecheck puts it in the module of the cxx-free-api case.
+swift_cxx_free_pending = record {
+  value: future<i32>;
+  label: string;
+}

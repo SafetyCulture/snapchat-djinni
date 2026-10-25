@@ -172,6 +172,8 @@ single_case_mods "$work/internal-imports-single-mods" internal-imports
 single_case_mods "$work/internal-imports-mods" internal-imports-separate
 single_case_mods "$work/sync-listener-mods" sync-listener
 single_case_mods "$work/sync-listener-error-mods" sync-listener-error
+# The cxx-free cases have their own module, because they write an access level on every import.
+single_case_mods "$work/cxx-free-mods" cxx-free-api
 # The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
 SWIFTXX_NAMESPACE='djinni_options::nested' single_case_mods "$work/nested-mods" nested-ns
 
@@ -297,6 +299,14 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/internal-imports-single-mods" "$cases/internal-imports"/swift/*.swift
   echo "TEST-SUITE INTERNAL-IMPORTS SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite cxx-free-api (--swift-internal-cxx-imports, --swift-cxx-free-api)"
+  local cf="$build/cxx-free"
+  mkdir -p "$cf"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$cf/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/cxx-free-mods" "$cases/cxx-free-api"/swift/*.swift \
+    "$cases/cxx-free-api-future-field"/swift/*.swift "$repo_root/ci/swift-cxx-free/ErrorConformance.swift"
+  echo "TEST-SUITE CXX-FREE-API SWIFT TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite internal-imports-separate (--swift-internal-cxx-imports)"
   local im="$build/internal-imports" ipublic=() iprivate=()
   mkdir -p "$im"
@@ -356,13 +366,13 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error; do
+for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error cxx-free-api; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
-echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE, NESTED-NS, INTERNAL-IMPORTS, INTERNAL-IMPORTS-SEPARATE, SYNC-LISTENER AND SYNC-LISTENER-ERROR C++ GLUE SYNTAX OK"
+echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE, NESTED-NS, INTERNAL-IMPORTS, INTERNAL-IMPORTS-SEPARATE, SYNC-LISTENER, SYNC-LISTENER-ERROR AND CXX-FREE-API C++ GLUE SYNTAX OK"
 
 # An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
 # The other languages must still compile next to the Swift files.

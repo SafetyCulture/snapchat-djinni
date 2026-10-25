@@ -317,6 +317,8 @@ swift_labels_relative="djinni/swift_labels.djinni"
 swift_recursive_relative="djinni/swift_recursive.djinni"
 swift_const_strings_relative="djinni/swift_const_strings.djinni"
 swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
+swift_cxx_free_api_relative="djinni/swift_cxx_free_api.djinni"
+swift_cxx_free_future_field_relative="djinni/swift_cxx_free_future_field.djinni"
 swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
 swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
@@ -617,7 +619,34 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/sync-listener-error/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_sync_listener_relative" \
+    --idl "$swift_sync_listener_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-error-type SwiftCxxFreeFailure \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_api_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-future-field/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-future-field/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    \
+    --idl "$swift_cxx_free_future_field_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -662,8 +691,64 @@ if grep -rh "^internal import " "$internal_imports" | grep -vE "^internal import
     exit 1
 fi
 
-# --swift-sync-method adds the synchronous form to the listed methods only. The listed methods take a listener whose
-# interface has +sw; the other methods with a listener get no form, also the future method.
+# --swift-cxx-free-api keeps the C++ types out of the public API of the generated module. The compiler proves the rest
+# (ci/swift-typecheck.sh): the module keeps its public API without C++ interop in the client.
+cxx_free="$temp_out/swift-features/cxx-free-api/swift"
+if grep -rhE "^import " "$cxx_free"; then
+    echo "The cxx-free-api case has an import without an access level." 1>&2
+    exit 1
+fi
+if grep -rhE "^public " "$cxx_free" | grep -E "djinni\.swift|DjinniSupport\.|DjinniSupportCxx\.|TestSuiteCxx\."; then
+    echo "A public declaration of the cxx-free-api case names a C++ type." 1>&2
+    exit 1
+fi
+# A marshaller names a C++ type, so it and its members are internal.
+if grep -rhE "^public (enum|typealias) \w+Marshaller" "$cxx_free"; then
+    echo "The cxx-free-api case made a marshaller public." 1>&2
+    exit 1
+fi
+if ! grep -qxF "@frozen public enum SwiftCxxFreeColor: Int32, Codable, Sendable {" "$cxx_free/SwiftCxxFreeColor.swift"; then
+    echo "The cxx-free-api case does not make its enum frozen." 1>&2
+    exit 1
+fi
+if ! grep -qF "DjinniSupportCore.DJFuture<Int32>" "$temp_out/swift-features/cxx-free-api-future-field/swift/SwiftCxxFreePending.swift"; then
+    echo "The cxx-free future-field case does not name the future type through DjinniSupportCore." 1>&2
+    exit 1
+fi
+if grep -rhE "^import " "$temp_out/swift-features/cxx-free-api-future-field/swift"; then
+    echo "The cxx-free future-field case has an import without an access level." 1>&2
+    exit 1
+fi
+# The flag needs its two companion flags: the imports of the C++ modules and one module for all Swift files.
+for cxx_free_missing in swift-internal-cxx-imports swift-private-in-same-module; do
+    case "$cxx_free_missing" in
+        swift-internal-cxx-imports) cxx_free_flags="--swift-private-in-same-module" ;;
+        *) cxx_free_flags="--swift-internal-cxx-imports" ;;
+    esac
+    cxx_free_log="$temp_out/cxx-free-without-$cxx_free_missing.log"
+    cxx_free_out="$temp_out_relative/swift-features/cxx-free-without-$cxx_free_missing"
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+        --swift-out "$cxx_free_out/swift" \
+        --swift-module TestSuite \
+        $cxx_free_flags \
+        --swift-cxx-free-api \
+        --idl "$swift_cxx_free_api_relative") >"$cxx_free_log" 2>&1; then
+        echo "The generator accepted --swift-cxx-free-api without --$cxx_free_missing." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "Error: --swift-cxx-free-api needs --$cxx_free_missing." "$cxx_free_log"; then
+        echo "Missing error message for --swift-cxx-free-api without --$cxx_free_missing." 1>&2
+        cat "$cxx_free_log" 1>&2
+        exit 1
+    fi
+    if [ -e "$base_dir/$cxx_free_out" ]; then
+        echo "The generator wrote files for a rejected flag." 1>&2
+        exit 1
+    fi
+done
+
+# --swift-sync-method adds the synchronous form to the listed methods only. The two listed methods take a listener
+# whose interface has +sw; the other two methods with a listener get no form, also the future method.
 sync_forms() { # <case>
     grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | sort
 }
