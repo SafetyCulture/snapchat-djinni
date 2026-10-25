@@ -419,15 +419,19 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
 
   private def returnsFuture(m: Interface.Method): Boolean = m.ret.map(_.resolved).exists(marshal.isFuture)
 
-  // The type that a generated signature names for the result: the value of a future or an outcome that the form
+  // The type that a generated signature names for the result: the value that an async wrapper or a typed method
   // unwraps, and the type itself otherwise.
   private def signatureResult(i: Interface, m: Interface.Method, wrap: Boolean): Option[MExpr] = m.ret.map(_.resolved) match {
     case None => None
     case Some(tm) =>
-      val inner = if (marshal.isFuture(tm) && marshal.isOutcome(tm.args.head)) Some(tm.args.head.args.head)
-                  else if (marshal.isFuture(tm) || marshal.isOutcome(tm)) Some(tm.args.head)
-                  else Some(tm)
-      if ((typed(i, m) || wrap) && (marshal.isFuture(tm) || marshal.isOutcome(tm))) inner else Some(tm)
+      val outer = marshal.isFuture(tm) || marshal.isOutcome(tm)
+      if (wrap && !typed(i, m) && outer) {
+        // The wrapper returns the value of a future or of an outcome, and its caller handles the error
+        Some(tm.args.head)
+      } else if (typed(i, m) && outer) {
+        // A typed method returns the value and throws the error type
+        if (marshal.isFuture(tm) && marshal.isOutcome(tm.args.head)) Some(tm.args.head.args.head) else Some(tm.args.head)
+      } else Some(tm)
   }
 
   // The return type of a method with the typed error: the value of an outcome or a future.

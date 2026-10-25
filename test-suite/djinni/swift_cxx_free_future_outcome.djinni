@@ -1,0 +1,12 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+@extern "vendor/third-party/swift_models_error.yaml"
+
+# Generated with --swift-internal-cxx-imports --swift-cxx-free-api and --swift-async-wrap, without
+# --swift-error-type. The async wrapper of a future<outcome<T, E>> returns the outcome, so its signature and its file
+# name the error type of the extern module.
+
+swift_cxx_free_lookup = interface +c {
+  static create(): swift_cxx_free_lookup;
+  ext(): future<outcome<i32, extern_models_error>>;
+}

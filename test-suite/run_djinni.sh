@@ -319,6 +319,7 @@ swift_const_strings_relative="djinni/swift_const_strings.djinni"
 swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
 swift_cxx_free_api_relative="djinni/swift_cxx_free_api.djinni"
 swift_cxx_free_future_field_relative="djinni/swift_cxx_free_future_field.djinni"
+swift_cxx_free_future_outcome_relative="djinni/swift_cxx_free_future_outcome.djinni"
 swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
 swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
@@ -646,7 +647,22 @@ fi
     --swift-internal-cxx-imports \
     --swift-cxx-free-api \
     \
-    --idl "$swift_cxx_free_future_field_relative" \
+    --idl "$swift_cxx_free_future_field_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swift-cxx-free-api \
+    --swift-async-wrap "djinni.testsuite" \
+    --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_cxx_free_future_outcome_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -717,6 +733,16 @@ if ! grep -qF "DjinniSupportCore.DJFuture<Int32>" "$temp_out/swift-features/cxx-
 fi
 if grep -rhE "^import " "$temp_out/swift-features/cxx-free-api-future-field/swift"; then
     echo "The cxx-free future-field case has an import without an access level." 1>&2
+    exit 1
+fi
+# The async wrapper of a future<outcome<T, E>> returns the outcome, so its file imports the module of E.
+cxx_free_outcome="$temp_out/swift-features/cxx-free-api-future-outcome/swift"
+if ! grep -qxF "public import Models" "$cxx_free_outcome/SwiftCxxFreeLookup.swift"; then
+    echo "The cxx-free future-outcome case does not import the module of the error type." 1>&2
+    exit 1
+fi
+if ! grep -qF "async throws -> Swift.Result<Int32, Models.CruxError>" "$cxx_free_outcome/SwiftCxxFreeLookup.swift"; then
+    echo "The cxx-free future-outcome case does not return the outcome of the future." 1>&2
     exit 1
 fi
 # The flag needs its two companion flags: the imports of the C++ modules and one module for all Swift files.
