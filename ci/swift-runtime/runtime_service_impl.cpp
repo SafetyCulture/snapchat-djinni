@@ -7,6 +7,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 #include <memory>
+#include <stdexcept>
 
 namespace {
 
@@ -16,6 +17,50 @@ public:
     int32_t call_listener(const std::shared_ptr<rt::RuntimeListener>& listener, int32_t value) override {
         return listener->on_value(value);
     }
+    // Each call returns the type that C++ caught, so the test reads it on the Swift side.
+    std::string call_rethrowing_int(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        try {
+            listener->rethrowing_int();
+            return "no error";
+        } catch (int value) {
+            return "int " + std::to_string(value);
+        } catch (...) {
+            return "other";
+        }
+    }
+    std::string call_rethrowing_argument(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        try {
+            listener->rethrowing_argument();
+            return "no error";
+        } catch (const std::invalid_argument& error) {
+            return std::string("invalid_argument ") + error.what();
+        } catch (...) {
+            return "other";
+        }
+    }
+    std::string call_throwing_message(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        try {
+            listener->throwing_message();
+            return "no error";
+        } catch (const std::exception& error) {
+            return std::string("exception ") + error.what();
+        } catch (...) {
+            return "other";
+        }
+    }
+    std::string call_failing_future(const std::shared_ptr<rt::RuntimeListener>& listener) override {
+        auto future = listener->failing_future();
+        try {
+            future.get();
+            return "no error";
+        } catch (int value) {
+            return "int " + std::to_string(value);
+        } catch (...) {
+            return "other";
+        }
+    }
+    int32_t raise_int() override { throw 42; }
+    int32_t raise_argument() override { throw std::invalid_argument("bad argument"); }
     void keep_listener(const std::shared_ptr<rt::RuntimeListener>& listener) override { _kept = listener; }
     int32_t call_kept_listener(int32_t value) override { return _kept ? _kept->on_value(value) : -1; }
     std::shared_ptr<rt::RuntimeService> same_service() override { return shared_from_this(); }
