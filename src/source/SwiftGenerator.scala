@@ -57,6 +57,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   // With --swift-cxx-free-api a marshaller names C++ types, so it stays internal to the generated module.
   private def publicMarshaller: String = if (spec.swiftCxxFreeApi) "" else "public "
 
+  // The body names a type of DjinniSupportCore outside a doc comment. An unused public import is a warning, and the doc
+  // comment of an async wrapper names the module.
+  private def namesCoreModule(body: String): Boolean =
+    body.split('\n').exists(line => line.contains(coreSupportModule + ".") && !line.trim.startsWith("*"))
+
   // DjinniSupportCore is imported only when a declaration names its types, because an unused public import is a warning.
   private def importModules(refs: Iterable[String], namesCore: Boolean): Seq[String] = {
     val modules = refs.toSet - coreSupportModule
@@ -74,7 +79,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         val body = new java.io.StringWriter()
         f(new IndentWriter(body))
         val text = body.toString
-        val modules = importModules(refs ++ bodyModules, text.contains(coreSupportModule + "."))
+        val modules = importModules(refs ++ bodyModules, namesCoreModule(text))
         if (modules.nonEmpty) {
           modules.foreach(s => w.wl(importLine(s, publicLevel = !bodyModules.contains(s))))
           w.wl
@@ -99,7 +104,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
         val body = new java.io.StringWriter()
         f(new IndentWriter(body))
         val text = body.toString
-        val namesCore = text.contains(coreSupportModule + ".")
+        val namesCore = namesCoreModule(text)
         val publicModules = publicRefs.toSet.filter(m => m != coreSupportModule || namesCore)
         val modules = importModules(refs ++ bodyRefs, namesCore)
         if (modules.nonEmpty) {
@@ -196,8 +201,11 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
       for (r <- marshal.references(m, name)) r match {
         // don't import empty module name (e.g. types defined in stdlib) or same module as the current one
         case ImportRef(arg) =>
-          // The public API of --swift-cxx-free-api names the support types through DjinniSupportCore
-          val module = if (spec.swiftCxxFreeApi && arg == "DjinniSupport") coreSupportModule else arg
+          // The same mapping as the type name, so the import matches the module that a signature names
+          val module = m match {
+            case e: MExtern => SwiftSupport.publicModule(spec.swiftCxxFreeApi, e.swift.module, e.swift.typename)
+            case _ => arg
+          }
           if (module.nonEmpty && module != spec.swiftModule) { swiftImports.add(module) }
         case PrivateImportRef(arg) => if (arg.nonEmpty && arg != spec.swiftModule) { privateImports.add(arg) }
         case _ =>
@@ -490,7 +498,7 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
 
   private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
     val name = marshal.typename(ident, i)
-    val queue = spec.swiftAsyncQueue.fold("a new serial queue (`DjinniSupport.djinniCallQueue()`)")(e => s"`$e`, which this file evaluates once")
+    val queue = spec.swiftAsyncQueue.fold(s"a new serial queue (`${SwiftSupport.callQueueModule(spec.swiftCxxFreeApi)}.djinniCallQueue()`)")(e => s"`$e`, which this file evaluates once")
     val cancelled = errorType.fold("CancellationError")(e => s"$e(cancellation:)")
     val contract = Seq(
       s" Each async method runs its blocking C++ call on $queue. Calls to one object can run at the same time.",

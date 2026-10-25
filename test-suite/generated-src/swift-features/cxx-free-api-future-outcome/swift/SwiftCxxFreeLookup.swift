@@ -9,7 +9,7 @@ public import Models
  * --swift-error-type. The async wrapper of a future<outcome<T, E>> returns the outcome, so its signature and its file
  * name the error type of the extern module.
  *
- * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupport.djinniCallQueue()`). Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupportCore.djinniCallQueue()`). Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws CancellationError and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with CancellationError. The C++ future is not cancelled; its late result is dropped.
  */

@@ -814,6 +814,11 @@ if ! grep -qF "public static func count() throws(Models.CruxError) -> Int32" "$c
     echo "The cxx-free plain case does not throw the record from a static method." 1>&2
     exit 1
 fi
+# A client of the option imports DjinniSupportCore, so the doc comment names that module.
+if ! grep -qF "DjinniSupportCore.djinniCallQueue()" "$cxx_free/SwiftCxxFreeService.swift"; then
+    echo "The cxx-free-api case names the C++ layer in the doc comment of the async wrapper." 1>&2
+    exit 1
+fi
 # The flag needs its two companion flags: the imports of the C++ modules and one module for all Swift files.
 for cxx_free_missing in swift-internal-cxx-imports swift-private-in-same-module; do
     case "$cxx_free_missing" in

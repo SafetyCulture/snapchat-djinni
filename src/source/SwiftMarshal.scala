@@ -54,6 +54,17 @@ object SwiftIdent {
   }
 }
 
+// The imports and the doc names of --swift-cxx-free-api. DjinniSupportCore owns the future type, and the C++ layer
+// stays in DjinniSupport.
+object SwiftSupport {
+  // The module of the one DjinniSupport type that a public declaration names.
+  def publicModule(enabled: Boolean, module: String, typename: String): String =
+    if (enabled && module == "DjinniSupport" && typename == "DJFuture") "DjinniSupportCore" else module
+
+  // The module of djinniCallQueue, which only the doc comment of an async wrapper names.
+  def callQueueModule(enabled: Boolean): String = if (enabled) "DjinniSupportCore" else "DjinniSupport"
+}
+
 class SwiftMarshal(spec: Spec) extends Marshal(spec) {
   override def typename(tm: MExpr): String = toSwiftType(tm, None)
   def typename(name: String, ty: TypeDef): String = idSwift.ty(name)
@@ -157,8 +168,7 @@ class SwiftMarshal(spec: Spec) extends Marshal(spec) {
             case m => s"Optional<${f(arg)}>"
           }
         case e: MExtern =>
-          // The public API of --swift-cxx-free-api names the support types through DjinniSupportCore
-          val supportModule = if (spec.swiftCxxFreeApi && e.swift.module == "DjinniSupport") "DjinniSupportCore" else e.swift.module
+          val supportModule = SwiftSupport.publicModule(spec.swiftCxxFreeApi, e.swift.module, e.swift.typename)
           Array(supportModule, e.swift.typename).filter(s => !s.isEmpty).mkString(".") + (if (e.swift.generic) args(tm) else "")
         case p: MProtobuf => p.body.swift match {
           case Some(o) => o.prefix + p.name

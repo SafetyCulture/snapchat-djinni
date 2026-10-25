@@ -5,7 +5,7 @@ internal import DjinniSupport
 public import Models
 
 /**
- * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupport.djinniCallQueue()`). Calls to one object can run at the same time.
+ * Each async method runs its blocking C++ call on a new serial queue (`DjinniSupportCore.djinniCallQueue()`). Calls to one object can run at the same time.
  * A task that is already cancelled when a method starts throws Models.CruxError(cancellation:) and does not call C++. A task that waits
  * for a C++ future resumes once, with the result or with Models.CruxError(cancellation:). The C++ future is not cancelled; its late result is dropped.
  */
