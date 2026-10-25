@@ -172,7 +172,7 @@ run_guarded() { # <command> [arguments]
   [ "$status" -eq 0 ] || exit "$status"
 }
 
-# Swift: DjinniSupport as a static library, then the program. Each mode has its own build.
+# Swift: DjinniSupportCore and DjinniSupport as static libraries, then the program. Each mode has its own build.
 # RT_QUEUE_LABEL is the label of the queue that runs the blocking C++ calls of runtime.djinni.
 run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   local flags=$1 objs=${2:-$work/objs} mode_runs=${3:-$runs} build
@@ -180,6 +180,9 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
   echo "== [$flags]"
+  # shellcheck disable=SC2086
+  swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupportCore.swiftmodule" -module-name DjinniSupportCore \
+    -parse-as-library -enable-library-evolution $flags "$repo_root"/support-lib/swift-core/*.swift -o "$build/libDjinniSupportCore.a"
   # -enable-testing lets main.swift reach the internal proxy caches with @testable import
   # shellcheck disable=SC2086
   swiftc -emit-library -static -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
@@ -188,7 +191,7 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   for variant in swift swift-default; do
     # shellcheck disable=SC2086
     swiftc -module-name RuntimeTest $flags "${cxx[@]}" "$out/$variant"/*.swift "$src/main.swift" \
-      "$objs"/*.o "$build/libDjinniSupport.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-$variant"
+      "$objs"/*.o "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-$variant"
   done
   local i
   for i in $(seq 1 "$mode_runs"); do

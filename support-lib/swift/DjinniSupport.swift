@@ -1,4 +1,5 @@
 import DjinniSupportCxx
+@_spi(DjinniCxx) import DjinniSupportCore
 import Foundation
 
 // Define a C++ vtable like data structure for dispatching proxy methods to
@@ -347,24 +348,6 @@ public func ctxPtr<I> (_ s: I, _ vtbl: Vtbl<I>) -> UnsafeMutableRawPointer {
     return Unmanaged.passRetained(ctx).toOpaque() // SAFETY: the C++ ProtocolWrapper owns this retain, and the dispatch with index -1 releases it
 }
 
-// Wraps C++ ErrorValue as a Swift throwable Error
-public final class DjinniError: Error, @unchecked Sendable { // SAFETY: `wrapped` is immutable, and the `exception_ptr` inside it is only rethrown, which is thread-safe
-    let wrapped: djinni.swift.ErrorValue
-    init(_ wrapped: djinni.swift.ErrorValue) {
-        self.wrapped = wrapped
-    }
-    public init(_ msg: String) {
-        self.wrapped = djinni.swift.ErrorValue(std.string(msg))
-    }
-    public var errorMessage: String { return String(wrapped.msg) }
-}
-
-// Logs and `String(describing:)` show the message of the C++ exception, not only the type name
-extension DjinniError: CustomStringConvertible, LocalizedError {
-    public var description: String { return "DjinniError: \(errorMessage)" }
-    public var errorDescription: String? { return errorMessage }
-}
-
 // Called by stubs to convert C++ exceptions stored as ErrorValue to Swift errors
 public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws {
     if (djinni.swift.isError(ret)) {
@@ -372,38 +355,20 @@ public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws 
     }
 }
 
-/// The error type of `--swift-error-type` conforms to this protocol. Every method that Swift calls into C++ throws the
-/// error type. The application decides how the error type holds each failure:
-/// - `init(cppException:)`: C++ threw, rejected a future, or dropped a promise. `DjinniError.errorMessage` is the message
-///   of the C++ exception.
-/// - `init(cancellation:)`: the task was cancelled before the C++ call, or while it waited for a C++ future.
-public protocol CppExceptionConvertible: Error {
-    init(cppException error: DjinniError)
-    init(cancellation: CancellationError)
+// Keeps the C++ error value alive, so a rethrow to C++ finds its exception.
+final class ErrorValueBox: @unchecked Sendable {
+    let value: djinni.swift.ErrorValue
+    init(_ value: djinni.swift.ErrorValue) { self.value = value }
 }
 
-// An error of a C++ call becomes the error type: an error of an outcome stays as it is.
-func djinniTypedError<E: CppExceptionConvertible>(_ error: any Error) -> E {
-    switch error {
-    case let typed as E: return typed
-    case let cancellation as CancellationError: return E(cancellation: cancellation)
-    case let cpp as DjinniError: return E(cppException: cpp)
-    default: return E(cppException: DjinniError(String(describing: error)))
+extension DjinniError {
+    convenience init(_ wrapped: djinni.swift.ErrorValue) {
+        self.init(String(wrapped.msg), payload: ErrorValueBox(wrapped))
     }
-}
 
-/// Runs a C++ call on the thread of the caller and throws its errors as `E`.
-public func djinniTyped<T, E: CppExceptionConvertible>(_ type: E.Type, _ call: () throws -> T) throws(E) -> T {
-    do {
-        return try call()
-    } catch {
-        let typed: E = djinniTypedError(error)
-        throw typed
+    // The boxed C++ value, or a new value of the message alone.
+    var wrapped: djinni.swift.ErrorValue {
+        if let box = payload as? ErrorValueBox { return box.value }
+        return djinni.swift.ErrorValue(std.string(errorMessage))
     }
-}
-
-// Carries a value across a concurrency boundary when the caller guarantees that the use is safe.
-public struct UncheckedSendable<Value>: @unchecked Sendable { // SAFETY: the caller of the initialiser guarantees that `value` is used in one place at a time
-    public let value: Value
-    public init(_ value: Value) { self.value = value }
 }

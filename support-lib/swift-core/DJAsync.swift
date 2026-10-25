@@ -1,4 +1,4 @@
-import Dispatch
+public import Dispatch
 
 // The async wrappers of --swift-async-wrap call these functions. A blocking C++ call that runs is not stopped.
 

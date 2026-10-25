@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Typechecks the generated Swift for the Crux assets IDL against support-lib/swift and
-# syntax-checks the generated Swift/C++ glue.
+# Typechecks the generated Swift for the Crux assets IDL against support-lib/swift-core and
+# support-lib/swift and syntax-checks the generated Swift/C++ glue.
 #
 # The script generates Swift and Swift/C++ glue with the built generator. It compiles the generated Swift to SIL
 # (`swiftc -emit-sil`) in three modes: Swift 5, Swift 6 with strict concurrency checking set to complete, and Swift 6
@@ -205,6 +205,10 @@ swift_pass() { # <swiftc flags>
   # DjinniSupport is a package with its own settings; only the modules that use the generated code turn the
   # upcoming feature on, so its nonisolated members stay concurrent.
   local support_flags=${flags/ -enable-upcoming-feature NonisolatedNonsendingByDefault/}
+  echo "== [$flags] DjinniSupportCore (support-lib/swift-core, $support_flags)"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$build/DjinniSupportCore.swiftmodule" -module-name DjinniSupportCore \
+    -parse-as-library -enable-library-evolution $support_flags "$repo_root"/support-lib/swift-core/*.swift
   echo "== [$flags] DjinniSupport (support-lib/swift, $support_flags)"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/DjinniSupport.swiftmodule" -module-name DjinniSupport \
@@ -232,7 +236,7 @@ swift_pass() { # <swiftc flags>
   echo "SWIFT ASYNC TYPECHECK OK [$flags]"
   # The S12Protos module of the whole Crux IDL has more messages, so it has its own directory.
   mkdir -p "$build/error"
-  cp "$build"/DjinniSupport.* "$build/error/"
+  cp "$build"/DjinniSupport.* "$build"/DjinniSupportCore.* "$build/error/"
   swiftc -emit-module -emit-module-path "$build/error/S12Protos.swiftmodule" -module-name S12Protos \
     -parse-as-library -swift-version 5 -I "$spb_mod" "$work/S12ProtosErrorStubs.swift" "$work"/*.pb.swift
   local errcxx=("${cxx[@]/#$build/$build/error}")
@@ -319,8 +323,8 @@ swift_pass "-swift-version 6 -strict-concurrency=complete"
 swift_pass "-swift-version 6 -strict-concurrency=complete -enable-upcoming-feature NonisolatedNonsendingByDefault"
 
 # The Swift runtime never aborts the process: no try!, fatalError, as!, or force unwrap
-if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift; then
-  echo "FAIL: a crash construct in support-lib/swift" >&2
+if grep -nE 'try!|fatalError|as!|[]A-Za-z0-9_)]!([^=]|$)' "$repo_root"/support-lib/swift/*.swift "$repo_root"/support-lib/swift-core/*.swift; then
+  echo "FAIL: a crash construct in support-lib/swift or support-lib/swift-core" >&2
   exit 1
 fi
 echo "NO CRASH CONSTRUCTS OK"

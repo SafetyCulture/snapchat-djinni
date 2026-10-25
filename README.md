@@ -333,9 +333,12 @@ For Swift, Djinni generates:
 - Swift files named `<Type>+Private.swift` with the marshalling code
 - C++ glue code that the Swift code calls (`--swiftxx-out`)
 
-The runtime is in `support-lib/swift` (module `DjinniSupport`) and
-`support-lib/swiftxx` (C++ module `DjinniSupportCxx`). `support-lib/apple` is a
-separate Bazel module that supplies SwiftProtobuf.
+The runtime is in `support-lib/swift-core` (module `DjinniSupportCore`),
+`support-lib/swift` (module `DjinniSupport`) and `support-lib/swiftxx` (C++ module
+`DjinniSupportCxx`). `DjinniSupportCore` holds the declarations without C++ and builds
+with library evolution. `DjinniSupport` holds the C++ marshalling layer, depends on
+`DjinniSupportCore`, and re-exports it. `support-lib/apple` is a separate Bazel module
+that supplies SwiftProtobuf.
 
 Command line switches:
 
@@ -593,9 +596,9 @@ Three scripts check the Swift support. They read the Crux IDL from
   It also compiles the Java, the JNI C++ and the Objective-C++ output of the `+sw`
   host case (`javac`, `clang++ -fsyntax-only`), so the other languages still
   compile next to the Swift files.
-  - The `NonisolatedNonsendingByDefault` pass builds `DjinniSupport` without the
-    feature, because `DjinniSupport` is a package with its own settings and only
-    the modules that use the generated code turn the feature on. The pass proves
+  - The `NonisolatedNonsendingByDefault` pass builds `DjinniSupportCore` and
+    `DjinniSupport` without the feature, because both are packages with their own
+    settings and only the modules that use the generated code turn the feature on. The pass proves
     that the generated code and its callers compile in this mode: the test-suite
     files include callers of the async wrappers on the main actor and on an
     actor (`ci/swift-typecheck/AsyncCallers.swift`). It does not prove that

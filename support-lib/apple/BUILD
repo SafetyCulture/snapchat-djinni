@@ -18,6 +18,14 @@ cc_library(
 )
 
 swift_library(
+    name = "djinni-support-swift-core",
+    srcs = ["@djinni_rules//support-lib:swift-core-sources"],
+    copts = ["-enable-library-evolution"],
+    module_name = "DjinniSupportCore",
+    visibility = ["//visibility:public"],
+)
+
+swift_library(
     name = "djinni-support-swift",
     srcs = ["@djinni_rules//support-lib:swift-sources"],
     copts = [
@@ -28,6 +36,7 @@ swift_library(
     module_name = "DjinniSupport",
     visibility = ["//visibility:public"],
     deps = [
+        ":djinni-support-swift-core",
         ":djinni-support-swiftxx",
         "@apple_swift_protobuf//:swift-protobuf",
     ],

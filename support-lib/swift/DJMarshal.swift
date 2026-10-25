@@ -1,4 +1,5 @@
 import DjinniSupportCxx
+import DjinniSupportCore
 import Foundation
 
 // Common interface for all Swift type marshallers

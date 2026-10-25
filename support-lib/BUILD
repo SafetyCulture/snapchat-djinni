@@ -87,6 +87,12 @@ filegroup(
 )
 
 filegroup(
+    name = "swift-core-sources",
+    srcs = glob(["swift-core/*.swift"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
     name = "swiftxx-headers",
     srcs = glob(["swiftxx/*.hpp"]),
     visibility = ["//visibility:public"],
