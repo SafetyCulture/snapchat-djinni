@@ -51,6 +51,7 @@ out="$work/out"
   --cpp-out "$out/cpp" --cpp-namespace rt \
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-async-queue RuntimeQueues.blocking \
+  --swift-sync-method runtime_async.register_listener \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
 # The error type has its own IDL: every method that Swift calls into C++ throws it.
@@ -58,6 +59,8 @@ out="$work/out"
   --cpp-out "$out/cpp" --cpp-namespace rt \
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-error-type CruxError \
+  --swift-sync-method error_service.register_listener \
+  --swift-sync-method error_service.register_listener_failing \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime_error.djinni)
 # Without the async wrappers the protocol methods throw the error type.
@@ -93,9 +96,37 @@ done
 (cd "$src" && java -jar "$jar" \
   --cpp-out "$work/default/cpp" --cpp-namespace rt \
   --swift-out "$work/default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
+  --swift-sync-method runtime_async.register_listener \
   --idl runtime.djinni)
 cp -R "$out/swift" "$out/swift-default"
 cp "$work"/default/swift/*.swift "$out/swift-default/"
+
+# --swift-sync-method gives the listed registrations a synchronous form. The future method with a +sw parameter that
+# is not listed gets none.
+now_forms() { grep -hoE "public func [A-Za-z0-9]+Now\(" "$1" | sort; }
+if [ "$(now_forms "$out/swift/RuntimeAsync.swift")" != "public func registerListenerNow(" ]; then
+  echo "FAIL: RuntimeAsync does not have the one synchronous form that is listed." >&2
+  now_forms "$out/swift/RuntimeAsync.swift" >&2
+  exit 1
+fi
+if ! grep -qF "return try djinniProxy.registerListener(listener)" "$out/swift/RuntimeAsync.swift"; then
+  echo "FAIL: the synchronous registration does not call the proxy on the thread of the caller." >&2
+  exit 1
+fi
+if [ "$(now_forms "$out/swift/ErrorService.swift")" != "public func registerListenerFailingNow(
+public func registerListenerNow(" ]; then
+  echo "FAIL: ErrorService does not have the two synchronous forms that are listed." >&2
+  now_forms "$out/swift/ErrorService.swift" >&2
+  exit 1
+fi
+if ! grep -qF "public func registerListenerNow(_ listener: RuntimeTest.ErrorListener) throws(RuntimeTest.CruxError) -> Int32 {" "$out/swift/ErrorService.swift"; then
+  echo "FAIL: the synchronous registration does not throw the error type." >&2
+  exit 1
+fi
+if ! grep -qF "return try DjinniSupport.djinniTyped(RuntimeTest.CruxError.self) { try djinniProxy.registerListener(listener) }" "$out/swift/ErrorService.swift"; then
+  echo "FAIL: the synchronous registration with the error type does not call the proxy directly." >&2
+  exit 1
+fi
 
 # Modules
 mods="$work/mods"; build="$work/build"

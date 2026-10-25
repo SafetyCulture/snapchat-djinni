@@ -330,12 +330,19 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   // The Swift type of the --swift-error-type record, with its module.
   private var errorType: Option[String] = None
 
+  // The IDL methods of each interface that get a synchronous form (--swift-sync-method).
+  private var syncMethods: Map[String, Set[String]] = Map.empty
+
   override def generate(idl: Seq[TypeDecl]) {
     errorType = spec.swiftErrorType.map(name => idl.collectFirst {
       case td: InternTypeDecl if td.body.isInstanceOf[Record] && idSwift.ty(td.ident.name) == name => marshal.fqTypename(td.ident.name, td.body)
       case td: ExternTypeDecl if td.body.isInstanceOf[Record] && swiftBlock(td, "typename").contains(name) =>
         swiftBlock(td, "module").fold(name)(module => s"$module.$name")
     }.getOrElse(name))
+    syncMethods = spec.swiftSyncMethods.flatMap(_.split("\\.", 2) match {
+      case Array(interface, method) => Some((interface, method))
+      case _ => None
+    }).groupBy(_._1).map { case (interface, pairs) => interface -> pairs.map(_._2).toSet }
     super.generate(idl)
   }
 
@@ -365,6 +372,39 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
     w.nested { body(w) }
     w.wl("}" + (if (returnsOutcome(m)) ".get()" else ""))
   }
+
+  // The arguments of a call that runs on the thread of the caller: the parameters, with no sendable box.
+  private def directArguments(m: Interface.Method): String = {
+    m.params.view.zipWithIndex.map { case (p, index) =>
+      val label = if (index == 0) "" else s"${SwiftIdent.label(idSwift.local(p.ident))}: "
+      label + internalName(m, p)
+    }.mkString(", ")
+  }
+
+  // A listed method also gets a synchronous form. It calls C++ on the thread of the caller, so it suits a
+  // registration that returns at once.
+  private def writeSyncWrapperMethod(w: IndentWriter, m: Interface.Method) {
+    w.wl
+    val sentence = " The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once."
+    writeMethodDoc(w, m, idSwift.local, if (m.doc.lines.isEmpty) Seq(sentence) else Seq("", sentence))
+    w.w(s"public func ${SwiftSyncMethods.syncName(idSwift.method, m)}(${paramList(m)})")
+    val ret = m.ret.map(_.resolved)
+    errorType match {
+      case Some(e) => w.w(s" throws($e) -> ${typedReturnType(m)}")
+      case None if ret.exists(marshal.isOutcome) => w.w(s" throws -> ${marshal.fqParamType(ret.get.args.head)}")
+      case None => w.w(s" throws -> ${marshal.fqReturnType(m.ret)}")
+    }
+    w.braced {
+      val call = s"djinniProxy.${idSwift.method(m.ident)}(${directArguments(m)})"
+      // An outcome gives its value and throws its error, as it does in the async form.
+      val get = if (returnsOutcome(m)) ".get()" else ""
+      errorType match {
+        case Some(e) => w.wl(s"return try DjinniSupport.djinniTyped($e.self) { try $call }$get")
+        case None => w.wl(s"return try $call$get")
+      }
+    }
+  }
+
   private def writeAsyncWrapper(w: IndentWriter, ident: Ident, doc: Doc, i: Interface) {
     val name = marshal.typename(ident, i)
     val queue = spec.swiftAsyncQueue.fold("a new serial queue (`DjinniSupport.djinniCallQueue()`)")(e => s"`$e`, which this file evaluates once")
@@ -404,6 +444,9 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
           // Without the error type, the error of a future of an outcome stays in the Result value.
           val get = if (ret.exists(marshal.isOutcome) || (errorType.isDefined && returnsOutcome(m))) ".get()" else ""
           w.wl(s"return try await ${helperCall(helper)} { $capture try $call }$get")
+        }
+        if (syncMethods.getOrElse(ident.name, Set[String]()).contains(m.ident.name)) {
+          writeSyncWrapperMethod(w, m)
         }
       }
     }

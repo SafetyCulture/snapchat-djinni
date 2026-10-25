@@ -1,5 +1,6 @@
 #include "error_service.hpp"
 #include "crux_error.hpp"
+#include "error_listener.hpp"
 #include "sync_error.hpp"
 #include "sync_error_service.hpp"
 
@@ -7,6 +8,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <pthread.h>
 #include <stdexcept>
 #include <thread>
 
@@ -87,6 +89,32 @@ public:
 
     int32_t pending_started() override { return _pendingStarted.load(); }
 
+    // The recorded thread id shows which thread ran the synchronous call.
+    int32_t register_listener(const std::shared_ptr<rt::ErrorListener>& listener) override {
+        std::lock_guard<std::mutex> lock(_registeredMutex);
+        _registered = listener;
+        _registrationThread = static_cast<int64_t>(pthread_mach_thread_np(pthread_self()));
+        return ++_registrationCount;
+    }
+
+    int64_t registration_thread() override {
+        std::lock_guard<std::mutex> lock(_registeredMutex);
+        return _registrationThread;
+    }
+
+    int32_t call_registered_listener(int32_t value) override {
+        std::shared_ptr<rt::ErrorListener> listener;
+        {
+            std::lock_guard<std::mutex> lock(_registeredMutex);
+            listener = _registered;
+        }
+        return listener ? listener->on_done(value) : -1;
+    }
+
+    int32_t register_listener_failing(const std::shared_ptr<rt::ErrorListener>& listener) override {
+        throw std::runtime_error("boom");
+    }
+
     int32_t touch() override { return ++_touched; }
 
     int32_t touch_count() override { return _touched.load(); }
@@ -96,6 +124,10 @@ private:
     std::atomic<int32_t> _touched{0};
     std::mutex _mutex;
     std::unique_ptr<djinni::Promise<int32_t>> _pending;
+    std::mutex _registeredMutex;
+    std::shared_ptr<rt::ErrorListener> _registered;
+    int64_t _registrationThread{0};
+    int32_t _registrationCount{0};
 };
 
 class SyncErrorServiceImpl : public rt::SyncErrorService {

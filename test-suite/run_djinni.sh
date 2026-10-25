@@ -317,6 +317,8 @@ swift_labels_relative="djinni/swift_labels.djinni"
 swift_recursive_relative="djinni/swift_recursive.djinni"
 swift_const_strings_relative="djinni/swift_const_strings.djinni"
 swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
+swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
+swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -582,7 +584,40 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/internal-imports-plain/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_internal_imports_relative" \
+    --idl "$swift_internal_imports_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/sync-listener/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/sync-listener/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_service.add_listener \
+    --swift-sync-method swift_sync_service.find_listener \
+    --swift-sync-method swift_sync_service.guard \
+    --swiftxx-out "$temp_out_relative/swift-features/sync-listener/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_sync_listener_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/sync-listener-error/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/sync-listener-error/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_service.add_listener \
+    --swift-sync-method swift_sync_service.find_listener \
+    --swift-sync-method swift_sync_service.guard \
+    --swift-error-type CruxError \
+    --swiftxx-out "$temp_out_relative/swift-features/sync-listener-error/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_sync_listener_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -624,6 +659,106 @@ if ! grep -rqx "internal import TestSuiteCxx" "$internal_imports" || ! grep -rqx
 fi
 if grep -rh "^internal import " "$internal_imports" | grep -vE "^internal import (TestSuiteCxx|DjinniSupportCxx)$"; then
     echo "The option made an import internal that is not a C++ glue module." 1>&2
+    exit 1
+fi
+
+# --swift-sync-method adds the synchronous form to the listed methods only. The listed methods take a listener whose
+# interface has +sw; the other methods with a listener get no form, also the future method.
+sync_forms() { # <case>
+    grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | sort
+}
+expected_sync_forms="public func addListenerNow(
+public func findListenerNow(
+public func guardNow("
+for sync_case in sync-listener sync-listener-error; do
+    if [ "$(sync_forms "$sync_case")" != "$expected_sync_forms" ]; then
+        echo "The synchronous forms of $sync_case are not the three listed methods." 1>&2
+        sync_forms "$sync_case" 1>&2
+        exit 1
+    fi
+done
+sync_plain="$temp_out/swift-features/sync-listener/swift/SwiftSyncService.swift"
+sync_typed="$temp_out/swift-features/sync-listener-error/swift/SwiftSyncService.swift"
+for expected in \
+    "return try djinniProxy.addListener(listener)" \
+    "return try djinniProxy.findListener(listener).get()"; do
+    if ! grep -qF -- "$expected" "$sync_plain"; then
+        echo "Missing line of the synchronous form without --swift-error-type: $expected" 1>&2
+        exit 1
+    fi
+done
+for expected in \
+    "public func addListenerNow(_ listener: TestSuite.SwiftSyncListener) throws(TestSuite.CruxError) -> Int32 {" \
+    "public func findListenerNow(_ listener: TestSuite.SwiftSyncListener) throws(TestSuite.CruxError) -> TestSuite.SwiftSyncItem {" \
+    "return try DjinniSupport.djinniTyped(TestSuite.CruxError.self) { try djinniProxy.addListener(listener) }" \
+    "return try DjinniSupport.djinniTyped(TestSuite.CruxError.self) { try djinniProxy.findListener(listener) }.get()"; do
+    if ! grep -qF -- "$expected" "$sync_typed"; then
+        echo "Missing line of the synchronous form with --swift-error-type: $expected" 1>&2
+        exit 1
+    fi
+done
+if [ "$(grep -cF -- "The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once." "$sync_typed")" -ne 3 ]; then
+    echo "The synchronous forms do not each have the doc line about the caller's thread." 1>&2
+    exit 1
+fi
+
+# Each bad --swift-sync-method value fails the run before any file is written.
+sync_negative_log="$temp_out/sync-negative.log"
+sync_negative_out="$temp_out_relative/swift-features/sync-negative"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$sync_negative_out/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_missing.add_listener \
+    --swift-sync-method swift_sync_bad_service.missing \
+    --swift-sync-method swift_sync_bad_shared.add_listener \
+    --swift-sync-method swift_sync_bad_service.load \
+    --swift-sync-method swift_sync_bad_service.static_register \
+    --swift-sync-method swift_sync_bad_service.add_listener \
+    --swift-sync-method swift_sync_bad_record.add_listener \
+    --swift-sync-method svc. \
+    --swift-sync-method .x \
+    --swift-sync-method noseparator \
+    --idl "$swift_sync_negative_relative") >"$sync_negative_log" 2>&1; then
+    echo "The generator accepted the bad --swift-sync-method values of $swift_sync_negative_relative." 1>&2
+    exit 1
+fi
+for expected in \
+    "--swift-sync-method swift_sync_missing.add_listener: there is no interface swift_sync_missing." \
+    "--swift-sync-method swift_sync_bad_service.missing: interface swift_sync_bad_service has no method missing." \
+    "--swift-sync-method swift_sync_bad_shared.add_listener: the async wrapper has no class for interface swift_sync_bad_shared, because it is not an interface with +c and without +sw." \
+    "--swift-sync-method swift_sync_bad_service.load: swift_sync_bad_service.load returns future<>, and a synchronous form cannot wait for a future." \
+    "--swift-sync-method swift_sync_bad_service.static_register: swift_sync_bad_service.static_register is static, and the async wrapper has no static methods." \
+    "--swift-sync-method swift_sync_bad_service.add_listener: the synchronous form addListenerNow equals the name of the method add_listener_now of interface swift_sync_bad_service." \
+    "--swift-sync-method swift_sync_bad_record.add_listener: swift_sync_bad_record is not an interface." \
+    "--swift-sync-method svc.: the value needs the form <interface>.<method>." \
+    "--swift-sync-method .x: the value needs the form <interface>.<method>." \
+    "--swift-sync-method noseparator: the value needs the form <interface>.<method>."; do
+    if ! grep -qF -- "$expected" "$sync_negative_log"; then
+        echo "Missing error message: $expected" 1>&2
+        cat "$sync_negative_log" 1>&2
+        exit 1
+    fi
+done
+if [ -e "$base_dir/$sync_negative_out" ]; then
+    echo "The generator wrote files for bad --swift-sync-method values." 1>&2
+    exit 1
+fi
+# Without --swift-async-wrap there is no wrapper to add the form to.
+sync_alone_log="$temp_out/sync-alone.log"
+if (cd "$base_dir" && "$base_dir/../src/run-assume-built" \
+    --swift-out "$temp_out_relative/swift-features/sync-alone/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-sync-method swift_sync_service.add_listener \
+    --idl "$swift_sync_listener_relative") >"$sync_alone_log" 2>&1; then
+    echo "The generator accepted --swift-sync-method without --swift-async-wrap." 1>&2
+    exit 1
+fi
+if ! grep -qF -- "Error: --swift-sync-method needs --swift-async-wrap." "$sync_alone_log"; then
+    echo "Missing the error message of --swift-sync-method without --swift-async-wrap." 1>&2
+    cat "$sync_alone_log" 1>&2
     exit 1
 fi
 

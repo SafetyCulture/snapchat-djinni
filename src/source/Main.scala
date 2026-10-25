@@ -126,6 +126,7 @@ object Main {
     var swiftAsyncQueue: Option[String] = None
     var swiftErrorType: Option[String] = None
     var swiftInternalCxxImports: Boolean = false
+    var swiftSyncMethods: Seq[String] = Seq()
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
     var kotlinSuspendWrap: Boolean = false
@@ -307,6 +308,8 @@ object Main {
         .text("With --swift-async-wrap, the DispatchQueue of the blocking C++ calls, as a Swift expression on one line without /* or */. Each generated file evaluates it once. Default: a new serial queue for each call (DjinniSupport.djinniCallQueue()).")
       opt[String]("swift-error-type").valueName("<name>").foreach(x => swiftErrorType = Some(x))
         .text("The Swift name of the error record. The methods that Swift calls into C++ throw it: the instance methods of an interface with +c and without +sw, and the static methods of an interface with +c. An outcome<T, E> needs this E. A future<> needs --swift-async-wrap. The record conforms to Error.")
+      opt[String]("swift-sync-method").valueName("<interface>.<method>").unbounded().foreach(x => swiftSyncMethods = swiftSyncMethods :+ x)
+        .text("With --swift-async-wrap, give the listed method a synchronous form with the name <method>Now. The value is an interface and a method of the IDL, for example crux_API.add_observer. The method must be an instance method of an interface with +c and without +sw, and it must not return future<>. The synchronous form calls C++ on the thread of the caller. Repeat the option for each method.")
       opt[File]("kotlin-jni-out").valueName("<out-folder>").foreach(x => kotlinJniOutFolder = Some(x))
         .text("The output folder for Kotlin classes that the JNI code binds, like the Java classes (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-package").valueName("<package>").foreach(x => kotlinJniPackage = Some(x))
@@ -435,6 +438,11 @@ object Main {
 
     if (swiftAsyncQueue.isDefined && swiftAsyncWrap.isEmpty) {
       System.err.println("Error: --swift-async-queue needs --swift-async-wrap.")
+      System.exit(1); return
+    }
+
+    if (swiftSyncMethods.nonEmpty && swiftAsyncWrap.isEmpty) {
+      System.err.println("Error: --swift-sync-method needs --swift-async-wrap.")
       System.exit(1); return
     }
 
@@ -610,6 +618,7 @@ object Main {
       swiftAsyncQueue,
       swiftErrorType,
       swiftInternalCxxImports,
+      swiftSyncMethods,
       kotlinJniOutFolder,
       kotlinJniPackage,
       kotlinSuspendWrap,

@@ -353,6 +353,9 @@ Command line switches:
   calls of the async wrappers. Each generated file evaluates it once. See below.
 - `--swift-error-type <name>`: the Swift name of the error record. See
   [Errors](#errors).
+- `--swift-sync-method <interface>.<method>`: give the listed method a
+  synchronous form with the name `<method>Now`. Repeat the option for each
+  method. See below.
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated_swift`). The generator stops when `--objcpp-out` and `--swiftxx-out` are both on and the two namespaces are equal, because both glue sets would define the same record helpers.
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
@@ -482,6 +485,26 @@ Async wrappers (`--swift-async-wrap`):
 
 Error type (`--swift-error-type <name>`): see [Errors](#errors).
 
+Synchronous forms (`--swift-sync-method`):
+
+- The option needs `--swift-async-wrap`. The wrapper class of the interface
+  also gets one method for each listed method, with the name `<method>Now`.
+  The value holds the IDL names of the interface and the method, for example
+  `crux_API.add_mutation_processor_observer`.
+- The synchronous form takes the same parameters and gives the same result as
+  the async form. It calls C++ on the thread of the caller and blocks that
+  thread. Use it for a registration that returns at once.
+- With `--swift-error-type E`, the form is `throws(E)` and changes the errors
+  through `DjinniSupport.djinniTyped`. Without it, the form is `throws`.
+- The generator stops before it writes a file in these cases:
+  - the interface or the method does not exist;
+  - the interface is not an interface with `+c` and without `+sw`;
+  - the method is static;
+  - the method returns `future<>`;
+  - the value has no dot, or one of its two parts is empty;
+  - `<method>Now` is the name of another method of the interface.
+- A method that is not listed keeps only its async form.
+
 IDL changes:
 
 - `+sw` marks a type or a method as implemented in Swift. An interface with no
@@ -578,8 +601,9 @@ Three scripts check the Swift support. They read the Crux IDL from
     actor (`ci/swift-typecheck/AsyncCallers.swift`). It does not prove that
     `@concurrent` is necessary.
   - One more pass generates the whole Crux IDL (`main.djinni`) with
-    `--swift-error-type CruxError` and `--swift-async-wrap`, with a `crux_error`
-    record that the fixture adds, and typechecks it with a conformance stub.
+    `--swift-error-type CruxError`, `--swift-async-wrap` and three
+    `--swift-sync-method` values, with a `crux_error` record that the fixture
+    adds, and typechecks it with a conformance stub.
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces. It runs the program in Swift 5 mode, in Swift 6 mode,
   and in Swift 6 mode with the optimizer. It also runs the program once with
@@ -599,6 +623,12 @@ Three scripts check the Swift support. They read the Crux IDL from
     `runtime_error_sync.djinni` with `--swift-error-type SyncError` and without
     them, so the synchronous protocol and static methods throw the error type
     too.
+  - The synchronous forms (`--swift-sync-method`) register a listener. The
+    program checks that C++ has the listener when the call returns, that the
+    call ran on the thread of the caller (C++ records the mach thread id), and
+    that a C++ exception comes back as `CruxError`. The script also reads the
+    generated Swift: the listed registrations have a synchronous form, and the
+    `future<>` method with a listener has none.
 - `ci/check-byte-identity.sh` proves that a change does not alter the output of
   the other generators.
 
@@ -1081,6 +1111,7 @@ changes.
 | `--swift-internal-cxx-imports` | `swift_internal_imports` | `swift-features/internal-imports`, `swift-features/internal-imports-separate`, `swift-features/internal-imports-plain` |
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
+| `--swift-sync-method` | `swift_sync_listener` | `swift-features/sync-listener`, `swift-features/sync-listener-error` |
 | `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |
 | `--kotlin-error-type`, with and without `--kotlin-suspend-wrap` | `kotlin_error`, `kotlin_error_sync`, `kotlin_error_async`, `kotlin_error_negative`, `kotlin_error_any_negative`, `kotlin_error_any_suspend_negative` | `kotlin-jni-error/sync`, `kotlin-jni-error/suspend` |
 | `--swift-error-type` with `--swift-legacy-records`, `--swift-async-wrap` and `--swift-async-queue` | `swift_error` | `swift-features/error-legacy` |
@@ -1096,6 +1127,10 @@ changes.
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
 `--swift-private-in-same-module`, `--swift-async-queue` without
 `--swift-async-wrap` and with a value that closes a comment,
+`--swift-sync-method` without `--swift-async-wrap`, with an interface or a
+method that does not exist, with an interface that the async wrapper does not
+wrap, with a static method, with a `future<>` method, with a value that has no
+dot, and with a name that equals the synchronous form of another method,
 `--swift-error-type` with an outcome of another error type and with a
 `future<>` method without `--swift-async-wrap`, `--kotlin-suspend-wrap` without
 `--kotlin-jni-out`, `--kotlin-suspend-dispatcher` without

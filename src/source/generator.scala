@@ -127,6 +127,7 @@ package object generatorTools {
                    swiftAsyncQueue: Option[String],
                    swiftErrorType: Option[String],
                    swiftInternalCxxImports: Boolean,
+                   swiftSyncMethods: Seq[String],
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],
                    kotlinSuspendWrap: Boolean,
@@ -308,6 +309,9 @@ package object generatorTools {
       // Check before any generator writes a file.
       if (spec.swiftOutFolder.isDefined && spec.swiftErrorType.isDefined) {
         SwiftErrorType.check(idl, spec).foreach(message => throw GenerateException(message))
+      }
+      if (spec.swiftOutFolder.isDefined && spec.swiftSyncMethods.nonEmpty) {
+        SwiftSyncMethods.check(idl, spec).foreach(message => throw GenerateException(message))
       }
       if (spec.kotlinJniOutFolder.isDefined) {
         KotlinJniExtern.check(idl, spec).foreach(message => throw GenerateException(message))
@@ -611,9 +615,9 @@ abstract class Generator(spec: Spec)
 
   // --------------------------------------------------------------------------
 
-  def writeMethodDoc(w: IndentWriter, method: Interface.Method, ident: IdentConverter) {
+  def writeMethodDoc(w: IndentWriter, method: Interface.Method, ident: IdentConverter, extra: Seq[String] = Seq()) {
     val paramReplacements = method.params.map(p => (s"\\b${Regex.quote(p.ident.name)}\\b", s"${ident(p.ident.name)}"))
-    val newDoc = Doc(method.doc.lines.map(l => {
+    val newDoc = Doc((method.doc.lines ++ extra).map(l => {
       paramReplacements.foldLeft(l)((line, rep) =>
         line.replaceAll(rep._1, rep._2))
     }))

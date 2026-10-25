@@ -68,6 +68,14 @@ runtime_async = interface +c {
   pending_started(): i32;
   # C++ calls the listener on the thread of the call.
   call_listener(listener: runtime_listener, value: i32): i32;
+  # --swift-sync-method gives this registration a synchronous form. C++ stores the listener and the thread of the call.
+  register_listener(listener: runtime_listener): i32;
+  # The mach thread id of the register_listener call.
+  registration_thread(): i64;
+  # Calls the listener that register_listener stored.
+  call_registered_listener(value: i32): i32;
+  # A future with a +sw parameter that is not listed: it gets no synchronous form.
+  observe(listener: runtime_listener): future<i32>;
   static shared(): runtime_async;
   same(): runtime_async;
   busy(millis: i32);
