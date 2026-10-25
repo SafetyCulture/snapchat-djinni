@@ -360,8 +360,10 @@ Command line switches:
 - `--swift-error-type <name>`: the Swift name of the error record. See
   [Errors](#errors).
 - `--swift-sync-method <interface>.<method>`: give the listed method a
-  synchronous form with the name `<method>Now`. Repeat the option for each
-  method. See below.
+  synchronous form. The name is the Swift name of the method with the suffix
+  `Now`. For example, `add_mutation_processor_observer` gives
+  `addMutationProcessorObserverNow`. Repeat the option for each method. See
+  below.
 - `--swiftxx-out`: output folder for the C++ glue code
 - `--swiftxx-namespace`: C++ namespace of the glue code (default: `djinni_generated_swift`). The generator stops when `--objcpp-out` and `--swiftxx-out` are both on and the two namespaces are equal, because both glue sets would define the same record helpers.
 - `--swiftxx-include-prefix`: path prefix for includes of glue headers
@@ -409,9 +411,11 @@ Internal C++ imports (`--swift-internal-cxx-imports`):
 - The compiler does not apply the access level of an import to a declaration in
   a C++ namespace. The public signatures of the generated files use only such
   declarations.
-- A module cannot import one module at two access levels. Every other file of
-  the module that imports one of these two modules must use `internal import`
-  too.
+- Every other file of the module that imports one of these two modules must
+  give the import an access level too. A plain `import` next to an explicit
+  level is an error in Swift 6 mode (`ambiguous implicit access level`). Two
+  files may use different levels, for example `internal` in one and `public`
+  in another.
 
 Public API without C++ types (`--swift-cxx-free-api`):
 
@@ -429,7 +433,7 @@ Public API without C++ types (`--swift-cxx-free-api`):
 - Generated enums are `@frozen`, so a client `switch` stays exhaustive when the
   generated module has library evolution. Generated records are public structs,
   and a client reads them as before.
-- The application needs three things:
+- The application needs four things:
   - The `DjinniSupportCore` target, which builds without C++ interop. In Bazel it
     is `//support-lib/apple:djinni-support-swift-core`.
   - A generated module that builds with `-enable-library-evolution`. Without
@@ -439,11 +443,19 @@ Public API without C++ types (`--swift-cxx-free-api`):
     `CppExceptionConvertible` in the generated module, with
     `public import DjinniSupportCore`. The generated code needs the conformance
     at compile time.
+  - An explicit access level on the imports of every application file that is
+    part of the module. The generated files import `Foundation`, `Dispatch`,
+    `DjinniSupport`, `DjinniSupportCore`, the extern modules such as
+    `S12Protos`, and the C++ glue module with a level. A plain `import` of one
+    of these modules in the same module is an error in Swift 6 mode. Write the
+    same level, or enable the `InternalImportsByDefault` upcoming feature.
 - `ci/swift-cxx-free-check.sh` proves the result: it builds the modules with
-  library evolution and a verified module interface, and it compiles a client
-  without C++ interop. The client imports the generated module and
-  `DjinniSupportCore` only. The same client fails against the same IDL generated
-  without the option.
+  library evolution and a verified module interface, and it compiles clients
+  without C++ interop, also against the interface alone. The same test-suite IDL
+  generated without the option cannot make a verified interface, because its
+  interface names the C++ namespace. The script checks that diagnostic.
+- When the `--swift-error-type` record is an extern record, each public
+  signature that throws it imports the module of that record.
 
 Async wrappers (`--swift-async-wrap`):
 
@@ -526,8 +538,10 @@ Error type (`--swift-error-type <name>`): see [Errors](#errors).
 Synchronous forms (`--swift-sync-method`):
 
 - The option needs `--swift-async-wrap`. The wrapper class of the interface
-  also gets one method for each listed method, with the name `<method>Now`.
-  The value holds the IDL names of the interface and the method, for example
+  also gets one method for each listed method. Its name is the Swift name of
+  the method with the suffix `Now`: `add_mutation_processor_observer` gives
+  `addMutationProcessorObserverNow`. The value holds the IDL names of the
+  interface and the method, for example
   `crux_API.add_mutation_processor_observer`.
 - The synchronous form takes the same parameters and gives the same result as
   the async form. It calls C++ on the thread of the caller and blocks that
@@ -540,7 +554,8 @@ Synchronous forms (`--swift-sync-method`):
   - the method is static;
   - the method returns `future<>`;
   - the value has no dot, or one of its two parts is empty;
-  - `<method>Now` is the name of another method of the interface.
+  - the name of the synchronous form equals the name of another method of the
+    interface.
 - A method that is not listed keeps only its async form.
 
 IDL changes:
@@ -616,7 +631,7 @@ exits with 1.
 The built-in types `future<>`, `outcome<>`, `DataRef` and `DataView` map to
 `DJFuture`, `Result`, and `NSData` (both data types).
 
-Three scripts check the Swift support. They read the Crux IDL from
+Four scripts check the Swift support. They read the Crux IDL from
 `MITTI_MOBILE_ROOT`, except for the runtime test.
 
 - `ci/swift-typecheck.sh` generates Swift for the Crux assets IDL. It compiles
@@ -642,10 +657,20 @@ Three scripts check the Swift support. They read the Crux IDL from
     `--swift-error-type CruxError`, `--swift-async-wrap` and three
     `--swift-sync-method` values, with a `crux_error` record that the fixture
     adds, and typechecks it with a conformance stub.
+- `ci/swift-cxx-free-check.sh` compiles the checked-in cxx-free cases, and it
+  generates the whole Crux IDL with `--swift-internal-cxx-imports` and
+  `--swift-cxx-free-api`. It builds the modules with library evolution and a
+  verified interface, compiles clients without C++ interop against the module,
+  against its interface alone and against `CruxBindings`, and shows that the
+  same IDL without the option cannot make a verified interface. It reads the
+  Crux IDL from `MITTI_MOBILE_ROOT`, and it builds the SwiftProtobuf cache
+  when the cache is missing.
 - `ci/swift-runtime-test.sh` builds a Swift program with a C++ implementation
   of generated interfaces. It runs the program in Swift 5 mode, in Swift 6 mode,
   and in Swift 6 mode with the optimizer. It also runs the program once with
-  ThreadSanitizer. The program checks
+  ThreadSanitizer, and it runs the same program against a module generated with
+  `--swift-internal-cxx-imports` and `--swift-cxx-free-api` in the same modes.
+  The program checks
   calls in both directions, the identity of proxies and the release of host
   objects. It also checks the async wrappers, typed errors, C++ exceptions of
   wrapped methods, Swift errors that C++ catches, task cancellation, the queue of
@@ -1147,10 +1172,10 @@ changes.
 | `--swift-out`, `--swift-module`, `--swift-private-in-same-module`, `+sw` | `swift_host`, `swift_idents`, `swift_types`, `swift_sendable`, `swift_future_field` | `swift-features/` |
 | `--swift-out` without `--swift-private-in-same-module` | `swift_types` | `swift-features/separate-module` |
 | `--swift-internal-cxx-imports` | `swift_internal_imports` | `swift-features/internal-imports`, `swift-features/internal-imports-separate`, `swift-features/internal-imports-plain` |
-| `--swift-cxx-free-api` | `swift_cxx_free_api`, `swift_cxx_free_future_field` | `swift-features/cxx-free-api`, `swift-features/cxx-free-api-future-field` |
+| `--swift-cxx-free-api` | `swift_cxx_free_api`, `swift_cxx_free_future_field`, `swift_cxx_free_future_outcome`, `swift_cxx_free_error_module`, `swift_cxx_free_error_plain` | `swift-features/cxx-free-api`, `swift-features/cxx-free-api-future-field`, `swift-features/cxx-free-api-future-outcome`, `swift-features/cxx-free-api-error-module`, `swift-features/cxx-free-api-error-module-plain` |
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
-| `--swift-sync-method` | `swift_sync_listener` | `swift-features/sync-listener`, `swift-features/sync-listener-error` |
+| `--swift-sync-method` | `swift_sync_listener`, `swift_sync_doc` | `swift-features/sync-listener`, `swift-features/sync-listener-error`, `swift-features/sync-doc` |
 | `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |
 | `--kotlin-error-type`, with and without `--kotlin-suspend-wrap` | `kotlin_error`, `kotlin_error_sync`, `kotlin_error_async`, `kotlin_error_negative`, `kotlin_error_any_negative`, `kotlin_error_any_suspend_negative` | `kotlin-jni-error/sync`, `kotlin-jni-error/suspend` |
 | `--swift-error-type` with `--swift-legacy-records`, `--swift-async-wrap` and `--swift-async-queue` | `swift_error` | `swift-features/error-legacy` |
@@ -1218,8 +1243,8 @@ The Docker image of the pipeline has no `swiftc`, so the pipeline does not run
 them. Run them on a Mac before you merge a change to a Swift file:
 
 ```
-./ci/swift-typecheck.sh        # Swift 5, Swift 6, Swift 6 with NonisolatedNonsendingByDefault, and the whole Crux IDL with --swift-error-type
-./ci/swift-cxx-free-check.sh   # --swift-cxx-free-api: library evolution, verified interface, and a client without C++ interop
+./ci/swift-typecheck.sh        # three modes, and the whole Crux IDL with --swift-error-type
+./ci/swift-cxx-free-check.sh   # --swift-cxx-free-api: verified interface and clients without C++ interop
 ./ci/swift-runtime-test.sh     # also --swift-legacy-records
 ```
 

@@ -167,7 +167,7 @@ single_case_mods() { # <module dir> <case>
 }
 single_case_mods "$work/error-legacy-mods" error-legacy
 single_case_mods "$work/separate-mods" separate-module
-# A module cannot import one module with two access levels, so the internal-imports case has its own module.
+# A plain import next to an explicit level is an error, so the internal-imports case has its own module.
 single_case_mods "$work/internal-imports-single-mods" internal-imports
 single_case_mods "$work/internal-imports-mods" internal-imports-separate
 single_case_mods "$work/sync-listener-mods" sync-listener
@@ -400,8 +400,8 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-# The cxx-free future-outcome case is not in this list: its glue includes the header of its extern translator, which this
-# check does not stub.
+# The cxx-free future-outcome and error-module cases and sync-doc are not in this list: their glue includes the header
+# of an extern translator, which this check does not stub, or a parameter named for.
 for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error cxx-free-api; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
