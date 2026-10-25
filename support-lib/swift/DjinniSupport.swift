@@ -356,7 +356,7 @@ public func handleCppErrors(_ ret: UnsafePointer<djinni.swift.AnyValue>) throws 
 }
 
 // Keeps the C++ error value alive, so a rethrow to C++ finds its exception.
-final class ErrorValueBox: @unchecked Sendable {
+final class ErrorValueBox: @unchecked Sendable { // SAFETY: `value` is immutable, and C++ only rethrows the exception that it holds
     let value: djinni.swift.ErrorValue
     init(_ value: djinni.swift.ErrorValue) { self.value = value }
 }
