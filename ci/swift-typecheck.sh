@@ -405,15 +405,15 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-# The cxx-free future-outcome and error-module cases and sync-doc are not in this list: their glue includes the header
-# of an extern translator, which this check does not stub, or a parameter named for.
-for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error cxx-free-api; do
+# cxx-free-api-future-outcome and cxx-free-api-error-module are not in this list: their glue includes extern headers
+# that this check does not stub. sync-doc is not in the list: its C++ header has a parameter named for.
+for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error cxx-free-api cxx-free-api-error-module-plain; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
-echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE, NESTED-NS, INTERNAL-IMPORTS, INTERNAL-IMPORTS-SEPARATE, SYNC-LISTENER, SYNC-LISTENER-ERROR AND CXX-FREE-API C++ GLUE SYNTAX OK"
+echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE, NESTED-NS, INTERNAL-IMPORTS, INTERNAL-IMPORTS-SEPARATE, SYNC-LISTENER, SYNC-LISTENER-ERROR, CXX-FREE-API AND CXX-FREE-API-ERROR-MODULE-PLAIN C++ GLUE SYNTAX OK"
 
 # An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
 # The other languages must still compile next to the Swift files.

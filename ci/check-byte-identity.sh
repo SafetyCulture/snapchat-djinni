@@ -4,11 +4,10 @@
 # It builds the generator at the working tree and at BASE_REF, runs both over every Crux
 # IDL file with the flags crux/tools/generate_code.sh passes, and diffs the output trees.
 # A second pass adds the ts, wasm and yaml generators. A third pass runs the Swift and
-# Swift/C++ generators over the same IDL with the flags of the app. It turns off the
-# three options of #32 (--swift-internal-cxx-imports, --swift-sync-method,
-# --swift-cxx-free-api); the older flags of the app stay on. The script exits 0 only when
-# the three diffs are empty. Exit codes and stderr of each run are part of the compared
-# output.
+# Swift/C++ generators over the same IDL with the flags of the app. It turns off
+# --swift-internal-cxx-imports, --swift-sync-method and --swift-cxx-free-api; the older
+# flags of the app stay on. The script exits 0 only when the three diffs are empty. Exit
+# codes and stderr of each run are part of the compared output.
 #
 # Environment:
 #   MITTI_MOBILE_ROOT  mitti-mobile checkout that holds crux/djinni and the extern yaml files
@@ -136,7 +135,7 @@ xargs -P "$jobs" -L 1 bash -c '
   run_one "$work/$side.jar" "$idl" "$work/$side-out/$pass/$label" "$cpp_ns" "$prefix" "$jpkg" "$objc_dir" "$kpkg" "$ksup" "$kcin" "$pass"
 ' <"$jobs_file"
 
-echo "swift pass: the Crux IDL with the flags of the app, and every option off"
+echo "swift pass: the Crux IDL with the flags of the app, and the three newer options off"
 run_swift "$work/base.jar" "$work/base-out/swift"
 run_swift "$work/head.jar" "$work/head-out/swift"
 
