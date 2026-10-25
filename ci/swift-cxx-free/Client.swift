@@ -2,7 +2,7 @@ import DjinniSupportCore
 import Models
 import TestSuite
 
-// A client of the generated module without C++ interop. It imports no C++ module and names no C++ type.
+// A client of the generated module without C++ interoperability. It imports no C++ module and names no C++ type.
 
 final class Listener: SwiftCxxFreeListener, @unchecked Sendable { // SAFETY: the test writes `seen` from one thread
     private(set) var seen: [String] = []
@@ -36,9 +36,24 @@ func fetch(_ service: SwiftCxxFreeService) async throws(SwiftCxxFreeFailure) -> 
     return try await service.fetch("client")
 }
 
+// The class of the static methods is public.
+func makeService() throws(SwiftCxxFreeFailure) -> SwiftCxxFreeService {
+    return try SwiftCxxFreeService_statics.create()
+}
+
+// The async wrapper of a future<outcome<T, E>> returns the outcome of the extern module.
+func ext(_ lookup: SwiftCxxFreeLookup) async throws -> Result<Int32, Models.CruxError> {
+    return try await lookup.ext()
+}
+
 // The error type of the extern module comes through the class of the static methods.
 func makeErrorService() throws(Models.CruxError) -> SwiftCxxFreeErrorService {
     return try SwiftCxxFreeErrorService_statics.create()
+}
+
+// The class of the static methods of the plain case, whose methods do not name the error record.
+func plainCount() throws(Models.CruxError) -> Int32 {
+    return try SwiftCxxFreePlainStatic_statics.count()
 }
 
 // The error type reaches the client through CppExceptionConvertible.

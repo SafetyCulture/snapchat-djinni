@@ -174,6 +174,7 @@ single_case_mods "$work/sync-listener-mods" sync-listener
 single_case_mods "$work/sync-listener-error-mods" sync-listener-error
 # The cxx-free cases have their own module, because they write an access level on every import.
 single_case_mods "$work/cxx-free-mods" cxx-free-api
+single_case_mods "$work/cxx-free-outcome-mods" cxx-free-api-future-outcome
 single_case_mods "$work/cxx-free-error-mods" cxx-free-api-error-module
 single_case_mods "$work/cxx-free-error-plain-mods" cxx-free-api-error-module-plain
 # The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
@@ -309,16 +310,24 @@ swift_pass() { # <swiftc flags>
     $flags "${cxx[@]}" -I "$work/cxx-free-mods" "$cases/cxx-free-api"/swift/*.swift \
     "$cases/cxx-free-api-future-field"/swift/*.swift "$repo_root/ci/swift-cxx-free/ErrorConformance.swift"
   echo "TEST-SUITE CXX-FREE-API SWIFT TYPECHECK OK [$flags]"
-  echo "== [$flags] TestSuite cxx-free-api-error-module (--swift-error-type of an extern record)"
-  # The extern Swift type and its marshaller are two modules. The error record is the type of --swift-error-type.
-  local ce="$build/cxx-free-error"
-  mkdir -p "$build/stubs" "$ce"
+  echo "== [$flags] TestSuite cxx-free-api-future-outcome (future<outcome<T, E>> of an extern module)"
+  # The extern Swift type and its marshaller are two modules: the public API names the type only.
+  mkdir -p "$build/stubs"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/stubs/Models.swiftmodule" -module-name Models \
     -parse-as-library -enable-library-evolution $flags "$repo_root/ci/swift-stubs/Models.swift"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$build/stubs/ModelsSupport.swiftmodule" -module-name ModelsSupport \
     -parse-as-library $flags "${cxx[@]}" -I "$mods" -I "$build/stubs" "$repo_root/ci/swift-stubs/ModelsSupport.swift"
+  local co="$build/cxx-free-outcome"
+  mkdir -p "$co"
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$co/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/cxx-free-outcome-mods" -I "$build/stubs" "$cases/cxx-free-api-future-outcome"/swift/*.swift
+  echo "TEST-SUITE CXX-FREE-FUTURE-OUTCOME SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite cxx-free-api-error-module (--swift-error-type of an extern record)"
+  local ce="$build/cxx-free-error"
+  mkdir -p "$ce"
   # shellcheck disable=SC2086
   swiftc -emit-module -emit-module-path "$ce/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
     $flags "${cxx[@]}" -I "$work/cxx-free-error-mods" -I "$build/stubs" "$cases/cxx-free-api-error-module"/swift/*.swift \
@@ -391,6 +400,8 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
+# The cxx-free future-outcome case is not in this list: its glue includes the header of its extern translator, which this
+# check does not stub.
 for c in error-legacy separate-module nested-ns internal-imports internal-imports-separate sync-listener sync-listener-error cxx-free-api; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \

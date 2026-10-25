@@ -741,16 +741,22 @@ if grep -rh "^internal import " "$internal_imports" | grep -vE "^internal import
 fi
 
 # --swift-cxx-free-api keeps the C++ types out of the public API of the generated module. The compiler proves the rest
-# (ci/swift-typecheck.sh): the module keeps its public API without C++ interop in the client.
+# (ci/swift-cxx-free-check.sh): the module keeps a verified interface and a client without C++ interop.
 cxx_free="$temp_out/swift-features/cxx-free-api/swift"
-if grep -rhE "^import " "$cxx_free"; then
-    echo "The cxx-free-api case has an import without an access level." 1>&2
-    exit 1
-fi
-if grep -rhE "^public " "$cxx_free" | grep -E "djinni\.swift|DjinniSupport\.|DjinniSupportCxx\.|TestSuiteCxx\."; then
-    echo "A public declaration of the cxx-free-api case names a C++ type." 1>&2
-    exit 1
-fi
+for cxx_free_dir in "$temp_out"/swift-features/cxx-free-api*/swift; do
+    if grep -rhE "^import " "$cxx_free_dir"; then
+        echo "A cxx-free file has an import without an access level: $cxx_free_dir" 1>&2
+        exit 1
+    fi
+    if grep -rhE "^[[:space:]]*public " "$cxx_free_dir" | grep -E "djinni\.swift|DjinniSupport\.|DjinniSupportCxx\.|TestSuiteCxx\."; then
+        echo "A public declaration of a cxx-free case names a C++ type: $cxx_free_dir" 1>&2
+        exit 1
+    fi
+    if grep -rhE "^public import (DjinniSupport|DjinniSupportCxx|TestSuiteCxx)$" "$cxx_free_dir"; then
+        echo "A cxx-free file imports a C++ layer as public: $cxx_free_dir" 1>&2
+        exit 1
+    fi
+done
 # A marshaller names a C++ type, so it and its members are internal.
 if grep -rhE "^public (enum|typealias) \w+Marshaller" "$cxx_free"; then
     echo "The cxx-free-api case made a marshaller public." 1>&2
@@ -762,10 +768,6 @@ if ! grep -qxF "@frozen public enum SwiftCxxFreeColor: Int32, Codable, Sendable 
 fi
 if ! grep -qF "DjinniSupportCore.DJFuture<Int32>" "$temp_out/swift-features/cxx-free-api-future-field/swift/SwiftCxxFreePending.swift"; then
     echo "The cxx-free future-field case does not name the future type through DjinniSupportCore." 1>&2
-    exit 1
-fi
-if grep -rhE "^import " "$temp_out/swift-features/cxx-free-api-future-field/swift"; then
-    echo "The cxx-free future-field case has an import without an access level." 1>&2
     exit 1
 fi
 # The async wrapper of a future<outcome<T, E>> returns the outcome, so its file imports the module of E.

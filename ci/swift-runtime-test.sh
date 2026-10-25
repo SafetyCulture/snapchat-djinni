@@ -254,8 +254,8 @@ run_mode() { # <swiftc flags> [<object folder>] [<runs>]
   done
 }
 # The cxx-free variant: the generated Swift is a module of its own with library evolution, and the program imports it.
-run_cxx_free() { # <swiftc flags> [<runs>]
-  local flags=$1 mode_runs=${2:-$runs} build
+run_cxx_free() { # <swiftc flags> [<object folder>] [<runs>]
+  local flags=$1 objs=${2:-$work/objs} mode_runs=${3:-$runs} build
   build="$work/build-cxx-free-$(echo "$flags" | tr -c 'a-z0-9\n' _)"
   mkdir -p "$build"
   local cxx=(-cxx-interoperability-mode=default -Xcc -std=c++20 -Xcc -Wno-deprecated-declarations -Xcc "-I$repo_root/support-lib/swiftxx" -I "$mods" -I "$build" -I "$spb_mod")
@@ -280,7 +280,7 @@ run_cxx_free() { # <swiftc flags> [<runs>]
     { echo "@testable import RuntimeTest"; cat "$src/main.swift"; } >"$program"
     # shellcheck disable=SC2086
     swiftc -module-name RuntimeMain $flags "${cxx[@]}" -I "$build/$variant" "$program" \
-      "$work/objs"/*.o "$build/$variant/libRuntimeTest.a" "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" \
+      "$objs"/*.o "$build/$variant/libRuntimeTest.a" "$build/libDjinniSupport.a" "$build/libDjinniSupportCore.a" \
       "$spb_mod/libSwiftProtobuf.a" -Xlinker -framework -Xlinker CoreFoundation -o "$build/runtime-test-cxx-free-$variant"
   done
   echo "== [$flags] cxx-free blocking queue"
@@ -301,8 +301,10 @@ run_cxx_free "-swift-version 6 -strict-concurrency=complete"
 # The optimizer shortens object lifetimes, and it can show a lifetime bug that -Onone hides.
 build_objs "$work/objs-O" -O2
 run_mode "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"
+run_cxx_free "-swift-version 6 -strict-concurrency=complete -O" "$work/objs-O"
 # One run is enough: ThreadSanitizer reports two accesses without an order also when they do not collide.
 if [ "${RUNTIME_TSAN:-1}" = 1 ]; then
   build_objs "$work/objs-tsan" -fsanitize=thread
   TSAN_OPTIONS="halt_on_error=1 ${TSAN_OPTIONS:-}" run_mode "-swift-version 6 -strict-concurrency=complete -sanitize=thread" "$work/objs-tsan" 1
+  TSAN_OPTIONS="halt_on_error=1 ${TSAN_OPTIONS:-}" run_cxx_free "-swift-version 6 -strict-concurrency=complete -sanitize=thread" "$work/objs-tsan" 1
 fi
