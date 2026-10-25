@@ -89,6 +89,14 @@ out_async="$work/out-async"
 python3 "$repo_root/ci/swift_fixtures.py" "$domain_dir" "$extern_src" "$work/fx-error" "$repo_root" main.djinni
 printf 'crux_error = record {\n  message: string;\n  code: i32;\n}\n' >"$work/fx-error/crux/djinni/domain/ci_crux_error.djinni"
 printf '@import "ci_crux_error.djinni"\n' >>"$work/fx-error/crux/djinni/domain/swift_fixture.djinni"
+# The same fixture with --swift-internal-cxx-imports. The consumer turns the option on, so the public signatures of
+# the whole IDL must stay valid when the C++ glue imports are internal.
+out_error_internal="$work/out-error-internal"
+# shellcheck disable=SC2086
+(cd "$work/fx-error" && java -jar "$jar" \
+  --swift-out "$out_error_internal/swift" --swift-module Crux --swift-private-in-same-module \
+  --swift-async-wrap com.safetyculture.crux --swift-error-type CruxError --swift-internal-cxx-imports \
+  --idl-include-path extern ${DJINNI_FLAGS:-} --idl crux/djinni/domain/swift_fixture.djinni)
 out_error="$work/out-error"
 # shellcheck disable=SC2086
 (cd "$work/fx-error" && java -jar "$jar" \
@@ -112,7 +120,7 @@ python3 "$repo_root/ci/swift_stubs.py" cxx-header "$errmods/CruxCxx.hpp" "$out_e
 
 # Test-suite cases: the checked-in expected outputs of test-suite/run_djinni.sh.
 cases="$repo_root/test-suite/generated-src/swift-features"
-case_names=(host idents types sendable legacy future-field async error result-name naming deriving const-strings labels recursive)
+case_names=(host idents types sendable legacy future-field async error result-name naming deriving const-strings labels recursive internal-imports)
 tsmods="$work/ts-mods"
 mkdir -p "$tsmods"
 swiftxx_dirs=()
@@ -155,6 +163,7 @@ single_case_mods() { # <module dir> <case>
 }
 single_case_mods "$work/error-legacy-mods" error-legacy
 single_case_mods "$work/separate-mods" separate-module
+single_case_mods "$work/internal-imports-mods" internal-imports-separate
 # The case with a nested glue namespace (--swiftxx-namespace djinni_options::nested) has its own stub module.
 SWIFTXX_NAMESPACE='djinni_options::nested' single_case_mods "$work/nested-mods" nested-ns
 
@@ -223,6 +232,10 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swift_check -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error"/swift/*.swift "$error_conformance"
   echo "SWIFT ERROR TYPE TYPECHECK OK [$flags]"
+  echo "== [$flags] Crux IDL with --swift-internal-cxx-imports (generated Swift, $(ls "$out_error_internal"/swift/*.swift | wc -l | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  swift_check -module-name Crux $flags "${errcxx[@]}" -I "$errmods" "$out_error_internal"/swift/*.swift "$error_conformance"
+  echo "SWIFT INTERNAL-IMPORTS TYPECHECK OK [$flags]"
   echo "== [$flags] TestSuite (checked-in Swift cases)"
   local files=()
   for c in "${case_names[@]}"; do files+=("$cases/$c"/swift/*.swift); done
@@ -268,6 +281,18 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swift_check -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/separate-mods" -I "$sm" "${private[@]}"
   echo "TEST-SUITE SEPARATE-MODULE SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite internal-imports-separate (--swift-internal-cxx-imports)"
+  local im="$build/internal-imports" ipublic=() iprivate=()
+  mkdir -p "$im"
+  for f in "$cases/internal-imports-separate"/swift/*.swift; do
+    case "$f" in *+Private.swift) iprivate+=("$f") ;; *) ipublic+=("$f") ;; esac
+  done
+  # shellcheck disable=SC2086
+  swiftc -emit-module -emit-module-path "$im/TestSuite.swiftmodule" -module-name TestSuite -parse-as-library \
+    $flags "${cxx[@]}" -I "$work/internal-imports-mods" "${ipublic[@]}"
+  # shellcheck disable=SC2086
+  swift_check -module-name TestSuitePrivate $flags "${cxx[@]}" -I "$work/internal-imports-mods" -I "$im" "${iprivate[@]}"
+  echo "TEST-SUITE INTERNAL-IMPORTS-SEPARATE SWIFT TYPECHECK OK [$flags]"
 }
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"
@@ -307,13 +332,13 @@ for f in "$inc"/options/*.cpp; do
 done
 echo "TEST-SUITE OPTIONS C++ GLUE SYNTAX OK"
 
-for c in error-legacy separate-module nested-ns; do
+for c in error-legacy separate-module nested-ns internal-imports-separate; do
   for f in "$cases/$c"/swiftxx/*.cpp; do
     "${CXX:-clang++}" -std=c++20 -fsyntax-only -Wno-deprecated-declarations \
       -I "$cases/$c/cpp" -I "$repo_root/support-lib/cpp" -I "$repo_root/support-lib/swiftxx" -I "$repo_root/support-lib" "$f"
   done
 done
-echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE AND NESTED-NS C++ GLUE SYNTAX OK"
+echo "TEST-SUITE ERROR-LEGACY, SEPARATE-MODULE, NESTED-NS AND INTERNAL-IMPORTS-SEPARATE C++ GLUE SYNTAX OK"
 
 # An interface with +o +j +sw gets host proxies in Java, JNI C++ and Objective-C++ next to the Swift proxy.
 # The other languages must still compile next to the Swift files.

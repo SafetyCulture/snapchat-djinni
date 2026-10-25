@@ -125,6 +125,7 @@ object Main {
     var swiftAsyncWrap: Option[String] = None
     var swiftAsyncQueue: Option[String] = None
     var swiftErrorType: Option[String] = None
+    var swiftInternalCxxImports: Boolean = false
     var kotlinJniOutFolder: Option[File] = None
     var kotlinJniPackage: Option[String] = None
     var kotlinSuspendWrap: Boolean = false
@@ -295,6 +296,8 @@ object Main {
         .text("Swift module name (default: \"Module\").")
       opt[Unit]("swift-private-in-same-module").foreach(_ => swiftPrivateInSameModule = true)
         .text("Omit 'import <module>' in +Private Swift files (use when those files are compiled in the same module to avoid 'ignoring import' warnings).")
+      opt[Unit]("swift-internal-cxx-imports").foreach(_ => swiftInternalCxxImports = true)
+        .text("Write the imports of the C++ glue modules as internal imports: the module of --swift-module with the Cxx suffix, and the module of --swiftxx-base-lib-module. The other imports do not change.")
       opt[Unit]("swift-legacy-records").foreach(_ => swiftLegacyRecords = true)
         .text("Generate Swift records with `var` fields. The default is `let` fields.")
       opt[String]("swift-async-wrap").valueName("<label-prefix>").foreach(x => swiftAsyncWrap = Some(x))
@@ -606,6 +609,7 @@ object Main {
       swiftAsyncWrap,
       swiftAsyncQueue,
       swiftErrorType,
+      swiftInternalCxxImports,
       kotlinJniOutFolder,
       kotlinJniPackage,
       kotlinSuspendWrap,

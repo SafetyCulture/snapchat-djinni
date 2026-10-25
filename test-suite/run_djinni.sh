@@ -316,6 +316,7 @@ swift_deriving_relative="djinni/swift_deriving.djinni"
 swift_labels_relative="djinni/swift_labels.djinni"
 swift_recursive_relative="djinni/swift_recursive.djinni"
 swift_const_strings_relative="djinni/swift_const_strings.djinni"
+swift_internal_imports_relative="djinni/swift_internal_imports.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
     --java-out "$temp_out_relative/swift-features/host/java" \
@@ -544,7 +545,44 @@ fi
     --swift-module TestSuite \
     --swift-private-in-same-module \
     \
-    --idl "$swift_recursive_relative" \
+    --idl "$swift_recursive_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/internal-imports/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/internal-imports/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-internal-cxx-imports \
+    --swiftxx-out "$temp_out_relative/swift-features/internal-imports/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_internal_imports_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/internal-imports-separate/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/internal-imports-separate/swift" \
+    --swift-module TestSuite \
+    --swift-internal-cxx-imports \
+    --swiftxx-out "$temp_out_relative/swift-features/internal-imports-separate/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_internal_imports_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/internal-imports-plain/cpp" \
+    --cpp-namespace testsuite \
+    --ident-cpp-enum-type foo_bar \
+    \
+    --swift-out "$temp_out_relative/swift-features/internal-imports-plain/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swiftxx-out "$temp_out_relative/swift-features/internal-imports-plain/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_internal_imports_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -562,6 +600,33 @@ for name in Plain Left Right; do
         exit 1
     fi
 done
+# --swift-internal-cxx-imports writes the imports of the two C++ glue modules as internal imports. The access level of
+# an import gives no compile-time check for a C++ declaration, so the check reads the generated lines. With the same
+# IDL and the flag off, every other line is identical.
+internal_imports="$temp_out/swift-features/internal-imports/swift"
+internal_plain="$temp_out/swift-features/internal-imports-plain/swift"
+for f in "$internal_imports"/*.swift; do
+    name=$(basename "$f")
+    normalised="$temp_out/internal-import-normalised-$name"
+    sed -E 's/^internal import (TestSuiteCxx|DjinniSupportCxx)$/import \1/' "$f" >"$normalised"
+    if ! diff -u "$internal_plain/$name" "$normalised"; then
+        echo "The internal-imports case differs from the plain case in more than the two C++ glue imports: $name" 1>&2
+        exit 1
+    fi
+done
+if grep -rhE "^import (TestSuiteCxx|DjinniSupportCxx)$" "$internal_imports"; then
+    echo "The internal-imports case still has a plain import of a C++ glue module." 1>&2
+    exit 1
+fi
+if ! grep -rqx "internal import TestSuiteCxx" "$internal_imports" || ! grep -rqx "internal import DjinniSupportCxx" "$internal_imports"; then
+    echo "The internal-imports case does not import both C++ glue modules internally." 1>&2
+    exit 1
+fi
+if grep -rh "^internal import " "$internal_imports" | grep -vE "^internal import (TestSuiteCxx|DjinniSupportCxx)$"; then
+    echo "The option made an import internal that is not a C++ glue module." 1>&2
+    exit 1
+fi
+
 # A Java escape becomes the Swift escape for the same character.
 const_strings="$temp_out/swift-features/const-strings/swift"
 for expected in \

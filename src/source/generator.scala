@@ -126,6 +126,7 @@ package object generatorTools {
                    swiftAsyncWrap: Option[String],
                    swiftAsyncQueue: Option[String],
                    swiftErrorType: Option[String],
+                   swiftInternalCxxImports: Boolean,
                    kotlinJniOutFolder: Option[File],
                    kotlinJniPackage: Option[String],
                    kotlinSuspendWrap: Boolean,

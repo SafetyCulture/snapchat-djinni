@@ -343,6 +343,9 @@ Command line switches:
 - `--swift-module`: Swift module name (default: `Module`)
 - `--swift-private-in-same-module`: omit `import <module>` in the `+Private`
   files, for use when all generated Swift files are in one module
+- `--swift-internal-cxx-imports`: write `internal import` for the two C++ glue
+  modules (`<module>Cxx` and `--swiftxx-base-lib-module`). The other imports do
+  not change. See below.
 - `--swift-legacy-records`: generate record fields as `var`. The default is `let`.
 - `--swift-async-wrap <label-prefix>`: wrap the interfaces that C++ implements in
   Swift classes with `async` methods. The generator ignores the value.
@@ -386,6 +389,20 @@ Swift 6 defaults:
   on field records.
 - A record with `deriving(eq)` is `Equatable` and `Hashable` in Swift, so each
   extern field type must be `Hashable` in Swift. SwiftProtobuf messages are.
+
+Internal C++ imports (`--swift-internal-cxx-imports`):
+
+- The generated files import the two C++ glue modules: `<module>Cxx` and the
+  value of `--swiftxx-base-lib-module` (default `DjinniSupportCxx`). With the
+  flag, those two imports are `internal import` (SE-0409). The C++ glue stays an
+  implementation detail of the generated module. The flag changes no other
+  line of the output.
+- The compiler does not apply the access level of an import to a declaration in
+  a C++ namespace. The public signatures of the generated files use only such
+  declarations.
+- A module cannot import one module at two access levels. Every other file of
+  the module that imports one of these two modules must use `internal import`
+  too.
 
 Async wrappers (`--swift-async-wrap`):
 
@@ -1061,6 +1078,7 @@ changes.
 |---|---|---|
 | `--swift-out`, `--swift-module`, `--swift-private-in-same-module`, `+sw` | `swift_host`, `swift_idents`, `swift_types`, `swift_sendable`, `swift_future_field` | `swift-features/` |
 | `--swift-out` without `--swift-private-in-same-module` | `swift_types` | `swift-features/separate-module` |
+| `--swift-internal-cxx-imports` | `swift_internal_imports` | `swift-features/internal-imports`, `swift-features/internal-imports-separate`, `swift-features/internal-imports-plain` |
 | `--swift-legacy-records` | `swift_legacy` | `swift-features/legacy` |
 | `--swift-async-wrap` | `swift_async` | `swift-features/async` |
 | `--swift-error-type` | `swift_error`, `swift_error_enum`, `swift_error_extern`, `swift_error_negative` | `swift-features/error`, `swift-features/error-extern` |

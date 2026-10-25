@@ -1,0 +1,31 @@
+@extern "../../support-lib/future.yaml"
+@extern "../../support-lib/outcome.yaml"
+
+# Generated with --swift-internal-cxx-imports. The C++ glue modules are internal imports of the generated module.
+
+swift_internal_color = enum { red; green; blue; }
+
+swift_internal_item = record {
+  id: string;
+  count: i32;
+  color: swift_internal_color;
+}
+
+swift_internal_failure = record {
+  message: string;
+  code: i32;
+} deriving(eq, error)
+
+# Swift implements this one, so the generated files of the host proxy import the C++ glue.
+swift_internal_observer = interface +sw {
+  on_item(item: swift_internal_item);
+}
+
+# C++ implements this one, so the generated files of the proxy import the C++ glue.
+swift_internal_service = interface +c {
+  static create(): swift_internal_service;
+  item(id: string): swift_internal_item;
+  watch(observer: swift_internal_observer);
+  color(): swift_internal_color;
+  find(id: string): outcome<swift_internal_item, swift_internal_failure>;
+}
