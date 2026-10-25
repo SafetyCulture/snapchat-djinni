@@ -323,6 +323,7 @@ swift_cxx_free_future_outcome_relative="djinni/swift_cxx_free_future_outcome.dji
 swift_cxx_free_error_module_relative="djinni/swift_cxx_free_error_module.djinni"
 swift_cxx_free_error_plain_relative="djinni/swift_cxx_free_error_plain.djinni"
 swift_sync_listener_relative="djinni/swift_sync_listener.djinni"
+swift_sync_doc_relative="djinni/swift_sync_doc.djinni"
 swift_sync_negative_relative="djinni/swift_sync_negative.djinni"
 (cd "$base_dir" && \
 "$base_dir/../src/run-assume-built" \
@@ -695,7 +696,20 @@ fi
     --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-error-module-plain/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
-    --idl "$swift_cxx_free_error_plain_relative" \
+    --idl "$swift_cxx_free_error_plain_relative" && \
+"$base_dir/../src/run-assume-built" \
+    --cpp-out "$temp_out_relative/swift-features/sync-doc/cpp" \
+    --cpp-namespace testsuite \
+    \
+    --swift-out "$temp_out_relative/swift-features/sync-doc/swift" \
+    --swift-module TestSuite \
+    --swift-private-in-same-module \
+    --swift-async-wrap "djinni.testsuite" \
+    --swift-sync-method swift_sync_doc_service.reserve \
+    --swiftxx-out "$temp_out_relative/swift-features/sync-doc/swiftxx" \
+    --swiftxx-include-cpp-prefix "../cpp/" \
+    \
+    --idl "$swift_sync_doc_relative" \
 )
 # A record that holds itself, or another record that holds it, through a list: the Sendable rule ends, and it still
 # finds the DataView behind the loop.
@@ -852,7 +866,7 @@ done
 # --swift-sync-method adds the synchronous form to the listed methods only. The two listed methods take a listener
 # whose interface has +sw; the other two methods with a listener get no form, also the future method.
 sync_forms() { # <case>
-    grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | sort
+    grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | LC_ALL=C sort
 }
 expected_sync_forms="public func addListenerNow(
 public func findListenerNow(
@@ -864,6 +878,21 @@ for sync_case in sync-listener sync-listener-error; do
         exit 1
     fi
 done
+# The fixed sentence of a synchronous form keeps its words, also when a parameter has one of them. The parameter of
+# sync-doc is named for, so the replacement would write `for`.
+sync_doc="$temp_out/swift-features/sync-doc/swift/SwiftSyncDocService.swift"
+if ! grep -qF "public func reserveNow(_ \`for\`: Int32)" "$sync_doc"; then
+    echo "The sync-doc case does not escape its keyword parameter." 1>&2
+    exit 1
+fi
+if ! grep -qF "Use this method for a registration that returns at once." "$sync_doc"; then
+    echo "The synchronous form lost its fixed doc sentence." 1>&2
+    exit 1
+fi
+if grep -qF "Use this method \`for\` a registration" "$sync_doc"; then
+    echo "A parameter name changed the fixed doc sentence of a synchronous form." 1>&2
+    exit 1
+fi
 sync_plain="$temp_out/swift-features/sync-listener/swift/SwiftSyncService.swift"
 sync_typed="$temp_out/swift-features/sync-listener-error/swift/SwiftSyncService.swift"
 for expected in \

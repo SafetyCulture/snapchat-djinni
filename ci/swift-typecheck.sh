@@ -172,6 +172,7 @@ single_case_mods "$work/internal-imports-single-mods" internal-imports
 single_case_mods "$work/internal-imports-mods" internal-imports-separate
 single_case_mods "$work/sync-listener-mods" sync-listener
 single_case_mods "$work/sync-listener-error-mods" sync-listener-error
+single_case_mods "$work/sync-doc-mods" sync-doc
 # The cxx-free cases have their own module, because they write an access level on every import.
 single_case_mods "$work/cxx-free-mods" cxx-free-api
 single_case_mods "$work/cxx-free-outcome-mods" cxx-free-api-future-outcome
@@ -361,6 +362,10 @@ swift_pass() { # <swiftc flags>
   # shellcheck disable=SC2086
   swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/sync-listener-error-mods" "$cases/sync-listener-error"/swift/*.swift "$error_conformance"
   echo "TEST-SUITE SYNC-LISTENER-ERROR SWIFT TYPECHECK OK [$flags]"
+  echo "== [$flags] TestSuite sync-doc (a keyword parameter of a synchronous form)"
+  # shellcheck disable=SC2086
+  swift_check -module-name TestSuite $flags "${cxx[@]}" -I "$work/sync-doc-mods" "$cases/sync-doc"/swift/*.swift
+  echo "TEST-SUITE SYNC-DOC SWIFT TYPECHECK OK [$flags]"
 }
 swift_pass "-swift-version 5"
 swift_pass "-swift-version 6 -strict-concurrency=complete"

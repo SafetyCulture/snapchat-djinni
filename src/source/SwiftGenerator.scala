@@ -476,8 +476,10 @@ class SwiftGenerator(spec: Spec) extends Generator(spec) {
   // registration that returns at once.
   private def writeSyncWrapperMethod(w: IndentWriter, m: Interface.Method) {
     w.wl
+    // The sentence is not part of the IDL, so a parameter name must not change it
     val sentence = " The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once."
-    writeMethodDoc(w, m, idSwift.local, if (m.doc.lines.isEmpty) Seq(sentence) else Seq("", sentence))
+    val blank = if (m.doc.lines.isEmpty) Seq() else Seq("")
+    writeMethodDoc(w, m, idSwift.local, blank, Seq(sentence))
     w.w(s"public func ${SwiftSyncMethods.syncName(idSwift.method, m)}(${paramList(m)})")
     val ret = m.ret.map(_.resolved)
     errorType match {

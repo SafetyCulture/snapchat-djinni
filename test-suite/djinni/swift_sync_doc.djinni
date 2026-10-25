@@ -1,0 +1,6 @@
+# Generated with --swift-async-wrap and --swift-sync-method. The listed method has a parameter named for, so the
+# generated name is `for`. The fixed sentence of the synchronous form must keep its own words.
+
+swift_sync_doc_service = interface +c {
+  reserve(for: i32): i32;
+}
