@@ -510,6 +510,8 @@ func runAsyncTests() async throws {
     let callerThread = Int64(pthread_mach_thread_np(pthread_self()))
     let registeredListener = Doubler()
     check(try first.registerListenerNow(registeredListener) == 1, "the synchronous registration returns the count")
+    check(try first.recordPairNow(7, second: 9) == 7009, "the synchronous form passes the two parameters in order")
+    check(try first.recordedPairNow() == "7,9", "C++ records the two parameters in the order of the call")
     let registrationThread = try await first.registrationThread()
     check(registrationThread == callerThread, "the synchronous registration ran on thread \(registrationThread), not on \(callerThread)")
     check(try await first.callRegisteredListener(21) == 42, "the synchronous registration stored the listener")

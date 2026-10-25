@@ -136,6 +136,18 @@ public:
         return _registrationThread;
     }
 
+    int32_t record_pair(int32_t first, int32_t second) override {
+        std::lock_guard<std::mutex> lock(_registeredMutex);
+        _pairFirst = first;
+        _pairSecond = second;
+        return first * 1000 + second;
+    }
+
+    std::string recorded_pair() override {
+        std::lock_guard<std::mutex> lock(_registeredMutex);
+        return std::to_string(_pairFirst) + "," + std::to_string(_pairSecond);
+    }
+
     int32_t call_registered_listener(int32_t value) override {
         std::shared_ptr<rt::RuntimeListener> listener;
         {
@@ -161,6 +173,8 @@ private:
     std::shared_ptr<rt::RuntimeListener> _registered;
     int64_t _registrationThread{0};
     int32_t _registrationCount{0};
+    int32_t _pairFirst{0};
+    int32_t _pairSecond{0};
 };
 
 } // namespace

@@ -20,6 +20,7 @@ swift_sync_service = interface +c {
   static create(): swift_sync_service;
   # Listed. Six methods take a listener, so the output shows the form on the listed ones only.
   add_listener(listener: swift_sync_listener): i32;
+  # Listed. Two parameters, so the synchronous form must pass each one with its own value.
   call_listener(listener: swift_sync_listener, value: i32): i32;
   remove_listener(listener: swift_sync_listener);
   # Listed. The name is a Swift keyword, so the synchronous form is guardNow, without backticks.

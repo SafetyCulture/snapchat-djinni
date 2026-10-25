@@ -54,6 +54,8 @@ out="$work/out"
   --swift-out "$out/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-async-queue RuntimeQueues.blocking \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --swiftxx-out "$out/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
 # The error type has its own IDL: every method that Swift calls into C++ throws it.
@@ -99,15 +101,19 @@ done
   --cpp-out "$work/default/cpp" --cpp-namespace rt \
   --swift-out "$work/default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --idl runtime.djinni)
 cp -R "$out/swift" "$out/swift-default"
 cp "$work"/default/swift/*.swift "$out/swift-default/"
 
 # --swift-sync-method gives the listed registrations a synchronous form. The future method with a +sw parameter that
 # is not listed gets none.
-now_forms() { grep -hoE "public func [A-Za-z0-9]+Now\(" "$1" | sort; }
-if [ "$(now_forms "$out/swift/RuntimeAsync.swift")" != "public func registerListenerNow(" ]; then
-  echo "FAIL: RuntimeAsync does not have the one synchronous form that is listed." >&2
+now_forms() { grep -hoE "public func [A-Za-z0-9]+Now\(" "$1" | LC_ALL=C sort; }
+if [ "$(now_forms "$out/swift/RuntimeAsync.swift")" != "public func recordPairNow(
+public func recordedPairNow(
+public func registerListenerNow(" ]; then
+  echo "FAIL: RuntimeAsync does not have the three synchronous forms that are listed." >&2
   now_forms "$out/swift/RuntimeAsync.swift" >&2
   exit 1
 fi
@@ -137,6 +143,8 @@ out_cxx_free="$work/cxx-free"
   --swift-out "$out_cxx_free/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-internal-cxx-imports --swift-cxx-free-api \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --swift-async-queue 'DispatchQueue(label: "djinni.runtime.blocking", attributes: .concurrent)' \
   --swiftxx-out "$out_cxx_free/swiftxx" --swiftxx-include-cpp-prefix "../cpp/" \
   --idl runtime.djinni)
@@ -169,6 +177,8 @@ out_cxx_free="$work/cxx-free"
   --swift-out "$work/cxx-free-default/swift" --swift-module RuntimeTest --swift-private-in-same-module --swift-async-wrap djinni.runtime \
   --swift-internal-cxx-imports --swift-cxx-free-api \
   --swift-sync-method runtime_async.register_listener \
+  --swift-sync-method runtime_async.record_pair \
+  --swift-sync-method runtime_async.recorded_pair \
   --idl runtime.djinni)
 cp -R "$out_cxx_free/swift" "$out_cxx_free/swift-default"
 cp "$work"/cxx-free-default/swift/*.swift "$out_cxx_free/swift-default/"

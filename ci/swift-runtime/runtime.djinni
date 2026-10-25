@@ -70,6 +70,10 @@ runtime_async = interface +c {
   call_listener(listener: runtime_listener, value: i32): i32;
   # --swift-sync-method gives this registration a synchronous form. C++ stores the listener and the thread of the call.
   register_listener(listener: runtime_listener): i32;
+  # A listed registration with two parameters of the same type: the synchronous form must pass them in order.
+  record_pair(first: i32, second: i32): i32;
+  # The two values that record_pair stored, as "first,second".
+  recorded_pair(): string;
   # The mach thread id of the register_listener call.
   registration_thread(): i64;
   # Calls the listener that register_listener stored.

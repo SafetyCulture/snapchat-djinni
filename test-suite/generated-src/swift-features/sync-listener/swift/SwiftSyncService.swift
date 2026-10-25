@@ -28,8 +28,18 @@ public final class SwiftSyncService: @unchecked Sendable {
         return try djinniProxy.addListener(listener)
     }
 
+    /** Listed. Two parameters, so the synchronous form must pass each one with its own value. */
     @concurrent public func callListener(_ listener: TestSuite.SwiftSyncListener, value: Int32) async throws -> Int32 {
         return try await DjinniSupport.djinniCall { [djinniProxy = self.djinniProxy] in try djinniProxy.callListener(listener, value: value) }
+    }
+
+    /**
+     * Listed. Two parameters, so the synchronous form must pass each one with its own value.
+     *
+     * The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once.
+     */
+    public func callListenerNow(_ listener: TestSuite.SwiftSyncListener, value: Int32) throws -> Int32 {
+        return try djinniProxy.callListener(listener, value: value)
     }
 
     @concurrent public func removeListener(_ listener: TestSuite.SwiftSyncListener) async throws -> Void {

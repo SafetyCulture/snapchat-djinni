@@ -603,6 +603,7 @@ fi
     --swift-sync-method swift_sync_service.add_listener \
     --swift-sync-method swift_sync_service.find_listener \
     --swift-sync-method swift_sync_service.guard \
+    --swift-sync-method swift_sync_service.call_listener \
     --swiftxx-out "$temp_out_relative/swift-features/sync-listener/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \
@@ -619,6 +620,7 @@ fi
     --swift-sync-method swift_sync_service.add_listener \
     --swift-sync-method swift_sync_service.find_listener \
     --swift-sync-method swift_sync_service.guard \
+    --swift-sync-method swift_sync_service.call_listener \
     --swift-error-type CruxError \
     --swiftxx-out "$temp_out_relative/swift-features/sync-listener-error/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
@@ -863,17 +865,18 @@ for cxx_free_missing in swift-internal-cxx-imports swift-private-in-same-module;
     fi
 done
 
-# --swift-sync-method adds the synchronous form to the listed methods only. The two listed methods take a listener
-# whose interface has +sw; the other two methods with a listener get no form, also the future method.
+# --swift-sync-method adds the synchronous form to the listed methods only. The listed methods take a listener whose
+# interface has +sw; observe returns a future, so it gets no form.
 sync_forms() { # <case>
     grep -hoE "public func [A-Za-z0-9]+Now\(" "$temp_out/swift-features/$1/swift/SwiftSyncService.swift" | LC_ALL=C sort
 }
 expected_sync_forms="public func addListenerNow(
+public func callListenerNow(
 public func findListenerNow(
 public func guardNow("
 for sync_case in sync-listener sync-listener-error; do
     if [ "$(sync_forms "$sync_case")" != "$expected_sync_forms" ]; then
-        echo "The synchronous forms of $sync_case are not the three listed methods." 1>&2
+        echo "The synchronous forms of $sync_case are not the listed methods." 1>&2
         sync_forms "$sync_case" 1>&2
         exit 1
     fi
@@ -913,7 +916,9 @@ for expected in \
         exit 1
     fi
 done
-if [ "$(grep -cF -- "The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once." "$sync_typed")" -ne 3 ]; then
+sync_typed_forms="$(grep -cE "public func [A-Za-z0-9]+Now\(" "$sync_typed")"
+sync_typed_docs="$(grep -cF -- "The C++ call runs on the caller's thread and blocks it. Use this method for a registration that returns at once." "$sync_typed")"
+if [ "$sync_typed_docs" -ne "$sync_typed_forms" ]; then
     echo "The synchronous forms do not each have the doc line about the caller's thread." 1>&2
     exit 1
 fi

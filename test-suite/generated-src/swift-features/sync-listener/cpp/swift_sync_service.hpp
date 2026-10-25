@@ -23,6 +23,7 @@ public:
     /** Listed. Six methods take a listener, so the output shows the form on the listed ones only. */
     virtual int32_t add_listener(const /*not-null*/ std::shared_ptr<SwiftSyncListener> & listener) = 0;
 
+    /** Listed. Two parameters, so the synchronous form must pass each one with its own value. */
     virtual int32_t call_listener(const /*not-null*/ std::shared_ptr<SwiftSyncListener> & listener, int32_t value) = 0;
 
     virtual void remove_listener(const /*not-null*/ std::shared_ptr<SwiftSyncListener> & listener) = 0;
