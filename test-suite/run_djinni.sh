@@ -664,6 +664,7 @@ fi
     --swift-internal-cxx-imports \
     --swift-cxx-free-api \
     --swift-async-wrap "djinni.testsuite" \
+    --swift-async-queue "DispatchQueue.global(qos: .utility)" \
     --swiftxx-out "$temp_out_relative/swift-features/cxx-free-api-future-outcome/swiftxx" \
     --swiftxx-include-cpp-prefix "../cpp/" \
     \

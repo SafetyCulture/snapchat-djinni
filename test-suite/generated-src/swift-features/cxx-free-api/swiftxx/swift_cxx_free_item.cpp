@@ -12,11 +12,12 @@ djinni::swift::AnyValue SwiftCxxFreeItem::fromCpp(const ::testsuite::SwiftCxxFre
     ret->addValue(::djinni::swift::String::fromCpp(c.id));
     ret->addValue(::djinni_generated_swift::SwiftCxxFreeColor::fromCpp(c.color));
     ret->addValue(::djinni_generated_swift::SwiftCxxFreeOptions::fromCpp(c.options));
+    ret->addValue(::djinni::swift::Date::fromCpp(c.when));
     return {ret};
 }
 ::testsuite::SwiftCxxFreeItem SwiftCxxFreeItem::toCpp(const djinni::swift::AnyValue& s) {
     auto p = std::get<djinni::swift::CompositeValuePtr>(s);
-    return ::testsuite::SwiftCxxFreeItem(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni_generated_swift::SwiftCxxFreeColor::toCpp(p->getValue(1)), ::djinni_generated_swift::SwiftCxxFreeOptions::toCpp(p->getValue(2)));
+    return ::testsuite::SwiftCxxFreeItem(::djinni::swift::String::toCpp(p->getValue(0)), ::djinni_generated_swift::SwiftCxxFreeColor::toCpp(p->getValue(1)), ::djinni_generated_swift::SwiftCxxFreeOptions::toCpp(p->getValue(2)), ::djinni::swift::Date::toCpp(p->getValue(3)));
 }
 
 } // namespace djinni_generated_swift

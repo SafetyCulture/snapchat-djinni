@@ -1,4 +1,5 @@
 import DjinniSupportCore
+import Foundation
 import Models
 import TestSuite
 
@@ -62,7 +63,7 @@ func asConvertible<E: CppExceptionConvertible>(_ type: E.Type) -> E {
 }
 
 func useTheApi() throws {
-    let item = SwiftCxxFreeItem(id: "item", color: .red, options: [.loud])
+    let item = SwiftCxxFreeItem(id: "item", color: .red, options: [.loud], when: Date())
     _ = colorName(item.color)
     let listener = Listener()
     _ = try listener.next(1)

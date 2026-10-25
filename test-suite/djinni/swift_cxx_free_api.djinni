@@ -17,6 +17,8 @@ swift_cxx_free_item = record {
   id: string;
   color: swift_cxx_free_color;
   options: swift_cxx_free_options;
+  # A Foundation type in the public API, which needs a public import.
+  when: date;
 }
 
 # Swift implements this one, so the client of the generated module writes it.

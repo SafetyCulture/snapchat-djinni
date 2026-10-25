@@ -5,6 +5,7 @@
 
 #include "swift_cxx_free_color.hpp"
 #include "swift_cxx_free_options.hpp"
+#include <chrono>
 #include <string>
 #include <utility>
 
@@ -14,13 +15,17 @@ struct SwiftCxxFreeItem final {
     std::string id;
     swift_cxx_free_color color;
     swift_cxx_free_options options;
+    /** A Foundation type in the public API, which needs a public import. */
+    std::chrono::system_clock::time_point when;
 
     SwiftCxxFreeItem(std::string id_,
                      swift_cxx_free_color color_,
-                     swift_cxx_free_options options_)
+                     swift_cxx_free_options options_,
+                     std::chrono::system_clock::time_point when_)
     : id(std::move(id_))
     , color(std::move(color_))
     , options(std::move(options_))
+    , when(std::move(when_))
     {}
 };
 
