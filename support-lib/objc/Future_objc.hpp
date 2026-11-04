@@ -20,7 +20,38 @@
 #import "DJFuture.h"
 #import "../cpp/Future.hpp"
 
+#include <optional>
+#include <stdexcept>
+
 namespace djinni {
+
+namespace detail {
+
+// Call only from a catch block. In Objective-C++, catch (...) also catches an NSException.
+inline NSException* objcExceptionFromCurrent() {
+    try {
+        throw;
+    } catch (NSException* e) {
+        return e;
+    } catch (const std::exception& e) {
+        return [NSException exceptionWithName:@"" reason:String::fromCpp(e.what()) userInfo:nil];
+    } catch (...) {
+        return [NSException exceptionWithName:@"" reason:@"unknown C++ exception" userInfo:nil];
+    }
+}
+
+// Call only from a catch block.
+inline std::exception_ptr cppExceptionFromCurrent() {
+    try {
+        throw;
+    } catch (NSException* e) {
+        return std::make_exception_ptr(std::runtime_error(String::toCpp(e.reason)));
+    } catch (...) {
+        return std::current_exception();
+    }
+}
+
+} // namespace detail
 
 template <class RESULT>
 class FutureAdaptor
@@ -40,10 +71,17 @@ public:
         __block auto p = std::make_unique<NativePromiseType>();
         auto f = p->getFuture();
         [o then: ^id(DJFuture* res) {
-                @try {
-                    p->setValue(RESULT::Boxed::toCpp([res get]));
-                } @catch (NSException* e) {
-                    p->setException(std::runtime_error(String::toCpp(e.reason)));
+                std::exception_ptr error;
+                std::optional<CppResType> value;
+                try {
+                    value.emplace(RESULT::Boxed::toCpp([res get]));
+                } catch (...) {
+                    error = detail::cppExceptionFromCurrent();
+                }
+                if (error) {
+                    p->setException(error);
+                } else {
+                    p->setValue(std::move(*value));
                 }
                 return nil;
             }];
@@ -56,12 +94,17 @@ public:
         DJFuture<typename RESULT::Boxed::ObjcType>* future = [promise getFuture];
 
         c.then([promise] (Future<CppResType> res) {
+                NSException* error = nil;
+                typename RESULT::Boxed::ObjcType value = nil;
                 try {
-                    [promise setValue:RESULT::Boxed::fromCpp(res.get())];
-                } catch (const std::exception& e) {
-                    [promise setException: [NSException exceptionWithName:@"" reason: String::fromCpp(e.what()) userInfo:nil]];
+                    value = RESULT::Boxed::fromCpp(res.get());
                 } catch (...) {
-                    [promise setException: [NSException exceptionWithName:@"" reason:@"unknown C++ exception" userInfo:nil]];
+                    error = detail::objcExceptionFromCurrent();
+                }
+                if (error) {
+                    [promise setException:error];
+                } else {
+                    [promise setValue:value];
                 }
             });
         
@@ -85,10 +128,16 @@ public:
         __block auto p = std::make_unique<NativePromiseType>();
         auto f = p->getFuture();
         [o then: ^id(DJFuture* res) {
-                @try {
+                std::exception_ptr error;
+                try {
+                    [res get];
+                } catch (...) {
+                    error = detail::cppExceptionFromCurrent();
+                }
+                if (error) {
+                    p->setException(error);
+                } else {
                     p->setValue();
-                } @catch (NSException* e) {
-                    p->setException(std::runtime_error(String::toCpp(e.reason)));
                 }
                 return nil;
             }];
@@ -101,13 +150,16 @@ public:
         DJFuture<NSNull*>* future = [promise getFuture];
 
         c.then([promise] (Future<void> res) {
+                NSException* error = nil;
                 try {
                     res.get();
-                    [promise setValue:[NSNull null]];
-                } catch (const std::exception& e) {
-                    [promise setException: [NSException exceptionWithName:@"" reason: String::fromCpp(e.what()) userInfo:nil]];
                 } catch (...) {
-                    [promise setException: [NSException exceptionWithName:@"" reason:@"unknown C++ exception" userInfo:nil]];
+                    error = detail::objcExceptionFromCurrent();
+                }
+                if (error) {
+                    [promise setException:error];
+                } else {
+                    [promise setValue:[NSNull null]];
                 }
             });
         
