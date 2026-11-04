@@ -1251,6 +1251,15 @@ them. Run them on a Mac before you merge a change to a Swift file:
 `ci/swift-runtime-test.sh` builds and runs its program with Xcode 26.5. Xcode 27
 fails in the code generator of the typed async closures of the program.
 
+### Objective-C checks (macOS)
+
+The pipeline does not run this check, because the Docker image has no
+Foundation. Run it on a Mac before you merge a change to `support-lib/objc/Future_objc.hpp`:
+
+```
+./ci/objc-future-test.sh       # a failed C++ future rejects the DJFuture, for every exception
+```
+
 ### Kotlin checks (pipeline and local)
 
 The step `Kotlin JNI checks` of the pipeline runs `./ci/kotlin-ci.sh` in the

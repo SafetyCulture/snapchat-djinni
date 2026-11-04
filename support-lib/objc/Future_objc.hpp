@@ -60,6 +60,8 @@ public:
                     [promise setValue:RESULT::Boxed::fromCpp(res.get())];
                 } catch (const std::exception& e) {
                     [promise setException: [NSException exceptionWithName:@"" reason: String::fromCpp(e.what()) userInfo:nil]];
+                } catch (...) {
+                    [promise setException: [NSException exceptionWithName:@"" reason:@"unknown C++ exception" userInfo:nil]];
                 }
             });
         
@@ -100,9 +102,12 @@ public:
 
         c.then([promise] (Future<void> res) {
                 try {
+                    res.get();
                     [promise setValue:[NSNull null]];
                 } catch (const std::exception& e) {
                     [promise setException: [NSException exceptionWithName:@"" reason: String::fromCpp(e.what()) userInfo:nil]];
+                } catch (...) {
+                    [promise setException: [NSException exceptionWithName:@"" reason:@"unknown C++ exception" userInfo:nil]];
                 }
             });
         
