@@ -18,7 +18,7 @@ trap 'rm -rf "$work"' EXIT
 
 status=0
 for name in std-exception non-std-exception void-std-exception void-non-std-exception void-value \
-    nsexception-kept downstream-throw void-tocpp-rejected tocpp-cpp-exception tocpp-nsexception; do
+    nsexception-kept downstream-throw void-tocpp-rejected tocpp-cpp-exception tocpp-nsexception tocpp-no-reason; do
   if "$work/future-test" "$name"; then
     echo "ok: $name"
   else

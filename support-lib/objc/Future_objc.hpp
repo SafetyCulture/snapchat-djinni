@@ -45,7 +45,8 @@ inline std::exception_ptr cppExceptionFromCurrent() {
     try {
         throw;
     } catch (NSException* e) {
-        return std::make_exception_ptr(std::runtime_error(String::toCpp(e.reason)));
+        // The reason of an NSException can be nil, and String::toCpp accepts only a string.
+        return std::make_exception_ptr(std::runtime_error(String::toCpp(e.reason ?: e.name)));
     } catch (...) {
         return std::current_exception();
     }

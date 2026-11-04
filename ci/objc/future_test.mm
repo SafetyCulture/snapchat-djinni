@@ -172,6 +172,13 @@ void rejectedVoidDJFutureRejectsCppFuture() {
     expectCppRejected("void-tocpp-rejected", cf, "objc failure");
 }
 
+void rejectionWithoutReasonRejectsCppFuture() {
+    DJPromise* dp = [[DJPromise alloc] init];
+    djinni::Future<void> cf = djinni::FutureAdaptor<djinni::Void>::toCpp([dp getFuture]);
+    [dp setException:[NSException exceptionWithName:@"ObjcError" reason:nil userInfo:nil]];
+    expectCppRejected("tocpp-no-reason", cf, "ObjcError");
+}
+
 void conversionCppExceptionRejectsCppFuture() {
     DJPromise* dp = [[DJPromise alloc] init];
     djinni::Future<int> cf = djinni::FutureAdaptor<ThrowingMarshal>::toCpp([dp getFuture]);
@@ -207,6 +214,7 @@ const Case cases[] = {
     {"void-tocpp-rejected", rejectedVoidDJFutureRejectsCppFuture},
     {"tocpp-cpp-exception", conversionCppExceptionRejectsCppFuture},
     {"tocpp-nsexception", conversionNSExceptionRejectsCppFuture},
+    {"tocpp-no-reason", rejectionWithoutReasonRejectsCppFuture},
 };
 
 } // namespace
