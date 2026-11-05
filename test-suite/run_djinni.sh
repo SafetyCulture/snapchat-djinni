@@ -56,7 +56,8 @@ elif [ $# -eq 1 ]; then
     for dir in "$temp_out" "$cpp_out" "$jni_out" "$java_out" "$kotlin_out" \
         "$base_dir/generated-src/swift-features" "$base_dir/generated-src/kotlin-jni" \
         "$base_dir/generated-src/kotlin-jni-suspend" "$base_dir/generated-src/kotlin-jni-package" \
-        "$base_dir/generated-src/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-java-bridge"; do
+        "$base_dir/generated-src/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-java-bridge" \
+        "$base_dir/generated-src/kotlin-jni-native"; do
         if [ -e "$dir" ]; then
             echo "Deleting \"$dir\"..."
             rm -r "$dir"
@@ -1780,6 +1781,46 @@ fi
     --idl-include-path "djinni/vendor" \
 )
 
+# The Kotlin JNI split: the static methods and the CppProxy of a +c interface go to --kotlin-jni-native-out, and the
+# JNI code binds those classes. The classes of --kotlin-jni-out have no external function.
+(cd "$base_dir" && \
+"$base_dir/../src/run-assume-built" \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-native/kotlin" \
+    --kotlin-jni-native-out "$temp_out_relative/kotlin-jni-native/native" \
+    --jni-out "$temp_out_relative/kotlin-jni-native/jni" \
+    --java-package $java_package \
+    --ident-java-field mFooBar \
+    --jni-use-on-load-initializer false \
+    --idl "djinni/kotlin_jni_native.djinni" \
+)
+if grep -rq "external fun" "$temp_out/kotlin-jni-native/kotlin"; then
+    echo "A class of --kotlin-jni-out has an external function with --kotlin-jni-native-out." 1>&2
+    exit 1
+fi
+native_flag_log="$temp_out/kotlin-jni-native-flags.log"
+check_native_flag() { # <name> <message> <arguments...>
+    local name=$1 message=$2
+    shift 2
+    if (cd "$base_dir" && "$base_dir/../src/run-assume-built" "$@" \
+        --kotlin-jni-native-out "$temp_out_relative/kotlin-jni-native-flags/$name/native" \
+        --java-package $java_package --idl "djinni/kotlin_jni_native.djinni") >"$native_flag_log" 2>&1; then
+        echo "The generator accepted --kotlin-jni-native-out in the case $name." 1>&2
+        exit 1
+    fi
+    if ! grep -qF -- "$message" "$native_flag_log" || [ -e "$base_dir/$temp_out_relative/kotlin-jni-native-flags/$name" ]; then
+        echo "Missing error message for $name, or files were written: $message" 1>&2
+        cat "$native_flag_log" 1>&2
+        exit 1
+    fi
+}
+check_native_flag no-kotlin "Error: --kotlin-jni-native-out needs --kotlin-jni-out." \
+    --jni-out "$temp_out_relative/kotlin-jni-native-flags/no-kotlin/jni"
+check_native_flag with-java "Error: --kotlin-jni-native-out cannot be used with --java-out and --jni-out in one run." \
+    --kotlin-jni-out "$temp_out_relative/kotlin-jni-native-flags/with-java/kotlin" \
+    --java-out "$temp_out_relative/kotlin-jni-native-flags/with-java/java" \
+    --jni-out "$temp_out_relative/kotlin-jni-native-flags/with-java/jni"
+rm -f "$native_flag_log"
+
 # Both bridge flags are needed, and the output needs --kotlin-jni-out. Each case exits 1 and writes no file.
 bridge_flag_log="$temp_out/kotlin-jni-java-bridge-flags.log"
 check_bridge_flag() { # <log name> <message> <arguments...>
@@ -2097,6 +2138,7 @@ mirror "kotlin-jni-package" "$temp_out/kotlin-jni-package" "$base_dir/generated-
 mirror "kotlin-jni-error" "$temp_out/kotlin-jni-error" "$base_dir/generated-src/kotlin-jni-error"
 mirror "kotlin-jni-extern" "$temp_out/kotlin-jni-extern" "$base_dir/generated-src/kotlin-jni-extern"
 mirror "kotlin-jni-java-bridge" "$temp_out/kotlin-jni-java-bridge" "$base_dir/generated-src/kotlin-jni-java-bridge"
+mirror "kotlin-jni-native" "$temp_out/kotlin-jni-native" "$base_dir/generated-src/kotlin-jni-native"
 
 date > "$gen_stamp"
 
