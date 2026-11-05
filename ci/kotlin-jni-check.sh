@@ -5,7 +5,9 @@
 # and the Kotlin on the JVM, and compares the class files with `javap -p -s` (ci/kotlin_jni_compare.py):
 # the Crux assets IDL with the flags of crux/tools/generate_code.sh, the whole Crux IDL with --kotlin-error-type
 # and --kotlin-suspend-wrap, and the test-suite IDL. The bridge pass compiles the Java classes of one run with
-# the Kotlin JNI classes and the converters of a second run, and runs a round-trip program.
+# the Kotlin JNI classes and the converters of a second run, and runs a round-trip program. The split passes
+# compare the Java classes of one run with the Kotlin JNI classes, the --kotlin-jni-native-out classes and the JNI
+# code of a second run.
 #
 # Needs javac, javap and kotlinc. The Kotlin compiler needs its Parcelize plugin (parcelize-compiler.jar).
 #
@@ -61,12 +63,12 @@ else
   jar="$repo_root/bazel-bin/src/djinni_deploy.jar"
 fi
 
-# compile_and_compare <name> <package> <extern dir or ""> [<extra Kotlin dir> [<arguments of kotlin_jni_compare.py>...]]
+# compile_and_compare <name> <package> <extern dir or ""> [<extra Kotlin dirs, ':' separated> [<arguments of kotlin_jni_compare.py>...]]
 # The generated trees are in $work/<name>/{java,jni,kotlin}.
 compile_and_compare() {
-  local name=$1 package=$2 extern=$3 dir="$work/$1"
+  local name=$1 package=$2 extern=$3 dir="$work/$1" extra_kotlin=()
   shift 3
-  local extra_kotlin="${1:-}"
+  [ -z "${1:-}" ] || IFS=: read -r -a extra_kotlin <<<"$1"
   [ $# -eq 0 ] || shift
   mkdir -p "$dir/stubs" "$dir/java-classes" "$dir/kotlin-classes"
   [ -z "$extern" ] || python3 "$repo_root/ci/kotlin_jni_stubs.py" "$extern" "$dir/stubs"
@@ -79,9 +81,17 @@ compile_and_compare() {
   javac -nowarn -d "$dir/java-classes" $(find "$dir/stubs" "$dir/java" "$repo_root/ci/kotlin-jni/stubs" "$repo_root/support-lib/java" -name '*.java')
   echo "== $name: kotlinc ($(find "$dir/kotlin" -name '*.kt' | wc -l | tr -d ' ') Kotlin files)"
   kotlinc -Werror -d "$dir/kotlin-classes" -Xplugin="$kotlin_lib/parcelize-compiler.jar" \
-    -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar:$coroutines" "$dir/kotlin" ${extra_kotlin:+"$extra_kotlin"}
+    -cp "$dir/java-classes:$kotlin_lib/parcelize-runtime.jar:$coroutines" "$dir/kotlin" ${extra_kotlin[@]+"${extra_kotlin[@]}"}
   echo "== $name: javap"
   python3 "$repo_root/ci/kotlin_jni_compare.py" "$dir/java-classes" "$dir/kotlin-classes" "$dir/jni" "$package" "$@"
+}
+
+# check_no_external <Kotlin dir>: with --kotlin-jni-native-out, the classes of --kotlin-jni-out have no JNI code.
+check_no_external() {
+  if grep -rl "external fun" "$1"; then
+    echo "FAIL: a class of --kotlin-jni-out has an external function with --kotlin-jni-native-out" >&2
+    exit 1
+  fi
 }
 
 # strip_kotlin_keys <extern dir>: removes the Kotlin keys (jni.kotlin*, kotlin.jniTypename) from the yaml files.
@@ -145,6 +155,30 @@ if [ "$check_crux" != 0 ]; then
     exit 1
   fi
   echo "crux error type: $(grep -l "$package.CruxException" "$work/crux-error/kotlin"/*.kt | wc -l | tr -d ' ') Kotlin files throw CruxException"
+
+  # 1d. The whole Crux IDL with --kotlin-jni-native-out. The Java classes come from a run without the split, and the
+  # JNI code from the split run binds the classes of the native folder.
+  name=crux-split
+  mkdir -p "$work/$name"
+  (cd "$work/fx-main" && java -jar "$jar" \
+    --java-out "$work/$name/java" --java-package "$package" --ident-java-field mFooBar \
+    --java-nonnull-annotation androidx.annotation.NonNull --java-implement-android-os-parcelable true \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
+  (cd "$work/fx-main" && java -jar "$jar" \
+    --kotlin-jni-out "$work/$name/kotlin" --kotlin-jni-native-out "$work/$name/native" \
+    --java-package "$package" --ident-java-field mFooBar \
+    --java-nonnull-annotation androidx.annotation.NonNull --java-implement-android-os-parcelable true \
+    --jni-out "$work/$name/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar --ident-cpp-method FooBar \
+    --jni-include-cpp-prefix generated/ \
+    --kotlin-suspend-wrap --kotlin-error-type "$package.CruxException" \
+    --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
+  check_no_external "$work/$name/kotlin"
+  if [ ! -f "$work/$name/native/NativeMediaAPI.kt" ] || [ ! -f "$work/$name/native/MediaAPICppProxy.kt" ]; then
+    echo "FAIL: the Crux split pass did not write NativeMediaAPI.kt and MediaAPICppProxy.kt" >&2
+    exit 1
+  fi
+  compile_and_compare "$name" "$package" "$work/fx-main/extern" "$work/$name/native:$repo_root/ci/kotlin-jni/crux" --native-split
+  echo "crux split: $(find "$work/$name/native" -name 'Native*.kt' | wc -l | tr -d ' ') Native classes, $(find "$work/$name/native" -name '*CppProxy.kt' | wc -l | tr -d ' ') CppProxy classes"
 
   # 1c. The Java <-> Kotlin JNI converters over the whole Crux IDL. The pass compiles, and stdout lists the
   # records that hold a +c interface.
@@ -214,6 +248,37 @@ for mode in suspend:false suspend-onload:true; do
     --idl djinni/kotlin_suspend.djinni)
   compile_and_compare "$name" "$package" ""
 done
+
+# 3a. The Kotlin JNI split over the test-suite IDL: the Java classes of one run, and the Kotlin JNI classes, the
+# --kotlin-jni-native-out classes and the JNI code of a second run. The JNI code binds by name and in JNI_OnLoad.
+# split_pass <name> <IDL> <extra Kotlin dirs or ""> <flags of the Kotlin run only> <flags of both runs>...
+split_pass() {
+  local name=$1 idl=$2 extra=$3 kotlin_flags=$4 dir="$work/$1"
+  shift 4
+  mkdir -p "$dir"
+  (cd "$repo_root/test-suite" && java -jar "$jar" --java-out "$dir/java" "$@" --idl "$idl")
+  # shellcheck disable=SC2086
+  (cd "$repo_root/test-suite" && java -jar "$jar" \
+    --kotlin-jni-out "$dir/kotlin" --kotlin-jni-native-out "$dir/native" $kotlin_flags \
+    --jni-out "$dir/jni" --ident-jni-class NativeFooBar --ident-jni-file NativeFooBar "$@" --idl "$idl")
+  check_no_external "$dir/kotlin"
+  compile_and_compare "$name" "$package" "" "$dir/native${extra:+:$extra}" --native-split
+}
+suite_flags=(--java-package "$package" --java-nullable-annotation javax.annotation.CheckForNull
+  --java-nonnull-annotation javax.annotation.Nonnull --ident-java-field mFooBar)
+for onload in false true; do
+  split_pass "split-suite-$onload" djinni/kotlin_jni.djinni "" "" "${suite_flags[@]}" --java-use-final-for-record false \
+    --java-implement-android-os-parcelable true --java-gen-interface true --jni-use-on-load-initializer "$onload" \
+    --idl-include-path djinni/vendor
+  split_pass "split-suspend-$onload" djinni/kotlin_suspend.djinni "" --kotlin-suspend-wrap "${suite_flags[@]}" \
+    --jni-use-on-load-initializer "$onload"
+done
+error_type="--kotlin-error-type com.dropbox.djinni.test.KotlinErrorException"
+split_pass split-error-sync djinni/kotlin_error_sync.djinni "$repo_root/ci/kotlin-jni/error" "$error_type" \
+  "${suite_flags[@]}" --jni-use-on-load-initializer false
+split_pass split-error-suspend djinni/kotlin_error_async.djinni "$repo_root/ci/kotlin-jni/error" "--kotlin-suspend-wrap $error_type" \
+  "${suite_flags[@]}" --jni-use-on-load-initializer true
+echo "split: the Kotlin JNI classes have no external function, and the native classes bind to the JNI code"
 
 # A record named unit is not Unit. A future<unit> returns the record, and only a future<void> has no value.
 suspend_kt="$work/suspend/kotlin/KotlinSuspendService.kt"
