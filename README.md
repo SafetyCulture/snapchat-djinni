@@ -777,6 +777,42 @@ On macOS, use `nm -gU` in place of `nm -D --defined-only`.
 `ci/kotlin-jni/runtime/two_glue.djinni` and checks the two proxies, the cache,
 the release and a `+j` object of each leg.
 
+### The JNI part in a separate folder
+
+`--kotlin-jni-native-out <dir>` moves the JNI part of each interface with `+c`
+out of the classes of `--kotlin-jni-out`. Then the classes of `--kotlin-jni-out`
+have no `external fun`, and a module can compile them without the JNI code.
+
+```
+java -jar djinni.jar \
+  --kotlin-jni-out out/kotlin --kotlin-jni-native-out out/kotlin-native \
+  --java-package com.example.cruxkt.domain \
+  --jni-out out/jni/kt --jni-namespace djinni_generated_kt \
+  --jni-include-prefix kt/ --idl main.djinni
+```
+
+For `media_API = interface +c { static create(): media_API; get_name(): string; }`:
+
+| Folder | File | Content |
+| --- | --- | --- |
+| `--kotlin-jni-out` | `MediaAPI.kt` | `abstract class MediaAPI` with the abstract methods and the constants. No `companion object` statics and no `CppProxy`. |
+| `--kotlin-jni-native-out` | `NativeMediaAPI.kt` | `object NativeMediaAPI` with `@JvmStatic fun create(): MediaAPI?` and its `@JvmStatic @JvmName("native_create") private external fun native_create()`. The public function has the parameters, the return type, the `suspend` modifier and the behaviour of the companion function without the flag. |
+| `--kotlin-jni-native-out` | `MediaAPICppProxy.kt` | `class MediaAPICppProxy private constructor(private val nativeRef: Long) : MediaAPI()`, with the body of the nested `CppProxy` without the flag. |
+
+- The three classes are in one package. An interface without static methods has
+  no `Native<Name>.kt`. An interface with `+c +j` gets `<Name>CppProxy.kt`.
+- An interface with `+j` only, a record and an enum do not change. With
+  `--jni-use-on-load-initializer true`, the module class is in the native folder.
+- The JNI code of the same run binds these classes: the class lookup is
+  `<pkg>/<Name>CppProxy`, the instance functions are
+  `Java_<pkg>_<Name>CppProxy_native_1<method>`, and the static functions are
+  `Java_<pkg>_Native<Name>_native_1<method>`.
+- The flag needs `--kotlin-jni-out`. The generator refuses it with `--java-out`
+  and `--jni-out` in one run, because the Java classes keep the nested
+  `CppProxy`. The generator also refuses an IDL type with the name of a class
+  that the flag writes. The exit code is 1.
+- Without the flag, the output does not change.
+
 ### Extern types with Kotlin keys
 
 An extern record normally has a Java class, and the Kotlin classes use it. An
@@ -990,6 +1026,14 @@ skips the two Crux passes. The Crux passes remove the Kotlin keys from the copy
 of the extern yaml files, because one run with `--java-out` and
 `--kotlin-jni-out` binds one class for each extern type.
 
+The split passes check `--kotlin-jni-native-out` over `kotlin_jni`, `kotlin_suspend`,
+`kotlin_error_sync`, `kotlin_error_async` and the whole Crux IDL. Each pass writes
+the Java classes in one run, and the Kotlin JNI classes, the native classes and
+the JNI code in a second run. `kotlin_jni_compare.py --native-split` compares the
+Java `<Name>` with `<Name>` and `Native<Name>` together, and the Java
+`<Name>$CppProxy` with `<Name>CppProxy`. The pass fails when a class of
+`--kotlin-jni-out` has an `external fun`.
+
 A fourth pass checks an extern record with the Kotlin keys (`kotlin_extern`).
 The script generates Java and the Kotlin classes apart. It compares the Java
 classes with the Kotlin classes, with the Kotlin class of the extern type in
@@ -1039,6 +1083,10 @@ promise that C++ drops, static methods, cancellation before the call and while
 a future waits (`CancellationException`, not the error type), an interface with
 `+c` and `+j` that keeps the raw form, and a Kotlin exception that goes through
 C++ and stays as it is.
+
+One more program (`MainSplit.kt`) uses `runtime_sync.djinni` with
+`--kotlin-jni-native-out`. It calls static methods through `NativeKjsService`,
+and instance methods through `KjsServiceCppProxy` and `KjsBothCppProxy`.
 
 The script skips with exit code 77 and a message when one of these parts is
 missing:
@@ -1186,6 +1234,7 @@ changes.
 | `--kotlin-suspend-wrap` | `kotlin_suspend` | `kotlin-jni-suspend` |
 | `kotlin.jniTypename`, `jni.kotlin*` of an extern type, with `--kotlin-jni-out` and with `--jni-out` alone | `kotlin_extern` | `kotlin-jni-extern/kotlin`, `kotlin-jni-extern/jni`, `kotlin-jni-extern/jni-java` |
 | `--kotlin-jni-java-bridge-out`, `--kotlin-jni-java-bridge-package` | `kotlin_jni_java_bridge` | `kotlin-jni-java-bridge/java`, `kotlin-jni-java-bridge/kotlin`, `kotlin-jni-java-bridge/bridge` |
+| `--kotlin-jni-native-out` | `kotlin_jni_native` | `kotlin-jni-native/kotlin`, `kotlin-jni-native/native`, `kotlin-jni-native/jni` |
 | Two JNI glue sets in one library (runtime) | `two_glue` | none |
 
 `run_djinni.sh` also checks the error cases: `--swift-async-wrap` without
@@ -1218,7 +1267,8 @@ inside a container, a `+j` record, an interface with type parameters, and a `+j`
 method that takes a record without a converter. It checks
 that every `+Private.swift` file of the options case imports
 `--swiftxx-base-lib-module`, and that the warning for an interface with `+o` and
-without `+sw` appears once.
+without `+sw` appears once. It checks `--kotlin-jni-native-out` without
+`--kotlin-jni-out`, and with `--java-out` and `--jni-out` in one run.
 
 These combinations have no test beyond the checked-in output:
 
