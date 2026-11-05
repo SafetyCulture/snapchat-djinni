@@ -39,7 +39,18 @@ object KotlinJniIdent {
           s"interface ${ident.name}, method ${m.ident.name}: the Kotlin method $name() overrides $name of Any, so it must return ${anyMembers(name)}. Rename the method or change its return type."
       }
     }
-    if (problems.isEmpty) None else Some(problems.mkString("\n"))
+    // The classes of --kotlin-jni-native-out are in the package of the IDL types.
+    val splitProblems = if (!spec.kotlinJniNativeSplit) Seq() else {
+      val types = idl.collect { case InternTypeDecl(ident, _, _, _, _) => spec.javaIdentStyle.ty(ident.name) }.toSet
+      idl.collect {
+        case InternTypeDecl(ident, _, i: Interface, _, _) if i.ext.cpp => spec.javaIdentStyle.ty(ident.name)
+      }.flatMap { self =>
+        Seq("Native" + self, self + "CppProxy").filter(types.contains).map(name =>
+          s"--kotlin-jni-native-out writes the class $name for the interface $self, and an IDL type has the same name. Rename the type.")
+      }
+    }
+    val all = problems ++ splitProblems
+    if (all.isEmpty) None else Some(all.mkString("\n"))
   }
 }
 
