@@ -7,7 +7,8 @@
 # The script runs these programs: one against the classes without --kotlin-suspend-wrap, and one against the
 # suspend functions that the flag makes. The second program runs with the default dispatcher and with
 # --kotlin-suspend-dispatcher. Two more programs check --kotlin-error-type: with blocking functions
-# (runtime_sync.djinni, which has no future) and with suspend functions (runtime.djinni). The script skips with
+# (runtime_sync.djinni, which has no future) and with suspend functions (runtime.djinni). One program calls the
+# static methods and the proxies of --kotlin-jni-native-out (runtime_sync.djinni). The script skips with
 # exit code 77 and a message when something is missing: javac, java, kotlinc, clang++ (CXX), jni.h in JAVA_HOME,
 # kotlin-stdlib.jar, kotlinx-coroutines, or a supported system (macOS, Linux). With CI or
 # KOTLIN_JNI_RUNTIME_REQUIRED set, a missing part is an error (exit code 2).
@@ -139,6 +140,17 @@ runtime_kotlin="$repo_root/ci/kotlin-jni/extern/ExternKotlinMessage.kt:$src/KjEx
 run_mode sync "$lib" "$out/kotlin" Main.kt "$stdlib" "$runtime_kotlin"
 # The error type of the application with blocking functions.
 run_mode typed "$lib_sync" "$out_sync/kotlin" MainTyped.kt "$stdlib" "$src/KjsException.kt"
+# The same IDL with --kotlin-jni-native-out: the program calls the statics and the proxies of the native folder.
+out_split="$work/out-split"
+generate runtime_sync.djinni "$out_split" "$out_split/kotlin" --kotlin-error-type rt.kj.KjsException \
+  --kotlin-jni-native-out "$out_split/native"
+if grep -rl "external fun" "$out_split/kotlin"; then
+  echo "FAIL: a class of --kotlin-jni-out has an external function with --kotlin-jni-native-out" >&2
+  exit 1
+fi
+lib_split="$work/libkjsplit.$lib_ext"
+build_lib "$lib_split" "$out_split" "$src/kjs_service_impl.cpp"
+run_mode split "$lib_split" "$out_split/kotlin" MainSplit.kt "$stdlib" "$src/KjsException.kt:$out_split/native"
 
 # Two glue sets of one IDL in one library: Java classes with JNI namespace glue_a, and Kotlin JNI classes with
 # namespace glue_b. Each leg must get a proxy of its own class for one C++ object.

@@ -94,6 +94,17 @@ class JNIMarshal(spec: Spec) extends Marshal(spec) {
     spec.javaPackage.fold(javaClassName)(p => p.replaceAllLiterally(".", "/") + "/" + javaClassName)
   }
 
+  // The class of the CppProxy of an interface: nested in Java, top-level with --kotlin-jni-native-out.
+  def cppProxyTypename(name: String, ty: TypeDef): String =
+    undecoratedTypename(name, ty) + (if (spec.kotlinJniNativeSplit) "CppProxy" else "$CppProxy")
+
+  // The class that declares the native static methods of an interface.
+  def nativeTypename(name: String, ty: TypeDef): String = {
+    if (!spec.kotlinJniNativeSplit) return undecoratedTypename(name, ty)
+    val javaClassName = "Native" + idJava.ty(name)
+    spec.javaPackage.fold(javaClassName)(p => p.replaceAllLiterally(".", "/") + "/" + javaClassName)
+  }
+
   private def javaTypeSignature(tm: MExpr): String = tm.base match {
     case o: MOpaque => o match {
       case p: MPrimitive => p.jSig

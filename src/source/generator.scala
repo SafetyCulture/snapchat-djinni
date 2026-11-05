@@ -136,7 +136,11 @@ package object generatorTools {
                    kotlinErrorType: Option[String],
                    kotlinJniJavaBridgeOutFolder: Option[File],
                    kotlinJniJavaBridgePackage: Option[String],
-                   moduleName: String)
+                   kotlinJniNativeOutFolder: Option[File],
+                   moduleName: String) {
+    // The Kotlin JNI classes hold no JNI code: the statics and the CppProxy go to --kotlin-jni-native-out.
+    def kotlinJniNativeSplit: Boolean = kotlinJniNativeOutFolder.isDefined
+  }
 
   def useProtocol(ext: Ext, spec: Spec) = ext.objc || spec.objcGenProtocol
 
@@ -340,6 +344,7 @@ package object generatorTools {
       if (spec.kotlinJniOutFolder.isDefined) {
         if (!spec.skipGeneration) {
           createFolder("Kotlin JNI", spec.kotlinJniOutFolder.get)
+          spec.kotlinJniNativeOutFolder.foreach(createFolder("Kotlin JNI native", _))
         }
         new KotlinJniGenerator(spec).generate(idl)
       }
