@@ -45,7 +45,7 @@ object KotlinJniIdent {
       idl.collect {
         case InternTypeDecl(ident, _, i: Interface, _, _) if i.ext.cpp => spec.javaIdentStyle.ty(ident.name)
       }.flatMap { self =>
-        Seq("Native" + self, self + "CppProxy").filter(types.contains).map(name =>
+        Seq("Direct" + self, self + "CppProxy").filter(types.contains).map(name =>
           s"--kotlin-jni-native-out writes the class $name for the interface $self, and an IDL type has the same name. Rename the type.")
       }
     }

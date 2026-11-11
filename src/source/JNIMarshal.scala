@@ -101,7 +101,7 @@ class JNIMarshal(spec: Spec) extends Marshal(spec) {
   // The class that declares the native static methods of an interface.
   def nativeTypename(name: String, ty: TypeDef): String = {
     if (!spec.kotlinJniNativeSplit) return undecoratedTypename(name, ty)
-    val javaClassName = "Native" + idJava.ty(name)
+    val javaClassName = "Direct" + idJava.ty(name)
     spec.javaPackage.fold(javaClassName)(p => p.replaceAllLiterally(".", "/") + "/" + javaClassName)
   }
 

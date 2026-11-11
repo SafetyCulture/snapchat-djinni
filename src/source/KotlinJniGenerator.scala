@@ -458,10 +458,10 @@ class KotlinJniGenerator(spec: Spec) extends Generator(spec) {
         nativeRefs.imports += "kotlinx.coroutines.withContext"
         nativeRefs.imports ++= futureImports
       }
-      writeKotlinNativeFile("Native" + self, origin, nativeRefs.imports, w => {
+      writeKotlinNativeFile("Direct" + self, origin, nativeRefs.imports, w => {
         writeDispatcher(w, staticFuture)
         annotationHeader.foreach(w.wl)
-        w.w(s"${accessModifier}object Native$self").braced {
+        w.w(s"${accessModifier}object Direct$self").braced {
           writeModuleInitializer(w)
           for ((m, index) <- statics.zipWithIndex) {
             if (index > 0 || spec.jniUseOnLoad) w.wl

@@ -173,12 +173,12 @@ if [ "$check_crux" != 0 ]; then
     --kotlin-suspend-wrap --kotlin-error-type "$package.CruxException" \
     --idl-include-path extern --idl crux/djinni/domain/swift_fixture.djinni)
   check_no_external "$work/$name/kotlin"
-  if [ ! -f "$work/$name/native/NativeMediaAPI.kt" ] || [ ! -f "$work/$name/native/MediaAPICppProxy.kt" ]; then
-    echo "FAIL: the Crux split pass did not write NativeMediaAPI.kt and MediaAPICppProxy.kt" >&2
+  if [ ! -f "$work/$name/native/DirectMediaAPI.kt" ] || [ ! -f "$work/$name/native/MediaAPICppProxy.kt" ]; then
+    echo "FAIL: the Crux split pass did not write DirectMediaAPI.kt and MediaAPICppProxy.kt" >&2
     exit 1
   fi
   compile_and_compare "$name" "$package" "$work/fx-main/extern" "$work/$name/native:$repo_root/ci/kotlin-jni/crux" --native-split
-  echo "crux split: $(find "$work/$name/native" -name 'Native*.kt' | wc -l | tr -d ' ') Native classes, $(find "$work/$name/native" -name '*CppProxy.kt' | wc -l | tr -d ' ') CppProxy classes"
+  echo "crux split: $(find "$work/$name/native" -name 'Direct*.kt' | wc -l | tr -d ' ') Direct classes, $(find "$work/$name/native" -name '*CppProxy.kt' | wc -l | tr -d ' ') CppProxy classes"
 
   # 1c. The Java <-> Kotlin JNI converters over the whole Crux IDL. The pass compiles, and stdout lists the
   # records that hold a +c interface.
