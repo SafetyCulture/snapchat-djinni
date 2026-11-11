@@ -23,7 +23,7 @@ is skipped. A Java tree without classes of the package checks the Kotlin classes
 
 With --native-split, the Kotlin classes come from --kotlin-jni-native-out and the JNI code from the same run. The
 checks 1, 2 and 5 and the support-lib lookups compare the Java class <Name> with the union of the Kotlin <Name> and
-Native<Name>, whose native native_<method> stands for the Java native <method>, and the Java <Name>$CppProxy with the
+Direct<Name>, whose native native_<method> stands for the Java native <method>, and the Java <Name>$CppProxy with the
 Kotlin <Name>CppProxy. The checks 3, 4 and 6 use the Kotlin classes as they are.
 """
 import glob
@@ -153,7 +153,7 @@ def split_view(java_names: list[str], kotlin: dict[str, dict]) -> tuple[dict[str
                 view[name] = kotlin[proxy]
                 mapped.add(proxy)
             continue
-        native = f"{pkg}.Native{simple}"
+        native = f"{pkg}.Direct{simple}"
         if native not in kotlin:
             continue
         base = kotlin.get(name, {"fields": set(), "methods": set(), "enum": False})
@@ -179,7 +179,7 @@ def main() -> None:
     failures = []
     if native_split:
         if not mapped:
-            failures.append("--native-split: no Kotlin class Native<Name> or <Name>CppProxy found")
+            failures.append("--native-split: no Kotlin class Direct<Name> or <Name>CppProxy found")
         nested = [n for n in kotlin_names if n.endswith("$CppProxy")]
         if nested:
             failures.append(f"--native-split: nested CppProxy classes in Kotlin: {nested[:5]}")

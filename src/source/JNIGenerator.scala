@@ -488,7 +488,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
     })
   }
 
-  // The static and the instance methods of the JNINativeMethod tables. Native<Name> has only the static methods of Kotlin.
+  // The static and the instance methods of the JNINativeMethod tables. Direct<Name> has only the static methods of Kotlin.
   private def registeredMethods(i: Interface): (Seq[Interface.Method], Seq[Interface.Method]) = {
     val (statics, proxies) = i.methods.partition(m => m.static)
     (if (spec.kotlinJniNativeSplit) statics.filter(m => m.lang.java) else statics, proxies)

@@ -796,17 +796,17 @@ For `media_API = interface +c { static create(): media_API; get_name(): string; 
 | Folder | File | Content |
 | --- | --- | --- |
 | `--kotlin-jni-out` | `MediaAPI.kt` | `abstract class MediaAPI` with the abstract methods and the constants. No `companion object` statics and no `CppProxy`. |
-| `--kotlin-jni-native-out` | `NativeMediaAPI.kt` | `object NativeMediaAPI` with `@JvmStatic fun create(): MediaAPI?` and its `@JvmStatic @JvmName("native_create") private external fun native_create()`. The public function has the parameters, the return type, the `suspend` modifier and the behaviour of the companion function without the flag. |
+| `--kotlin-jni-native-out` | `DirectMediaAPI.kt` | `object DirectMediaAPI` with `@JvmStatic fun create(): MediaAPI?` and its `@JvmStatic @JvmName("native_create") private external fun native_create()`. The public function has the parameters, the return type, the `suspend` modifier and the behaviour of the companion function without the flag. |
 | `--kotlin-jni-native-out` | `MediaAPICppProxy.kt` | `class MediaAPICppProxy private constructor(private val nativeRef: Long) : MediaAPI()`, with the body of the nested `CppProxy` without the flag. |
 
 - The three classes are in one package. An interface without static methods has
-  no `Native<Name>.kt`. An interface with `+c +j` gets `<Name>CppProxy.kt`.
+  no `Direct<Name>.kt`. An interface with `+c +j` gets `<Name>CppProxy.kt`.
 - An interface with `+j` only, a record and an enum do not change. With
   `--jni-use-on-load-initializer true`, the module class is in the native folder.
 - The JNI code of the same run binds these classes: the class lookup is
   `<pkg>/<Name>CppProxy`, the instance functions are
   `Java_<pkg>_<Name>CppProxy_native_1<method>`, and the static functions are
-  `Java_<pkg>_Native<Name>_native_1<method>`.
+  `Java_<pkg>_Direct<Name>_native_1<method>`.
 - The flag needs `--kotlin-jni-out`. The generator refuses it with `--java-out`
   and `--jni-out` in one run, because the Java classes keep the nested
   `CppProxy`. The generator also refuses an IDL type with the name of a class
@@ -1030,7 +1030,7 @@ The split passes check `--kotlin-jni-native-out` over `kotlin_jni`, `kotlin_susp
 `kotlin_error_sync`, `kotlin_error_async` and the whole Crux IDL. Each pass writes
 the Java classes in one run, and the Kotlin JNI classes, the native classes and
 the JNI code in a second run. `kotlin_jni_compare.py --native-split` compares the
-Java `<Name>` with `<Name>` and `Native<Name>` together, and the Java
+Java `<Name>` with `<Name>` and `Direct<Name>` together, and the Java
 `<Name>$CppProxy` with `<Name>CppProxy`. The pass fails when a class of
 `--kotlin-jni-out` has an `external fun`.
 
@@ -1085,7 +1085,7 @@ a future waits (`CancellationException`, not the error type), an interface with
 C++ and stays as it is.
 
 One more program (`MainSplit.kt`) uses `runtime_sync.djinni` with
-`--kotlin-jni-native-out`. It calls static methods through `NativeKjsService`,
+`--kotlin-jni-native-out`. It calls static methods through `DirectKjsService`,
 and instance methods through `KjsServiceCppProxy` and `KjsBothCppProxy`.
 
 The script skips with exit code 77 and a message when one of these parts is

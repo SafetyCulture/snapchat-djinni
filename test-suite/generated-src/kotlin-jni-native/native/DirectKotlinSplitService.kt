@@ -3,7 +3,7 @@
 
 package com.dropbox.djinni.test
 
-object NativeKotlinSplitService {
+object DirectKotlinSplitService {
     @JvmStatic fun create(): KotlinSplitService? {
         return native_create()
     }

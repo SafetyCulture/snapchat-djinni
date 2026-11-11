@@ -19,7 +19,7 @@ CJNIEXPORT void JNICALL Java_com_dropbox_djinni_test_KotlinSplitServiceCppProxy_
     } JNI_TRANSLATE_EXCEPTIONS_RETURN(jniEnv, )
 }
 
-CJNIEXPORT jobject JNICALL Java_com_dropbox_djinni_test_NativeKotlinSplitService_native_1create(JNIEnv* jniEnv, jobject /*this*/)
+CJNIEXPORT jobject JNICALL Java_com_dropbox_djinni_test_DirectKotlinSplitService_native_1create(JNIEnv* jniEnv, jobject /*this*/)
 {
     try {
         auto r = ::KotlinSplitService::create();
@@ -27,7 +27,7 @@ CJNIEXPORT jobject JNICALL Java_com_dropbox_djinni_test_NativeKotlinSplitService
     } JNI_TRANSLATE_EXCEPTIONS_RETURN(jniEnv, 0 /* value doesn't matter */)
 }
 
-CJNIEXPORT jstring JNICALL Java_com_dropbox_djinni_test_NativeKotlinSplitService_native_1describe(JNIEnv* jniEnv, jobject /*this*/, jstring j_prefix)
+CJNIEXPORT jstring JNICALL Java_com_dropbox_djinni_test_DirectKotlinSplitService_native_1describe(JNIEnv* jniEnv, jobject /*this*/, jstring j_prefix)
 {
     try {
         auto r = ::KotlinSplitService::describe(::djinni::String::toCpp(jniEnv, j_prefix));
@@ -35,7 +35,7 @@ CJNIEXPORT jstring JNICALL Java_com_dropbox_djinni_test_NativeKotlinSplitService
     } JNI_TRANSLATE_EXCEPTIONS_RETURN(jniEnv, 0 /* value doesn't matter */)
 }
 
-CJNIEXPORT void JNICALL Java_com_dropbox_djinni_test_NativeKotlinSplitService_native_1resetAll(JNIEnv* jniEnv, jobject /*this*/)
+CJNIEXPORT void JNICALL Java_com_dropbox_djinni_test_DirectKotlinSplitService_native_1resetAll(JNIEnv* jniEnv, jobject /*this*/)
 {
     try {
         ::KotlinSplitService::reset_all();

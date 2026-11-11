@@ -331,7 +331,7 @@ object Main {
       opt[String]("kotlin-jni-java-bridge-package").valueName("<java package>").foreach(x => kotlinJniJavaBridgePackage = Some(x))
         .text("The value of --java-package of the other run, whose Java classes the converters use. Needs --kotlin-jni-java-bridge-out.")
       opt[File]("kotlin-jni-native-out").valueName("<out-folder>").foreach(x => kotlinJniNativeOutFolder = Some(x))
-        .text("With --kotlin-jni-out, the output folder for the JNI part of the interfaces with +c: Native<Name>.kt has the static methods, and <Name>CppProxy.kt has the proxy. The classes of --kotlin-jni-out then have no external function. The JNI code of the run binds these classes.")
+        .text("With --kotlin-jni-out, the output folder for the JNI part of the interfaces with +c: Direct<Name>.kt has the static methods, and <Name>CppProxy.kt has the proxy. The classes of --kotlin-jni-out then have no external function. The JNI code of the run binds these classes.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
