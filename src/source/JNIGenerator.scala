@@ -469,7 +469,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
       w.wl("static void registerModuleNatives(JNIEnv* env, jclass clazz)").braced {
         for (ty <- decls.filter(ty => ty.body.asInstanceOf[Interface].ext.cpp)) {
           val i = ty.body.asInstanceOf[Interface]
-          val (statics, proxys) = registeredMethods(i)
+          val (statics, _) = registeredMethods(i)
 
           w.wl(s"djinni::jniRegisterNatives(env, ${q(jniMarshal.cppProxyTypename(ty.ident, ty.body))}, ${jniMarshal.helperClass(ty.ident)}ProxyRecords);")
           if (statics.nonEmpty) {
