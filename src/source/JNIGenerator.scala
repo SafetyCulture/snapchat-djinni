@@ -204,6 +204,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
 
     val classLookup = jniMarshal.undecoratedTypename(ident, i)
     val baseType = s"::djinni::JniInterface<$cppSelf, $jniSelf>"
+    val split = spec.kotlinJniNativeSplit
 
     def writeJniPrototype(w: IndentWriter) {
       writeJniTypeParams(w, typeParams)
@@ -266,7 +267,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
       }
 
       if (spec.jniUseOnLoad && i.ext.cpp) {
-        val (static, proxy) = i.methods.partition(m => m.static)
+        val (static, proxy) = registeredMethods(i)
         w.wl(s"extern const JNINativeMethod ${jniSelf}ProxyRecords[${proxy.size + 1}];")
         if (static.nonEmpty) {
           w.wl(s"extern const JNINativeMethod ${jniSelf}StaticRecords[${static.size}];")
@@ -276,7 +277,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
 
     def writeJniBody(w: IndentWriter) {
       // Defining ctor/dtor in the cpp file reduces build times
-      val baseClassParam = if (i.ext.cpp) q(classLookup+"$CppProxy") else ""
+      val baseClassParam = if (i.ext.cpp) q(jniMarshal.cppProxyTypename(ident, i)) else ""
       val jniSelfWithParams = jniSelf + typeParamsSignature(typeParams)
       writeJniTypeParams(w, typeParams)
       w.wl(s"$jniSelfWithParams::$jniSelf() : $baseType($baseClassParam) {}")
@@ -336,19 +337,25 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
       }
       if (i.ext.cpp) {
         // Generate CEXPORT functions for JNI to call.
-        val classIdentMunged = javaMarshal.fqTypename(ident, i)
-          .replaceAllLiterally("_", "_1")
-          .replaceAllLiterally(".", "_")
+        def mangle(className: String) = className.replaceAllLiterally("_", "_1").replaceAllLiterally(".", "_")
+        val classIdentMunged = mangle(javaMarshal.fqTypename(ident, i))
         val prefix = "Java_" + classIdentMunged
 
         def methodName(name: String, static: Boolean): String = {
           val methodNameMunged = name.replaceAllLiterally("_", "_1")
 
-          if (static)
+          if (split && static)
+            s"Java_${mangle(jniMarshal.nativeTypename(ident, i).replaceAllLiterally("/", "."))}_$methodNameMunged"
+          else if (split)
+            s"Java_${mangle(jniMarshal.cppProxyTypename(ident, i).replaceAllLiterally("/", "."))}_$methodNameMunged"
+          else if (static)
             s"${prefix}_$methodNameMunged"
           else
             s"${prefix}_00024CppProxy_$methodNameMunged"
         }
+        // The JVM name of the native method. With the Kotlin JNI split, a static method has a public wrapper of its name.
+        def nativeName(m: Interface.Method): String =
+          (if (m.static && !split) "" else "native_") + idJava.method(m.ident)
 
         def nativeHook(name: String, static: Boolean, params: Iterable[Field], ret: Option[TypeRef], f: => Unit) = {
           val paramList = params.map(p => jniMarshal.paramType(p.ty) + " j_" + idJava.local(p.ident)).mkString(", ")
@@ -379,8 +386,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
           w.wl(s"delete reinterpret_cast<::djinni::CppProxyHandle<$cppSelf>*>(nativeRef);")
         })
         for (m <- i.methods.filter(m => !m.static || m.lang.java)) {
-          val nativeAddon = if (m.static) "" else "native_"
-          nativeHook(nativeAddon + idJava.method(m.ident), m.static, m.params, m.ret, {
+          nativeHook(nativeName(m), m.static, m.params, m.ret, {
             //w.wl(s"::${spec.jniNamespace}::JniLocalScope jscope(jniEnv, 10);")
             if (!m.static) w.wl(s"const auto& ref = ::djinni::objectFromHandleAddress<$cppSelf>(nativeRef);")
             m.params.foreach(p => {
@@ -419,8 +425,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
               }
             }
             for (m <- proxyMethods) {
-              val nativeAddon = if (m.static) "" else "native_"
-              val javaName = nativeAddon + idJava.method(m.ident)
+              val javaName = nativeName(m)
               val functionName = methodName(javaName, m.static)
               w.bracedEnd(",") {
                 var signature = jniMarshal.javaMethodSignature(m.params, m.ret)
@@ -429,14 +434,14 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
                 if (!isStaticRecord) {
                   signature = signature.replaceFirst("\\(", "(J")
                 }
-                w.wl(jniNativeMethod(nativeAddon + idJava.method(m.ident), signature, functionName))
+                w.wl(jniNativeMethod(javaName, signature, functionName))
               }
             }
           }
         }
 
         if (spec.jniUseOnLoad) {
-          val (staticMethods, proxyMethods) = i.methods.partition(x => x.static)
+          val (staticMethods, proxyMethods) = registeredMethods(i)
           nativeMethodRecord(false, proxyMethods)
           if (staticMethods.nonEmpty) {
             nativeMethodRecord(true, staticMethods)
@@ -464,11 +469,11 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
       w.wl("static void registerModuleNatives(JNIEnv* env, jclass clazz)").braced {
         for (ty <- decls.filter(ty => ty.body.asInstanceOf[Interface].ext.cpp)) {
           val i = ty.body.asInstanceOf[Interface]
-          val (statics, proxys) = i.methods.partition(i => i.static)
+          val (statics, _) = registeredMethods(i)
 
-          w.wl(s"djinni::jniRegisterNatives(env, ${q(jniMarshal.undecoratedTypename(ty.ident, ty.body) + "$CppProxy")}, ${jniMarshal.helperClass(ty.ident)}ProxyRecords);")
+          w.wl(s"djinni::jniRegisterNatives(env, ${q(jniMarshal.cppProxyTypename(ty.ident, ty.body))}, ${jniMarshal.helperClass(ty.ident)}ProxyRecords);")
           if (statics.nonEmpty) {
-            w.wl(s"djinni::jniRegisterNatives(env, ${q(jniMarshal.undecoratedTypename(ty.ident, ty.body))}, ${jniMarshal.helperClass(ty.ident)}StaticRecords);")
+            w.wl(s"djinni::jniRegisterNatives(env, ${q(jniMarshal.nativeTypename(ty.ident, ty.body))}, ${jniMarshal.helperClass(ty.ident)}StaticRecords);")
           }
         }
       }
@@ -481,6 +486,12 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
       val moduleJavaFqn = spec.javaPackage.fold(guardName)(p => p.replaceAllLiterally(".", "/") + "/" + guardName)
       w.wl(s"static djinni::JNIMethodLoadAutoRegister moduleLoader(${q(moduleJavaFqn)}, moduleMethod);")
     })
+  }
+
+  // The static and the instance methods of the JNINativeMethod tables. Direct<Name> has only the static methods of Kotlin.
+  private def registeredMethods(i: Interface): (Seq[Interface.Method], Seq[Interface.Method]) = {
+    val (statics, proxies) = i.methods.partition(m => m.static)
+    (if (spec.kotlinJniNativeSplit) statics.filter(m => m.lang.java) else statics, proxies)
   }
 
   def writeJniFiles(origin: String, allInHeader: Boolean, ident: Ident, refs: JNIRefs, writeProto: IndentWriter => Unit, writeBody: IndentWriter => Unit) {

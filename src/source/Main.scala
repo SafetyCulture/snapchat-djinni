@@ -135,6 +135,7 @@ object Main {
     var kotlinErrorType: Option[String] = None
     var kotlinJniJavaBridgeOutFolder: Option[File] = None
     var kotlinJniJavaBridgePackage: Option[String] = None
+    var kotlinJniNativeOutFolder: Option[File] = None
 
     val argParser = new scopt.OptionParser[Unit]("djinni") {
 
@@ -329,6 +330,8 @@ object Main {
         .text("The output folder for Kotlin converters between the Java classes of another run and the Kotlin JNI classes of this run (Generator disabled if unspecified).")
       opt[String]("kotlin-jni-java-bridge-package").valueName("<java package>").foreach(x => kotlinJniJavaBridgePackage = Some(x))
         .text("The value of --java-package of the other run, whose Java classes the converters use. Needs --kotlin-jni-java-bridge-out.")
+      opt[File]("kotlin-jni-native-out").valueName("<out-folder>").foreach(x => kotlinJniNativeOutFolder = Some(x))
+        .text("With --kotlin-jni-out, the output folder for the JNI part of the interfaces with +c: Direct<Name>.kt has the static methods, and <Name>CppProxy.kt has the proxy. The classes of --kotlin-jni-out then have no external function. The JNI code of the run binds these classes.")
       opt[File]("swiftxx-out").valueName("<out-folder>").foreach(x => swiftxxOutFolder = Some(x))
         .text("The output folder for private Swift/C++ interop files (Generator disabled if unspecified).")
       opt[String]("swiftxx-namespace").valueName("<namespace>").foreach(swiftxxNamespace = _)
@@ -500,6 +503,17 @@ object Main {
       System.exit(1); return
     }
 
+    if (kotlinJniNativeOutFolder.isDefined && kotlinJniOutFolder.isEmpty) {
+      System.err.println("Error: --kotlin-jni-native-out needs --kotlin-jni-out.")
+      System.exit(1); return
+    }
+
+    // The JNI code binds the classes of one language, and the Java classes keep the nested CppProxy
+    if (kotlinJniNativeOutFolder.isDefined && javaOutFolder.isDefined && jniOutFolder.isDefined) {
+      System.err.println("Error: --kotlin-jni-native-out cannot be used with --java-out and --jni-out in one run.")
+      System.exit(1); return
+    }
+
     // A bridge from a package to itself would call its own extension functions for each field.
     if (kotlinJniJavaBridgeOutFolder.isDefined && kotlinJniJavaBridgePackage == kotlinJniPackage.orElse(javaPackage)) {
       System.err.println("Error: --kotlin-jni-java-bridge-package must differ from the Kotlin JNI package.")
@@ -640,6 +654,7 @@ object Main {
       kotlinErrorType,
       kotlinJniJavaBridgeOutFolder,
       kotlinJniJavaBridgePackage,
+      kotlinJniNativeOutFolder,
       idlFile.getName.stripSuffix(".djinni"))
 
     var failed = false

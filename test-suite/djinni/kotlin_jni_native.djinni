@@ -1,0 +1,15 @@
+# C++ and Kotlin can implement this one. Its proxy is in the native folder.
+kotlin_split_both = interface +c +j {
+  value(): i32;
+}
+
+# C++ implements this one. Its static methods and its proxy are in the native folder.
+kotlin_split_service = interface +c {
+  const max_count: i32 = 10;
+  static create(): kotlin_split_service;
+  static describe(prefix: string): string;
+  static reset_all();
+  add(a: i32, b: i32): i32;
+  make_both(): kotlin_split_both;
+  stop();
+}

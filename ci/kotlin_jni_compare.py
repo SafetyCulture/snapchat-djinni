@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Proves that Kotlin classes bind to the JNI code that was generated for the Java classes.
 
-Usage: kotlin_jni_compare.py <java classes dir> <kotlin classes dir> <jni source dir> <package> [<extra package>] [<java signature>=<kotlin signature>]...
+Usage: kotlin_jni_compare.py <java classes dir> <kotlin classes dir> <jni source dir> <package> [--native-split] [<extra package>] [<java signature>=<kotlin signature>]...
 
 An extra package holds classes that only the Kotlin tree has, such as the Kotlin class of an extern type. The JNI
 lookups of these classes are checked. A signature pair replaces a class in the descriptors of the Java classes, so a
@@ -20,6 +20,11 @@ The script runs `javap -p -s` on both class trees and checks:
 
 A lookup of a class that the Java tree does not have, such as the hand-written subclass of a record with +j,
 is skipped. A Java tree without classes of the package checks the Kotlin classes against the JNI code alone.
+
+With --native-split, the Kotlin classes come from --kotlin-jni-native-out and the JNI code from the same run. The
+checks 1, 2 and 5 and the support-lib lookups compare the Java class <Name> with the union of the Kotlin <Name> and
+Direct<Name>, whose native native_<method> stands for the Java native <method>, and the Java <Name>$CppProxy with the
+Kotlin <Name>CppProxy. The checks 3, 4 and 6 use the Kotlin classes as they are.
 """
 import glob
 import os
@@ -134,17 +139,53 @@ def native_tables(jni_dir: str) -> tuple[dict[str, set[tuple[str, str]]], list[s
     return registrations, problems
 
 
+NATIVE_PREFIX = "native_"
+
+
+def split_view(java_names: list[str], kotlin: dict[str, dict]) -> tuple[dict[str, dict], set[str]]:
+    """Returns the Kotlin classes under the Java names of the split classes, and the Kotlin names that it maps."""
+    view, mapped = dict(kotlin), set()
+    for name in java_names:
+        pkg, _, simple = name.rpartition(".")
+        if simple.endswith("$CppProxy"):
+            proxy = f"{pkg}.{simple[: -len('$CppProxy')]}CppProxy"
+            if proxy in kotlin:
+                view[name] = kotlin[proxy]
+                mapped.add(proxy)
+            continue
+        native = f"{pkg}.Direct{simple}"
+        if native not in kotlin:
+            continue
+        base = kotlin.get(name, {"fields": set(), "methods": set(), "enum": False})
+        statics = {(n[len(NATIVE_PREFIX):], d, f) for (n, d, f) in kotlin[native]["methods"]
+                   if "native" in f and n.startswith(NATIVE_PREFIX)}
+        view[name] = {"fields": set(base["fields"]), "methods": set(base["methods"]) | statics, "enum": base["enum"]}
+        mapped.add(native)
+    return view, mapped
+
+
 def main() -> None:
     java_dir, kotlin_dir, jni_dir, package = sys.argv[1:5]
-    extra_packages = [a for a in sys.argv[5:] if "=" not in a]
-    substitutions = [tuple(a.split("=", 1)) for a in sys.argv[5:] if "=" in a]
+    options = sys.argv[5:]
+    native_split = "--native-split" in options
+    options = [a for a in options if a != "--native-split"]
+    extra_packages = [a for a in options if "=" not in a]
+    substitutions = [tuple(a.split("=", 1)) for a in options if "=" in a]
     java_names = class_names(java_dir, package)
     kotlin_names = class_names(kotlin_dir, package)
     java = javap(java_dir, java_names, substitutions)
     kotlin = javap(kotlin_dir, kotlin_names + [n for p in extra_packages for n in class_names(kotlin_dir, p)])
+    view, mapped = split_view(java_names, kotlin) if native_split else (kotlin, set())
     failures = []
+    if native_split:
+        if not mapped:
+            failures.append("--native-split: no Kotlin class Direct<Name> or <Name>CppProxy found")
+        nested = [n for n in kotlin_names if n.endswith("$CppProxy")]
+        if nested:
+            failures.append(f"--native-split: nested CppProxy classes in Kotlin: {nested[:5]}")
+        print(f"0. native split: {len(mapped)} Kotlin classes stand for Java classes")
 
-    missing = [n for n in java_names if n not in kotlin]
+    missing = [n for n in java_names if n not in view]
     if missing:
         failures.append(f"classes missing in Kotlin: {missing[:5]}")
     print(f"1. classes: {len(java_names)} Java classes, {len(kotlin_names)} Kotlin classes, {len(missing)} missing")
@@ -154,14 +195,14 @@ def main() -> None:
 
     native_count = 0
     for name in java_names:
-        if name not in kotlin:
+        if name not in view:
             continue
-        j, k = natives(java[name]), natives(kotlin[name])
+        j, k = natives(java[name]), natives(view[name])
         native_count += len(j)
         if j != k:
             failures.append(f"native methods differ in {name}: Java only {sorted(j - k)[:3]}, Kotlin only {sorted(k - j)[:3]}")
     # Without Java classes, check 3 compares the Kotlin natives with the JNI functions alone.
-    extra = [n for n in kotlin if n not in java and natives(kotlin[n])] if java_names else []
+    extra = [n for n in kotlin if n not in java and n not in mapped and natives(kotlin[n])] if java_names else []
     if extra:
         failures.append(f"natives in classes that Java does not have: {extra}")
     print(f"2. native methods: {native_count} in Java, same name, descriptor and static flag in Kotlin")
@@ -202,7 +243,7 @@ def main() -> None:
     # The lookups of support-lib/jni for each CppProxy class and each enum.
     fixed = 0
     for name in java_names:
-        info = kotlin.get(name)
+        info = view.get(name)
         if info is None:
             continue
         if name.endswith("$CppProxy"):
@@ -221,7 +262,7 @@ def main() -> None:
     records = 0
     for name in java_names:
         jf = {(n, d) for (n, d, f) in java[name]["fields"] if "static" not in f}
-        kf = {(n, d) for (n, d, f) in kotlin[name]["fields"] if "static" not in f} if name in kotlin else set()
+        kf = {(n, d) for (n, d, f) in view[name]["fields"] if "static" not in f} if name in view else set()
         if jf and "$CppProxy" not in name:
             records += 1
             if jf != kf:
