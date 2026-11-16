@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds and runs ci/cpp/future_test.cpp. The test checks djinni::Future and djinni::Promise on their own: a dropped
 # promise, a moved promise, a replaced handler, and a handler that throws an exception outside std::exception.
-# It runs in C++17 and in C++20. Clang does not define __cpp_coroutines, so the coroutine support of Future.hpp is off.
+# It runs in C++17 and in C++20. The coroutine support of Future.hpp is off in C++17 and on in C++20.
 # Any C++ compiler works. There is no Bazel step.
 #
 # Environment:
