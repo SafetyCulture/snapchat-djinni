@@ -25,22 +25,26 @@
 #include <mutex>
 #include <cassert>
 
-#ifdef __cpp_coroutines
-#if __has_include(<coroutine>)
+#ifdef __has_include
+#if __has_include(<version>)
+#include <version>
+#endif
+#endif
+
+#if defined(__cpp_impl_coroutine) && defined(__cpp_lib_coroutine)
     #include <coroutine>
     namespace djinni::detail {
         template <typename Promise = void> using CoroutineHandle = std::coroutine_handle<Promise>;
         using SuspendNever = std::suspend_never;
     }
     #define DJINNI_FUTURE_HAS_COROUTINE_SUPPORT 1
-#elif __has_include(<experimental/coroutine>)
+#elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
     #include <experimental/coroutine>
     namespace djinni::detail {
         template <typename Promise = void> using CoroutineHandle = std::experimental::coroutine_handle<Promise>;
         using SuspendNever = std::experimental::suspend_never;
     }
     #define DJINNI_FUTURE_HAS_COROUTINE_SUPPORT 1
-#endif
 #endif
 
 namespace djinni {

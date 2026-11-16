@@ -1352,9 +1352,10 @@ Java and ObjC djinni support library. In Javascript, `future<>` is mapped to the
 builtin `Promise` type (and therefore supports the `await` syntax).
 
 The C++ `Future` type has optional support for coroutines. It is on when the
-compiler defines `__cpp_coroutines` (C++17 with `-fcoroutines-ts` on an older
-clang); then you can use `co_await` on future objects. Clang in C++20 mode
-defines only `__cpp_impl_coroutine`, so the support is off there.
+compiler defines `__cpp_impl_coroutine` and the library defines
+`__cpp_lib_coroutine` (C++20), or when the compiler defines `__cpp_coroutines`
+and has `<experimental/coroutine>` (C++17 with `-fcoroutines-ts` on an older
+clang); then you can use `co_await` on future objects.
 
 A `Promise` that is destroyed without a value or an exception completes its
 future with `djinni::BrokenPromiseException`. A waiter on the other side of
