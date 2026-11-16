@@ -455,15 +455,19 @@ public:
     };
 
     struct PromiseType: PromiseTypeBase<PromiseType>{
+        // The final suspend moves the result into the shared state, and it must not throw.
+        static_assert(std::is_nothrow_move_constructible_v<T>,
+                      "a coroutine that returns djinni::Future<T> needs a T that is nothrow move constructible");
+
         template <typename V, typename = std::enable_if_t<std::is_convertible_v<V, T>>>
         void return_value(V&& value) {
-            this->_result.emplace(std::forward<V>(value));
+            this->_result.emplace(::tl::in_place, std::forward<V>(value));
         }
         void return_value(T&& value) {
-            this->_result.emplace(std::move(value));
+            this->_result.emplace(::tl::in_place, std::move(value));
         }
         void return_value(const T& value) {
-            this->_result.emplace(value);
+            this->_result.emplace(::tl::in_place, value);
         }
     };
     using promise_type = PromiseType;
